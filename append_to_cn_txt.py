@@ -3,7 +3,7 @@ import os
 import pyperclip
 
 # 设置目录路径测试
-directory = '/Users/yanzhang/'
+directory = '/Users/yanzhang/Documents/'
 keyword = 'cn'
 file_extension = '.txt'
 

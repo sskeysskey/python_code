@@ -2,7 +2,7 @@
 import pyperclip
 
 # 设置SRT文件的保存路径
-srt_file_path = '/Users/yanzhang/eating_animals_cn.txt'
+srt_file_path = '/Users/yanzhang/Documents/eating_animals_cn.txt'
 
 # 读取剪贴板内容
 clipboard_content = pyperclip.paste()

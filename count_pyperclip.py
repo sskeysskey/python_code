@@ -33,7 +33,7 @@ num_symbols = sum(not ch.isalnum() and not ch.isspace() for ch in clipboard_cont
 root = tk.Tk()
 root.title("剪贴板分析")
 
-# 设置字体
+# 设置字体喽
 font = Font(family="Helvetica", size=24)
 
 # 创建一个标签来显示信息，并设置字体和左对齐
@@ -46,5 +46,5 @@ root.bind('<Escape>', on_escape)
 # 窗口居中
 center_window(root)
 
-# 运行 Tkinter 事件循环吗
+# 运行 Tkinter 事件循环
 root.mainloop()

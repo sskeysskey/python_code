@@ -46,5 +46,5 @@ root.bind('<Escape>', on_escape)
 # 窗口居中
 center_window(root)
 
-# 运行 Tkinter 事件循环
+# 运行 Tkinter 事件循环吗
 root.mainloop()

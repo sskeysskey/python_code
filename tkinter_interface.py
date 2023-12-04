@@ -10,7 +10,7 @@ def center_window(win):
     y = (win.winfo_screenheight() // 3) - (height // 2)
     win.geometry(f'{width}x{height}+{x}+{y}')
 
-def on_split():
+def on_split(event=None):
     n_str = entry.get()
     if not n_str.isdigit():
         info_label.config(text="请输入有效的数字")
@@ -45,7 +45,7 @@ entry.pack(pady=10, padx=60)
 entry.focus()  # 让输入框获得焦点
 
 # 绑定回车键到 on_split 函数
-entry.bind('<Return>', lambda event: on_split())
+entry.bind('<Return>', on_split)  # 不需要 lambda 表达式
 
 # 创建按钮
 split_button = tk.Button(root, text="分割", command=on_split, font=font)

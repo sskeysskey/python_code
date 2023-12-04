@@ -44,6 +44,9 @@ entry = tk.Entry(root, font=font)
 entry.pack(pady=10, padx=60)
 entry.focus()  # 让输入框获得焦点
 
+# 绑定回车键到 on_split 函数
+entry.bind('<Return>', lambda event: on_split())
+
 # 创建按钮
 split_button = tk.Button(root, text="分割", command=on_split, font=font)
 split_button.pack(pady=10, padx=60)

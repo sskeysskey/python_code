@@ -9,10 +9,13 @@ def split_text(text, n):
     segment_length = len(text) // n
     start = 0
     for _ in range(n - 1):
+        # 首先尝试找到".\n"
         end = text.find(".\n", start + segment_length)
-        if end == -1:  # 如果找不到".\n"，则直接到文本末尾
-            end = len(text)
-        segments.append(text[start:end + 2])  # 包含".\n"
+        if end == -1:  # 如果找不到".\n"，则尝试找到“。\n”
+            end = text.find("。\n", start + segment_length)
+            if end == -1:  # 如果仍然找不到，则直接到文本末尾
+                end = len(text)
+        segments.append(text[start:end + 2])  # 包含分割符
         start = end + 2
     segments.append(text[start:])  # 添加最后一段
     return segments

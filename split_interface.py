@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter.font import Font
 from clipboard_split import save_segments
 
+def on_escape(event=None):
+    root.destroy()
+
 def center_window(win):
     win.update_idletasks()
     width = win.winfo_width()
@@ -36,20 +39,23 @@ root.title("分割文本")
 font = Font(family="Helvetica", size=24)
 
 # 创建一个标签来显示信息，并设置字体和左对齐
-info_label = tk.Label(root, font=font, anchor='w', justify='left')
-info_label.pack(pady=30, padx=60)
+info_label = tk.Label(root, text=f"需要分割成几份？", font=font, anchor='w', justify='center')
+info_label.pack(pady=10, padx=10)
 
 # 创建输入框
 entry = tk.Entry(root, font=font)
-entry.pack(pady=10, padx=60)
+entry.pack(pady=10, padx=30)
 entry.focus()  # 让输入框获得焦点
 
 # 绑定回车键到 on_split 函数
 entry.bind('<Return>', on_split)  # 不需要 lambda 表达式
 
+# 绑定 Esc 键到 on_escape 函数
+root.bind('<Escape>', on_escape)
+
 # 创建按钮
-split_button = tk.Button(root, text="分割", command=on_split, font=font)
-split_button.pack(pady=10, padx=60)
+#split_button = tk.Button(root, text="分割", command=on_split, font=font)
+#split_button.pack(pady=10, padx=60)
 
 # 窗口居中
 center_window(root)

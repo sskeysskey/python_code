@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter.font import Font
-from clipboard_split import save_segments
+from split_clipboard import save_segments
 
 def on_escape(event=None):
     root.destroy()

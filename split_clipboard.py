@@ -43,6 +43,3 @@ def save_segments(n, save_path="/Users/yanzhang/Downloads"):
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(segment)
             print(f"第{i + 1}部分已保存到: {file_path}")
-
-# 使用示例
-# save_segments(5)

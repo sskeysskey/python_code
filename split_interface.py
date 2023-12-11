@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter.font import Font
-from split_clipboard import save_segments
+from split_clipboard import save_segments, get_clipboard_size
 
 def on_escape(event=None):
     root.destroy()
@@ -37,6 +37,10 @@ root.title("分割文本")
 
 # 设置字体
 font = Font(family="Helvetica", size=24)
+
+# 创建一个标签来显示剪贴板文本大小
+clipboard_size_label = tk.Label(root, text=f"文本大小：{get_clipboard_size()}", font=font, anchor='w', justify='center')
+clipboard_size_label.pack(pady=10, padx=10)
 
 # 创建一个标签来显示信息，并设置字体和左对齐
 info_label = tk.Label(root, text=f"需要分割成几份？", font=font, anchor='w', justify='center')

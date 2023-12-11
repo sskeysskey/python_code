@@ -1,6 +1,16 @@
 import pyperclip
 import os
 
+def get_clipboard_size():
+    text = pyperclip.paste()
+    size_bytes = len(text.encode('utf-8'))
+    if size_bytes < 1024:
+        return f"{size_bytes} bytes"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.2f} KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.2f} MB"
+
 def find_nearest_sentence_end(text, start, end):
     # 在指定范围内查找最近的句号位置
     dot_positions = [text.rfind('.\n', start, end), text.rfind('。\n', start, end)]

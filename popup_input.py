@@ -63,7 +63,7 @@ window.move(500, 250)
 line_edit.paste()
 
 # 全选文本
-# line_edit.selectAll()
+line_edit.selectAll()
 
 window.setLayout(layout)
 

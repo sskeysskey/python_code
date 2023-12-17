@@ -36,27 +36,11 @@ chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
-# 打开 Economist 网站
-driver.get("https://www.economist.com/")
-
-# 智能等待弹窗出现
-try:
-    # 等待 iframe 加载完成
-    WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
-    
-    # 在 iframe 中等待“Accept all”按钮可点击并点击它
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
-    print("已点击 iframe 中的接受 cookie 按钮")
-    
-    # 切换回主文档
-    driver.switch_to.default_content()
-
-except Exception as e:
-    print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
-    driver.switch_to.default_content()
+# 打开 WSJ 网站
+driver.get("https://www.wsj.com/")
 
 # 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/economist_*.csv"
+file_pattern = "/Users/yanzhang/wsj_*.csv"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -74,20 +58,23 @@ else:
 
     # 抓取新内容
     new_rows = []
-    try:
-        css_selector = f"a[href*='/{current_year}/{current_month}/']"
-        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+    try:        
+        css_selector = "//span[contains(@class, 'WSJTheme--headlineText')]/parent::a"
+        titles_elements = driver.find_elements(By.XPATH, css_selector)
+
+        print(f"找到 {len(titles_elements)} 个标题元素。")
 
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
+            print(f"标题: {title_text}, 链接: {href}")
 
             # 检查新内容是否重复，并且不在旧文件中
             if title_text and 'podcasts' not in href and not any(title_text in row for row in new_rows + old_content):
                 new_rows.append([formatted_date, title_text, href])
 
     except Exception as e:
-        print("抓取过程中出现错误:", e)
+        print(f"抓取过程中出现错误: {e}")
 
     # 关闭驱动
     driver.quit()
@@ -110,7 +97,7 @@ else:
         writer.writerows(old_content)
 
     # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/economist_{current_year}_{current_month:02d}_{current_day:02d}.csv"
+    new_file_name = f"/Users/yanzhang/wsj_{current_year}_{current_month:02d}_{current_day:02d}.csv"
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口

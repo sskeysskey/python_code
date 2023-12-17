@@ -37,26 +37,17 @@ service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
 # 打开 Economist 网站
-driver.get("https://www.economist.com/")
+driver.get("https://www.technologyreview.com/")
 
-# 智能等待弹窗出现
 try:
-    # 等待 iframe 加载完成
-    WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
-    
-    # 在 iframe 中等待“Accept all”按钮可点击并点击它
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
-    print("已点击 iframe 中的接受 cookie 按钮")
-    
-    # 切换回主文档
-    driver.switch_to.default_content()
-
+    # 使用 WebDriverWait 等待 'Accept all cookies' 按钮变为可点击状态
+    WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
+    print("已点击 'Accept all cookies' 按钮")
 except Exception as e:
-    print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
-    driver.switch_to.default_content()
+    print(f"点击 'Accept all cookies' 按钮时出错: {e}")
 
 # 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/economist_*.csv"
+file_pattern = "/Users/yanzhang/techreview_*.csv"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -75,7 +66,7 @@ else:
     # 抓取新内容
     new_rows = []
     try:
-        css_selector = f"a[href*='/{current_year}/{current_month}/']"
+        css_selector = f"a[href*='technologyreview.com/{current_year}/{current_month}/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
@@ -110,7 +101,7 @@ else:
         writer.writerows(old_content)
 
     # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/economist_{current_year}_{current_month:02d}_{current_day:02d}.csv"
+    new_file_name = f"/Users/yanzhang/techreview_{current_year}_{current_month:02d}_{current_day:02d}.csv"
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口

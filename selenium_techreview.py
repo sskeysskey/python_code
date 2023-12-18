@@ -27,7 +27,8 @@ root.attributes('-topmost', True)  # 窗口置于最前台
 current_year = datetime.datetime.now().year
 current_month = datetime.datetime.now().month
 current_day = datetime.datetime.now().day
-formatted_date = f"{current_year}.{current_month:02d}.{current_day:02d}"
+current_datetime = datetime.datetime.now()
+formatted_datetime = current_datetime.strftime("%Y.%m.%d_%H")
 
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
@@ -39,12 +40,12 @@ driver = webdriver.Chrome(service=service)
 # 打开 Economist 网站
 driver.get("https://www.technologyreview.com/")
 
-try:
+#try:
     # 使用 WebDriverWait 等待 'Accept all cookies' 按钮变为可点击状态
-    WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
-    print("已点击 'Accept all cookies' 按钮")
-except Exception as e:
-    print(f"点击 'Accept all cookies' 按钮时出错: {e}")
+    #WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
+    #print("已点击 'Accept all cookies' 按钮")
+#except Exception as e:
+    #print(f"点击 'Accept all cookies' 按钮时出错: {e}")
 
 # 查找旧的 CSV 文件
 file_pattern = "/Users/yanzhang/techreview_*.csv"
@@ -74,8 +75,8 @@ else:
             title_text = title_element.text.strip()
 
             # 检查新内容是否重复，并且不在旧文件中
-            if title_text and 'podcasts' not in href and not any(title_text in row for row in new_rows + old_content):
-                new_rows.append([formatted_date, title_text, href])
+            if title_text and 'podcasts' not in href and not any(title_text in row or href in row for row in new_rows + old_content):
+                new_rows.append([formatted_datetime, title_text, href])
 
     except Exception as e:
         print("抓取过程中出现错误:", e)
@@ -105,7 +106,7 @@ else:
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口
-    if new_content_added:
-        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
-    else:
-        messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
+    #if new_content_added:
+        #messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+    #else:
+        #messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)

@@ -8,8 +8,8 @@ from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+#from selenium.webdriver.support.ui import WebDriverWait
+#from selenium.webdriver.support import expected_conditions as EC
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -49,7 +49,7 @@ driver.get("https://www.technologyreview.com/")
     #print(f"点击 'Accept all cookies' 按钮时出错: {e}")
 
 # 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/techreview_*.html"
+file_pattern = "/Users/yanzhang/Documents/techreview_*.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -92,7 +92,7 @@ else:
     driver.quit()
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/techreview_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_html_path = f"/Users/yanzhang/Documents/techreview_{current_year}_{current_month:02d}_{current_day:02d}.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
@@ -122,7 +122,7 @@ else:
         html_file.write("</table></body></html>")
 
     # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/techreview_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_file_name = f"/Users/yanzhang/Documents/techreview_{current_year}_{current_month:02d}_{current_day:02d}.html"
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口

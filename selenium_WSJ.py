@@ -1,15 +1,28 @@
 import os
 import glob
-import csv
 import datetime
 import tkinter as tk
-from bs4 import BeautifulSoup
 from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+
+def is_similar(url1, url2):
+    """
+    比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
+    主要比较 URL 的协议、主机名和路径。
+    """
+    parsed_url1 = urlparse(url1)
+    parsed_url2 = urlparse(url2)
+
+    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    return base_url1 == base_url2
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -41,8 +54,8 @@ driver = webdriver.Chrome(service=service)
 # 打开 WSJ 网站
 driver.get("https://www.wsj.com/")
 
-# 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/wsj_*.html"
+# 查找旧的 CSV 文件
+file_pattern = "/Users/yanzhang/Documents/wsj_*.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -77,9 +90,16 @@ else:
             title_text = title_element.text.strip()
             print(f"标题: {title_text}, 链接: {href}")
 
+            if href and title_text:
+                print(f"标题: {title_text}, 链接: {href}")
+
+                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href:
+                    if not any(is_similar(href, row[2]) for row in new_rows + old_content if len(row) >= 3):
+                        new_rows.append([formatted_datetime, title_text, href])
+
             # 检查新内容是否重复，并且不在旧文件中，同时确保链接包含 www.wsj.com
-            if title_text and 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and not any(title_text in row for row in new_rows + old_content):
-                new_rows.append([formatted_datetime, title_text, href])
+            #if title_text and 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and not any(title_text in row for row in new_rows + old_content):
+                #new_rows.append([formatted_datetime, title_text, href])
                 
     except Exception as e:
         print(f"抓取过程中出现错误: {e}")
@@ -88,7 +108,7 @@ else:
     driver.quit()
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/wsj_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_html_path = f"/Users/yanzhang/Documents/wsj_{current_year}_{current_month:02d}_{current_day:02d}.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
@@ -118,7 +138,7 @@ else:
         html_file.write("</table></body></html>")
 
     # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/wsj_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_file_name = f"/Users/yanzhang/Documents/wsj_{current_year}_{current_month:02d}_{current_day:02d}.html"
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口

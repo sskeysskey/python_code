@@ -42,23 +42,23 @@ driver = webdriver.Chrome(service=service)
 driver.get("https://www.economist.com/")
 
 # 智能等待弹窗出现
-try:
+#try:
     # 等待 iframe 加载完成
-    WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
+    #WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
     
     # 在 iframe 中等待“Accept all”按钮可点击并点击它
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
-    print("已点击 iframe 中的接受 cookie 按钮")
+    #WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
+    #print("已点击 iframe 中的接受 cookie 按钮")
     
     # 切换回主文档
-    driver.switch_to.default_content()
+    #driver.switch_to.default_content()
 
-except Exception as e:
-    print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
-    driver.switch_to.default_content()
+#except Exception as e:
+    #print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
+    #driver.switch_to.default_content()
 
 # 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/economist_*.html"
+file_pattern = "/Users/yanzhang/Documents/economist_*.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -101,7 +101,7 @@ else:
     driver.quit()
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_html_path = f"/Users/yanzhang/Documents/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
@@ -131,7 +131,7 @@ else:
         html_file.write("</table></body></html>")
 
     # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_file_name = f"/Users/yanzhang/Documents/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口

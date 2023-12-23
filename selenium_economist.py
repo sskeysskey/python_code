@@ -1,6 +1,5 @@
 import os
 import glob
-import csv
 import datetime
 import tkinter as tk
 from bs4 import BeautifulSoup
@@ -10,6 +9,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from urllib.parse import urlparse
+
+def is_similar(url1, url2):
+    """
+    比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
+    主要比较 URL 的协议、主机名和路径。
+    """
+    parsed_url1 = urlparse(url1)
+    parsed_url2 = urlparse(url2)
+
+    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    return base_url1 == base_url2
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -42,20 +55,20 @@ driver = webdriver.Chrome(service=service)
 driver.get("https://www.economist.com/")
 
 # 智能等待弹窗出现
-#try:
+try:
     # 等待 iframe 加载完成
-    #WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
+    WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
     
     # 在 iframe 中等待“Accept all”按钮可点击并点击它
-    #WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
-    #print("已点击 iframe 中的接受 cookie 按钮")
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
+    print("已点击 iframe 中的接受 cookie 按钮")
     
     # 切换回主文档
-    #driver.switch_to.default_content()
+    driver.switch_to.default_content()
 
-#except Exception as e:
-    #print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
-    #driver.switch_to.default_content()
+except Exception as e:
+    print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
+    driver.switch_to.default_content()
 
 # 查找旧的 CSV 文件
 file_pattern = "/Users/yanzhang/Documents/economist_*.html"
@@ -90,9 +103,16 @@ else:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
 
+            if href and title_text:
+                print(f"标题: {title_text}, 链接: {href}")
+
+                if 'podcasts' not in href:
+                    if not any(is_similar(href, row[2]) for row in new_rows + old_content if len(row) >= 3):
+                        new_rows.append([formatted_datetime, title_text, href])
+
             # 检查新内容是否重复，并且不在旧文件中
-            if title_text and 'podcasts' not in href and not any(title_text in row for row in new_rows + old_content):
-                new_rows.append([formatted_datetime, title_text, href])
+            #if title_text and 'podcasts' not in href and not any(title_text in row for row in new_rows + old_content):
+                #new_rows.append([formatted_datetime, title_text, href])
 
     except Exception as e:
         print("抓取过程中出现错误:", e)

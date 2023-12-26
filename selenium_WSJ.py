@@ -1,6 +1,7 @@
 import os
 import glob
 import datetime
+import webbrowser
 import tkinter as tk
 from tkinter import messagebox
 from selenium import webdriver
@@ -10,6 +11,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
+
+def open_html_file(file_path):
+    webbrowser.open('file://' + os.path.realpath(file_path), new=2)
+    exit()  # 终止程序
 
 def is_similar(url1, url2):
     """
@@ -23,6 +28,40 @@ def is_similar(url1, url2):
     base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
 
     return base_url1 == base_url2
+
+# 获取当前日期
+current_datetime = datetime.datetime.now()
+formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
+
+# 查找旧的 HTML 文件
+file_pattern = "/Users/yanzhang/Documents/wsj_*.html"
+old_file_list = glob.glob(file_pattern)
+date_found = False
+
+if not old_file_list:
+    print("未找到符合条件的旧文件。")
+    # 处理未找到旧文件的情况
+else:
+    for old_file_path in old_file_list:
+        with open(old_file_path, 'r', encoding='utf-8') as file:
+            soup = BeautifulSoup(file, 'html.parser')
+            rows = soup.find_all('tr')
+            for row in rows:
+                cols = row.find_all('td')
+                for col in cols:
+                    # 我们只检查日期部分，忽略小时部分
+                    if col.text.strip().startswith(formatted_date):
+                        date_found = True
+                        break
+                if date_found:
+                    break
+        if date_found:
+            open_html_file(old_file_path)
+            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            break
+
+if not date_found:
+    print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 初始化 tkinter
 root = tk.Tk()

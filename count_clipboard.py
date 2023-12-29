@@ -29,6 +29,9 @@ num_english_words = len(re.findall(r'\b[A-Za-z]+\b', clipboard_content))
 # 计算不是英文字母（a-z，A-Z）、数字（0-9）或空格的字符数量
 num_symbols = sum(not ch.isalnum() and not ch.isspace() for ch in clipboard_content)
 
+# 计算行数
+num_lines = clipboard_content.count('\n') + 1  # 假定内容至少有一行
+
 # 创建 Tkinter 窗口
 root = tk.Tk()
 root.title("剪贴板分析")
@@ -37,7 +40,18 @@ root.title("剪贴板分析")
 font = Font(family="Helvetica", size=24)
 
 # 创建一个标签来显示信息，并设置字体和左对齐
-info_label = tk.Label(root, text=f"总共字符： {total_characters}\n\n中文字符： {num_chinese_characters}\n\n英文单词： {num_english_words}\n\n符号数量： {num_symbols}", font=font, anchor='w', justify='left')
+#info_label = tk.Label(root, text=f"总共字符： {total_characters}\n\n中文字符： {num_chinese_characters}\n\n英文单词： {num_english_words}\n\n符号数量： {num_symbols}", font=font, anchor='w', justify='left')
+#info_label.pack(pady=30, padx=60)
+
+# 创建一个标签来显示信息，并设置字体和左对齐
+info_label_text = (
+    f"总共字符： {total_characters}\n\n"
+    f"中文字符： {num_chinese_characters}\n\n"
+    f"英文单词： {num_english_words}\n\n"
+    f"符号数量： {num_symbols}\n\n"  # 增加了两个换行符以便更好的布局显示
+    f"行数： {num_lines}"  # 添加显示行数的标签
+)
+info_label = tk.Label(root, text=info_label_text, font=font, anchor='w', justify='left')
 info_label.pack(pady=30, padx=60)
 
 # 绑定 Esc 键到 on_escape 函数

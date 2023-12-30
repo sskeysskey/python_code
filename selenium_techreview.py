@@ -9,8 +9,6 @@ from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-#from selenium.webdriver.support.ui import WebDriverWait
-#from selenium.webdriver.support import expected_conditions as EC
 
 def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
@@ -79,13 +77,6 @@ driver = webdriver.Chrome(service=service)
 
 # 打开 Economist 网站
 driver.get("https://www.technologyreview.com/")
-
-#try:
-    # 使用 WebDriverWait 等待 'Accept all cookies' 按钮变为可点击状态
-    #WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))).click()
-    #print("已点击 'Accept all cookies' 按钮")
-#except Exception as e:
-    #print(f"点击 'Accept all cookies' 按钮时出错: {e}")
 
 # 查找旧的 CSV 文件
 file_pattern = "/Users/yanzhang/Documents/techreview_*.html"
@@ -165,7 +156,7 @@ else:
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口
-    #if new_content_added:
-        #messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
-    #else:
-        #messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
+    if new_content_added:
+        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+    else:
+        messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)

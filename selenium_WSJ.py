@@ -135,10 +135,6 @@ else:
                 if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href:
                     if not any(is_similar(href, row[2]) for row in new_rows + old_content if len(row) >= 3):
                         new_rows.append([formatted_datetime, title_text, href])
-
-            # 检查新内容是否重复，并且不在旧文件中，同时确保链接包含 www.wsj.com
-            #if title_text and 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and not any(title_text in row for row in new_rows + old_content):
-                #new_rows.append([formatted_datetime, title_text, href])
                 
     except Exception as e:
         print(f"抓取过程中出现错误: {e}")
@@ -181,7 +177,7 @@ else:
     os.rename(old_file_path, new_file_name)
 
     # 显示提示窗口
-    #if new_content_added:
-        #messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
-    #else:
-        #messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
+    if new_content_added:
+        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+    else:
+        messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)

@@ -16,6 +16,9 @@ def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
     exit()  # 终止程序
 
+def open_new_html_file():
+    webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
+
 def is_similar(url1, url2):
     """
     比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
@@ -28,6 +31,18 @@ def is_similar(url1, url2):
     base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
 
     return base_url1 == base_url2
+
+# 初始化 tkinter
+root = tk.Tk()
+root.withdraw()  # 不显示主窗口
+
+# 设置窗口在屏幕正中间
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+x_cordinate = int((screen_width/2) - (200/2))
+y_cordinate = int((screen_height/2) - (100/2)) - 100
+root.geometry("{}x{}+{}+{}".format(200, 100, x_cordinate, y_cordinate))
+#root.attributes('-topmost', True)  # 窗口置于最前台
 
 # 获取当前日期
 current_datetime = datetime.datetime.now()
@@ -56,31 +71,25 @@ else:
                 if date_found:
                     break
         if date_found:
-            open_html_file(old_file_path)
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            break
+            # 弹窗询问用户操作
+            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件；【NO】重新爬取。你的选择是？", parent=root)
+            if response:
+            # 用户选择“是”，打开当前html文件
+                open_html_file(old_file_path)
+                print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+                root.destroy()  # 关闭tkinter并结束程序
+                break
+            else:
+                # 用户选择“否”，继续执行后续代码进行重新爬取
+                print("用户选择重新爬取，继续执行程序。")
 
 if not date_found:
     print("没有找到匹配当天日期的内容，继续执行后续代码。")
-
-# 初始化 tkinter
-root = tk.Tk()
-root.withdraw()  # 不显示主窗口
-
-# 设置窗口在屏幕正中间
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-x_cordinate = int((screen_width/2) - (200/2))
-y_cordinate = int((screen_height/2) - (100/2)) - 100
-root.geometry("{}x{}+{}+{}".format(200, 100, x_cordinate, y_cordinate))
-
-root.attributes('-topmost', True)  # 窗口置于最前台
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
 current_month = datetime.datetime.now().month
 current_day = datetime.datetime.now().day
-#current_datetime = datetime.datetime.now()
 formatted_datetime = current_datetime.strftime("%Y.%m.%d_%H")
 
 # ChromeDriver 路径
@@ -155,6 +164,12 @@ else:
     # 关闭驱动
     driver.quit()
 
+    try:
+        os.remove(old_file_path)
+        print(f"文件 {old_file_path} 已被删除。")
+    except OSError as e:
+        print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
+
     # 创建 HTML 文件
     new_html_path = f"/Users/yanzhang/Documents/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
@@ -162,7 +177,7 @@ else:
         html_file.write("<html><body><table border='1'>\n")
 
         # 写入标题行，如果旧文件有标题行
-        if old_content:
+        if old_content and len(old_content) > 0:
             html_file.write("<tr><th>" + "</th><th>".join(old_content[0]) + "</th></tr>\n")
             old_content = old_content[1:]
 
@@ -185,12 +200,14 @@ else:
         # 结束表格和 HTML 结构
         html_file.write("</table></body></html>")
 
-    # 重命名旧文件
-    new_file_name = f"/Users/yanzhang/Documents/economist_{current_year}_{current_month:02d}_{current_day:02d}.html"
-    os.rename(old_file_path, new_file_name)
+    # 判断是否有新内容添加
+    new_content_added = len(new_rows) > 0
 
     # 显示提示窗口
     if new_content_added:
-        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+        messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
+        open_new_html_file()
+        root.destroy()  # 关闭tkinter并结束程序
     else:
         messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
+        root.destroy()  # 关闭tkinter并结束程序

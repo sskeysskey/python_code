@@ -71,7 +71,7 @@ else:
                     break
         if date_found:
             # 弹窗询问用户操作
-            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件，【No】重新爬取。你的选择是？", parent=root)
+            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件，【No】再次爬取", parent=root)
             if response:
             # 用户选择“是”，打开当前html文件
                 open_html_file(old_file_path)

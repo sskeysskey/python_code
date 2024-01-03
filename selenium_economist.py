@@ -72,7 +72,7 @@ else:
                     break
         if date_found:
             # 弹窗询问用户操作
-            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件；【NO】重新爬取。你的选择是？", parent=root)
+            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件；【NO】再次爬取", parent=root)
             if response:
             # 用户选择“是”，打开当前html文件
                 open_html_file(old_file_path)
@@ -144,7 +144,7 @@ else:
     # 抓取新内容
     new_rows = []
     try:
-        css_selector = f"a[href*='/{current_year}/{current_month}/']"
+        css_selector = f"a[href*='/{current_year}/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:

@@ -112,7 +112,7 @@ else:
     # 抓取新内容
     new_rows = []
     try:
-        css_selector = f"a[href*='technologyreview.com/{current_year}/{current_month}/']"
+        css_selector = f"a[href*='technologyreview.com/{current_year}/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:

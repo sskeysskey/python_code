@@ -1,12 +1,18 @@
 # 各种前置导入
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+
 import csv
 import datetime
 from time import sleep
+
+# 将新内容追加到文件末尾，不覆盖
+output_file_path = "/Users/yanzhang/Documents/TopGainer.txt"
+with open(output_file_path, 'a') as file:
+    file.write(new_content + '\n') # 追加内容并在末尾添加换行符
+
+# 将新内容写入文件，覆盖原有内容
+output_file_path = "/Users/yanzhang/Documents/TopGainer.txt"
+with open(output_file_path, 'w') as file:
+    file.write(new_content)
 
 # 点击economist的log in按钮
 try:

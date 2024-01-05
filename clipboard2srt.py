@@ -9,7 +9,8 @@ srt_directory = '/Users/yanzhang/Movies'
 clipboard_content = pyperclip.paste()
 
 # 首先检查剪贴板内容的第一位字符是否是数字1
-if clipboard_content and clipboard_content[0] == '1':
+# if clipboard_content and clipboard_content[0] == '1':
+if clipboard_content.startswith('1\n'):
     # 是数字1，根据当前时间创建新文件
     now = datetime.now()
     time_str = now.strftime("_%m_%d_%H_%M")

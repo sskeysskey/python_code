@@ -1,5 +1,4 @@
 import os
-import re
 import glob
 import datetime
 import webbrowser
@@ -7,9 +6,9 @@ import tkinter as tk
 from bs4 import BeautifulSoup
 from tkinter import messagebox
 from selenium import webdriver
-from urllib.parse import urlparse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from urllib.parse import urlparse
 
 def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
@@ -48,7 +47,7 @@ current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/wsj_*.html"
+file_pattern = "/Users/yanzhang/Documents/FT_*.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -71,7 +70,7 @@ else:
                     break
         if date_found:
             # 弹窗询问用户操作
-            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件，【No】再次爬取", parent=root)
+            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件；【NO】再次爬取", parent=root)
             if response:
             # 用户选择“是”，打开当前html文件
                 open_html_file(old_file_path)
@@ -98,11 +97,11 @@ chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
-# 打开 WSJ 网站
-driver.get("https://www.wsj.com/")
+# 打开 FT 网站
+driver.get("https://www.ft.com/")
 
-# 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/Documents/wsj_*.html"
+# 查找旧的 html 文件
+file_pattern = "/Users/yanzhang/Documents/FT_*.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -129,30 +128,25 @@ else:
     new_rows = []
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
-    try:        
-        css_selector = "//span[contains(@class, 'WSJTheme--headlineText')]/parent::a"
-        titles_elements = driver.find_elements(By.XPATH, css_selector)
-
-        print(f"找到 {len(titles_elements)} 个标题元素。")
+    try:
+        css_selector = f"a[href*='/content/']"
+        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
-            
-            # 此处添加移除阅读时间标记的逻辑
-            title_text = re.sub(r'\d+ min read', '', title_text).strip()
 
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and 'sports' not in href:
+                if 'podcasts' not in href and "film" not in href:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
                             all_links.append(href)  # 添加到所有链接的列表中
-                
+
     except Exception as e:
-        print(f"抓取过程中出现错误: {e}")
+        print("抓取过程中出现错误:", e)
 
     # 关闭驱动
     driver.quit()
@@ -164,21 +158,12 @@ else:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/wsj_{current_year}_{current_month:02d}_{current_day:02d}.html"
+    new_html_path = f"/Users/yanzhang/Documents/FT_{current_year}_{current_month:02d}_{current_day:02d}.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
 
-        # 在创建 HTML 文件之前，对新抓取和旧内容中的标题进行过滤
-        #for row in new_rows:
-            #row[1] = re.sub(r'\d+ min read', '', row[1]).strip()
-
-        # 对旧内容中的标题也进行同样的操作
-        #for row in old_content:
-            #if len(row) > 1:
-                #row[1] = re.sub(r'\d+ min read', '', row[1]).strip()
-
-         # 写入标题行
+        # 写入标题行
         html_file.write("<tr><th>Date</th><th>Title</th><th>Link</th></tr>\n")
 
         # 写入新抓取的内容
@@ -198,7 +183,7 @@ else:
 
     # 显示提示窗口
     if new_content_added:
-        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+        messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
         open_new_html_file()
         root.destroy()  # 关闭tkinter并结束程序
     else:

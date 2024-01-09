@@ -101,16 +101,19 @@ else:
     old_content = []
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
-        table = soup.find('table')  # 假设数据存储在第一个表格中
-        if table:
-            rows = table.find_all('tr')
-            for row in rows:
-                cols = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols]
-                old_content.append(cols)
+        rows = soup.find_all('tr')[1:]  # 跳过标题行
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 3:  # 确保行有足够的列
+                date = cols[0].text
+                title = cols[1].text
+                link = cols[2].find('a')['href'] if cols[2].find('a') else None
+                old_content.append([date, title, link])
 
     # 抓取新内容
     new_rows = []
+    all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
+    
     try:
         css_selector = f"a[href*='technologyreview.com/{current_year}/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
@@ -119,9 +122,14 @@ else:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
 
-            # 检查新内容是否重复，并且不在旧文件中
-            if title_text and 'podcasts' not in href and not any(title_text in row or href in row for row in new_rows + old_content):
-                new_rows.append([formatted_datetime, title_text, href])
+            if href and title_text:
+                #print(f"标题: {title_text}, 链接: {href}")
+
+                if 'podcasts' not in href:
+                    if not any(href == old_link for _, _, old_link in old_content):
+                        if not any(href == new_link for _, _, new_link in new_rows):
+                            new_rows.append([formatted_datetime, title_text, href])
+                            all_links.append(href)  # 添加到所有链接的列表中
 
     except Exception as e:
         print("抓取过程中出现错误:", e)
@@ -141,33 +149,24 @@ else:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
 
-        # 写入标题行，如果旧文件有标题行
-        if old_content and len(old_content) > 0:
-            html_file.write("<tr><th>" + "</th><th>".join(old_content[0]) + "</th></tr>\n")
-            old_content = old_content[1:]
+        # 写入标题行
+        html_file.write("<tr><th>Date</th><th>Title</th><th>Link</th></tr>\n")
 
         # 写入新抓取的内容
+        new_content_added = False
         for row in new_rows:
-            # 将链接转换为可点击的 HTML 链接
-            clickable_link = f"<a href='{row[2]}' target='_blank'>{row[2]}</a>"
-            # 替换原始链接为可点击链接
-            row[2] = clickable_link
-            html_file.write("<tr><td>" + "</td><td>".join(row) + "</td></tr>\n")
-
+            clickable_link = f"<a href='{row[2]}' target='_blank'>链接</a>"
+            html_file.write(f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{clickable_link}</td></tr>\n")
+            new_content_added = True
+        
         # 写入旧内容
         for row in old_content:
-            # 检查是否存在链接，并转换为可点击的 HTML 链接
-            if len(row) > 2 and row[2].startswith("http"):
-                clickable_link = f"<a href='{row[2]}' target='_blank'>{row[2]}</a>"
-                row[2] = clickable_link
-            html_file.write("<tr><td>" + "</td><td>".join(row) + "</td></tr>\n")
+            link_html = f"<a href='{row[2]}' target='_blank'>链接</a>" if row[2] else "链接"
+            html_file.write(f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{link_html}</td></tr>\n")
 
         # 结束表格和 HTML 结构
         html_file.write("</table></body></html>")
 
-    # 判断是否有新内容添加
-    new_content_added = len(new_rows) > 0
-    
     # 显示提示窗口
     if new_content_added:
         messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)

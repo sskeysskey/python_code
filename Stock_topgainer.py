@@ -23,11 +23,6 @@ def remove_even_lines_from_clipboard():
     # 将新内容复制回剪贴板
     pyperclip.copy(new_content)
 
-    # 将新内容写入文件
-    output_file_path = "/Users/yanzhang/Documents/topgainer.txt"
-    with open(output_file_path, 'w') as file:
-        file.write(new_content)
-
 # 提供黑名单文件的绝对路径
 blacklist_file_path = "/Users/yanzhang/Documents/blacklist_topgainer.txt"
 

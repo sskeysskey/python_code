@@ -147,7 +147,7 @@ else:
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'podcasts' not in href and "theathletic" not in href:
+                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
@@ -170,15 +170,6 @@ else:
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
-
-        # 在创建 HTML 文件之前，对新抓取和旧内容中的标题进行过滤
-        #for row in new_rows:
-            #row[1] = re.sub(r'\d+ MIN READ', '', row[1]).strip()
-
-        # 对旧内容中的标题也进行同样的操作
-        #for row in old_content:
-            #if len(row) > 1:
-                #row[1] = re.sub(r'\d+ MIN READ', '', row[1]).strip()
 
         # 写入标题行
         html_file.write("<tr><th>Date</th><th>Title</th><th>Link</th></tr>\n")

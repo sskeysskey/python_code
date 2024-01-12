@@ -139,7 +139,7 @@ else:
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'podcasts' not in href and "film" not in href:
+                if 'podcasts' not in title_text and "film" not in title_text:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])

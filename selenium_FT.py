@@ -55,34 +55,30 @@ if not old_file_list:
     print("未找到符合条件的旧文件。")
     # 处理未找到旧文件的情况
 else:
-    for old_file_path in old_file_list:
-        with open(old_file_path, 'r', encoding='utf-8') as file:
-            soup = BeautifulSoup(file, 'html.parser')
-            rows = soup.find_all('tr')
-            for row in rows:
-                cols = row.find_all('td')
-                for col in cols:
-                    # 我们只检查日期部分，忽略小时部分
-                    if col.text.strip().startswith(formatted_date):
-                        date_found = True
-                        break
-                if date_found:
-                    break
-        if date_found:
-            # 弹窗询问用户操作
-            response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件；【NO】再次爬取", parent=root)
-            if response:
-            # 用户选择“是”，打开当前html文件
-                open_html_file(old_file_path)
-                print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-                root.destroy()  # 关闭tkinter并结束程序
+    # 只应该有一个文件，因此可以直接获取第一个
+    old_file_path = old_file_list[0]
+    with open(old_file_path, 'r', encoding='utf-8') as file:
+        soup = BeautifulSoup(file, 'html.parser')
+        rows = soup.find_all('tr')
+        for row in rows[1:]:  # 跳过标题行
+            date_cell = row.find('td')  # 获取每行的第一个单元格，即日期单元格
+            if date_cell and date_cell.text.strip().startswith(formatted_date):
+                date_found = True
                 break
-            else:
-                # 用户选择“否”，继续执行后续代码进行重新爬取
-                print("用户选择重新爬取，继续执行程序。")
 
-if not date_found:
-    print("没有找到匹配当天日期的内容，继续执行后续代码。")
+    if date_found:
+        # 弹窗询问用户操作
+        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【Yes】打开文件，【No】再次爬取", parent=root)
+        if response:
+            # 用户选择“是”，打开当前html文件
+            open_html_file(old_file_path)
+            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            root.destroy()  # 关闭tkinter并结束程序
+        else:
+            # 用户选择“否”，继续执行后续代码进行重新爬取
+            print("用户选择重新爬取，继续执行程序。")
+    else:
+        print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
@@ -118,10 +114,12 @@ else:
         rows = soup.find_all('tr')[1:]  # 跳过标题行
         for row in rows:
             cols = row.find_all('td')
-            if len(cols) >= 3:  # 确保行有足够的列
-                date = cols[0].text
-                title = cols[1].text
-                link = cols[2].find('a')['href'] if cols[2].find('a') else None
+            if len(cols) >= 2:  # 确保行有足够的列
+                date = cols[0].text.strip()
+                title_column = cols[1]
+                title = title_column.text.strip()
+                # 从标题所在的列中提取链接
+                link = title_column.find('a')['href'] if title_column.find('a') else None
                 old_content.append([date, title, link])
 
     # 抓取新内容
@@ -129,7 +127,7 @@ else:
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
     try:
-        css_selector = f"a[href*='/content/']"
+        css_selector = "a[href*='/content/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
@@ -164,19 +162,19 @@ else:
         html_file.write("<html><body><table border='1'>\n")
 
         # 写入标题行
-        html_file.write("<tr><th>Date</th><th>Title</th><th>Link</th></tr>\n")
+        html_file.write("<tr><th>Date</th><th>Title</th></tr>\n")
 
         # 写入新抓取的内容
         new_content_added = False
         for row in new_rows:
-            clickable_link = f"<a href='{row[2]}' target='_blank'>链接</a>"
-            html_file.write(f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{clickable_link}</td></tr>\n")
+            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
             new_content_added = True
-        
+    
         # 写入旧内容
         for row in old_content:
-            link_html = f"<a href='{row[2]}' target='_blank'>链接</a>" if row[2] else "链接"
-            html_file.write(f"<tr><td>{row[0]}</td><td>{row[1]}</td><td>{link_html}</td></tr>\n")
+            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>" if row[2] else row[1]
+            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
 
         # 结束表格和 HTML 结构
         html_file.write("</table></body></html>")

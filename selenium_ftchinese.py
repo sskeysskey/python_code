@@ -8,8 +8,6 @@ from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import urlparse
 
 def open_html_file(file_path):
@@ -49,7 +47,7 @@ current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -95,27 +93,11 @@ chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
-# 打开 Economist 网站
-driver.get("https://www.economist.com/")
-
-# 智能等待弹窗出现
-try:
-    # 等待 iframe 加载完成
-    WebDriverWait(driver, 20).until(EC.frame_to_be_available_and_switch_to_it((By.ID, "sp_message_iframe_921614")))
-    
-    # 在 iframe 中等待“Accept all”按钮可点击并点击它
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Accept all']"))).click()
-    print("已点击 iframe 中的接受 cookie 按钮")
-    
-    # 切换回主文档
-    driver.switch_to.default_content()
-
-except Exception as e:
-    print("尝试点击 iframe 中的 cookie 同意按钮时出现错误:", e)
-    driver.switch_to.default_content()
+# 打开 FT 网站
+driver.get("https://www.ftchinese.com/")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -145,7 +127,7 @@ else:
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
     try:
-        css_selector = f"a[href*='/{current_year}/']"
+        css_selector = "a[href*='/premium/'], a[href*='interactive'], a[href*='story']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
@@ -155,7 +137,7 @@ else:
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'podcasts' not in href and "film" not in href:
+                if 'podcasts' not in title_text and "film" not in title_text:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
@@ -174,7 +156,7 @@ else:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")

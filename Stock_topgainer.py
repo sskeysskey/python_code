@@ -24,7 +24,7 @@ def remove_even_lines_from_clipboard():
     pyperclip.copy(new_content)
 
 # 提供黑名单文件的绝对路径
-blacklist_file_path = "/Users/yanzhang/Documents/blacklist_topgainer.txt"
+blacklist_file_path = "/Users/yanzhang/Documents/ScriptEditor/blacklist_topgainer.txt"
 
 # 调用函数
 remove_even_lines_from_clipboard()

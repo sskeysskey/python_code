@@ -4,6 +4,18 @@ import csv
 import datetime
 from time import sleep
 
+            # 计算中心坐标
+            #center_x = (location[0] + shape[1] // 2) // 2
+            #center_y = (location[1] + shape[0] // 2) // 2
+            # 鼠标点击中心坐标
+            #pyautogui.click(center_x, center_y)
+            #sleep(0.5)
+
+            # 弹窗提示
+            #root = tk.Tk()
+            #root.withdraw()  # 隐藏主窗口
+            #messagebox.showinfo("操作结果", "已找到并点击图片，然后移动并再次点击了指定位置")
+
 # 将新内容追加到文件末尾，不覆盖
 output_file_path = "/Users/yanzhang/Documents/TopGainer.txt"
 with open(output_file_path, 'a') as file:

@@ -7,11 +7,21 @@ import tkinter as tk
 from time import sleep
 from tkinter import messagebox
 
-# 捕获屏幕
 def capture_screen():
-    screenshot = pyautogui.screenshot()
-    screenshot = np.array(screenshot)
-    screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
+    # 定义截图路径
+    screenshot_path = '/Users/yanzhang/Documents/python_code/screenshot.png'
+    
+    # 使用pyautogui截图并直接保存
+    pyautogui.screenshot(screenshot_path)
+    
+    # 读取刚才保存的截图文件
+    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
+    
+    # 确保screenshot已经正确加载
+    if screenshot is None:
+        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
+    
+    # 返回读取的截图数据
     return screenshot
 
 # 查找图片
@@ -38,7 +48,7 @@ def main():
             pyautogui.click(button='right')
             sleep(0.5)
             # 移动鼠标并再次点击
-            pyautogui.moveRel(110, 118)  # 往右移动130，往下移动148
+            pyautogui.moveRel(110, 118)  # 往右移动110，往下移动118
             sleep(0.5)
             pyautogui.click()  # 执行点击操作
             sleep(1)

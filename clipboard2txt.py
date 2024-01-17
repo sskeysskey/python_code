@@ -3,10 +3,12 @@ import time
 import pyperclip
 from time import sleep
 
+pyautogui.moveTo(485, 662)
+sleep(0.5)
 pyautogui.click(button='right')
 sleep(0.5)
 # 移动鼠标并再次点击
-pyautogui.moveRel(110, 118)  # 往左移动130，往下移动118
+pyautogui.moveRel(110, 118)  # 往左移动110，往下移动118
 sleep(0.5)
 pyautogui.click()  # 执行点击操作
 sleep(1)

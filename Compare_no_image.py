@@ -44,7 +44,7 @@ def main():
             sleep(1)
 
             # 设置SRT文件的保存路径
-            srt_file_path = '/Users/yanzhang/Movies/银的故事.txt'
+            srt_file_path = '/Users/yanzhang/Movies/逃不开的经济周期.txt'
 
             # 读取剪贴板内容
             clipboard_content = pyperclip.paste()

@@ -1,5 +1,4 @@
 import os
-import re
 import glob
 import datetime
 import webbrowser
@@ -7,9 +6,9 @@ import tkinter as tk
 from bs4 import BeautifulSoup
 from tkinter import messagebox
 from selenium import webdriver
-from urllib.parse import urlparse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from urllib.parse import urlparse
 
 def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
@@ -18,18 +17,31 @@ def open_html_file(file_path):
 def open_new_html_file():
     webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
 
-def is_similar(url1, url2):
+#def is_similar(url1, url2):
     """
     比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
     主要比较 URL 的协议、主机名和路径。
     """
+    #parsed_url1 = urlparse(url1)
+    #parsed_url2 = urlparse(url2)
+
+    #base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    #base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    #return base_url1 == base_url2
+
+def is_similar(url1, url2):
+    """
+    比较两个 URL 是否相同，如果协议、主机名、路径、查询参数都相同则返回 True，否则返回 False。
+    """
     parsed_url1 = urlparse(url1)
     parsed_url2 = urlparse(url2)
 
-    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
-    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
-
-    return base_url1 == base_url2
+    # 比较协议、主机名、路径和查询参数
+    return (parsed_url1.scheme == parsed_url2.scheme and
+            parsed_url1.netloc == parsed_url2.netloc and
+            parsed_url1.path == parsed_url2.path and
+            parsed_url1.query == parsed_url2.query)
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -48,7 +60,7 @@ current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html"
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -81,35 +93,6 @@ else:
     else:
         print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
-    #for old_file_path in old_file_list:
-        #with open(old_file_path, 'r', encoding='utf-8') as file:
-            #soup = BeautifulSoup(file, 'html.parser')
-            #rows = soup.find_all('tr')
-            #for row in rows:
-                #cols = row.find_all('td')
-                #for col in cols:
-                    # 我们只检查日期部分，忽略小时部分
-                    #if col.text.strip().startswith(formatted_date):
-                        #date_found = True
-                        #break
-                #if date_found:
-                    #break
-        #if date_found:
-            # 弹窗询问用户操作
-            #response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件，【No】再次爬取", parent=root)
-            #if response:
-            # 用户选择“是”，打开当前html文件
-                #open_html_file(old_file_path)
-                #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-                #root.destroy()  # 关闭tkinter并结束程序
-                #break
-            #else:
-                # 用户选择“否”，继续执行后续代码进行重新爬取
-                #print("用户选择重新爬取，继续执行程序。")
-
-#if not date_found:
-    #print("没有找到匹配当天日期的内容，继续执行后续代码。")
-
 # 获取当前日期
 current_year = datetime.datetime.now().year
 current_month = datetime.datetime.now().month
@@ -123,11 +106,11 @@ chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
-# 打开 WSJ 网站
-driver.get("https://www.wsj.com/")
+# 打开 FT 网站
+driver.get("https://www.ftchinese.com/")
 
-# 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html"
+# 查找旧的 html 文件
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -151,48 +134,38 @@ else:
                 # 从标题所在的列中提取链接
                 link = title_column.find('a')['href'] if title_column.find('a') else None
                 old_content.append([date, title, link])
-    
-    # 读取旧文件中的所有内容
-    #old_content = []
-    #with open(old_file_path, 'r', encoding='utf-8') as file:
-        #soup = BeautifulSoup(file, 'html.parser')
-        #rows = soup.find_all('tr')[1:]  # 跳过标题行
-        #for row in rows:
-            #cols = row.find_all('td')
-            #if len(cols) >= 3:  # 确保行有足够的列
-                #date = cols[0].text
-                #title = cols[1].text
-                #link = cols[2].find('a')['href'] if cols[2].find('a') else None
-                #old_content.append([date, title, link])
 
     # 抓取新内容
     new_rows = []
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
+    premium_links = set()  # 存储已发现的premium链接数字部分
 
-    try:        
-        css_selector = "//span[contains(@class, 'WSJTheme--headlineText')]/parent::a"
-        titles_elements = driver.find_elements(By.XPATH, css_selector)
-
-        print(f"找到 {len(titles_elements)} 个标题元素。")
+    try:
+        css_selector = "a[href*='/premium/'], a[href*='interactive'], a[href*='story']"
+        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
-            
-            # 此处添加移除阅读时间标记的逻辑
-            title_text = re.sub(r'\d+ min read', '', title_text).strip()
 
             if href and title_text:
-                #print(f"标题: {title_text}, 链接: {href}")
-
-                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and 'sports' not in href:
+                # 提取链接中的数字部分，假设链接结构为 https://www.ftchinese.com/premium/001101900
+                link_number = href.rstrip('/').split('/')[-1]
+                
+                # 检查是否已存在相同数字的premium链接
+                if '/premium/' in href:
+                    premium_links.add(link_number)
+                    
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
+                            # 如果是story链接且数字部分已存在于premium链接中，则跳过
+                            if '/story/' in href and link_number in premium_links:
+                                continue
                             new_rows.append([formatted_datetime, title_text, href])
                             all_links.append(href)  # 添加到所有链接的列表中
-                
+
     except Exception as e:
-        print(f"抓取过程中出现错误: {e}")
+        print("抓取过程中出现错误:", e)
 
     # 关闭驱动
     driver.quit()
@@ -204,7 +177,7 @@ else:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html"
+    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
@@ -229,7 +202,7 @@ else:
 
     # 显示提示窗口
     if new_content_added:
-        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+        messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
         open_new_html_file()
         root.destroy()  # 关闭tkinter并结束程序
     else:

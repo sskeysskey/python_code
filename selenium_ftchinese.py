@@ -17,18 +17,31 @@ def open_html_file(file_path):
 def open_new_html_file():
     webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
 
-def is_similar(url1, url2):
+#def is_similar(url1, url2):
     """
     比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
     主要比较 URL 的协议、主机名和路径。
     """
+    #parsed_url1 = urlparse(url1)
+    #parsed_url2 = urlparse(url2)
+
+    #base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    #base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    #return base_url1 == base_url2
+
+def is_similar(url1, url2):
+    """
+    比较两个 URL 是否相同，如果协议、主机名、路径、查询参数都相同则返回 True，否则返回 False。
+    """
     parsed_url1 = urlparse(url1)
     parsed_url2 = urlparse(url2)
 
-    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
-    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
-
-    return base_url1 == base_url2
+    # 比较协议、主机名、路径和查询参数
+    return (parsed_url1.scheme == parsed_url2.scheme and
+            parsed_url1.netloc == parsed_url2.netloc and
+            parsed_url1.path == parsed_url2.path and
+            parsed_url1.query == parsed_url2.query)
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -125,6 +138,7 @@ else:
     # 抓取新内容
     new_rows = []
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
+    premium_links = set()  # 存储已发现的premium链接数字部分
 
     try:
         css_selector = "a[href*='/premium/'], a[href*='interactive'], a[href*='story']"
@@ -135,11 +149,18 @@ else:
             title_text = title_element.text.strip()
 
             if href and title_text:
-                #print(f"标题: {title_text}, 链接: {href}")
-
-                if 'podcasts' not in title_text and "film" not in title_text:
+                # 提取链接中的数字部分，假设链接结构为 https://www.ftchinese.com/premium/001101900
+                link_number = href.rstrip('/').split('/')[-1]
+                
+                # 检查是否已存在相同数字的premium链接
+                if '/premium/' in href:
+                    premium_links.add(link_number)
+                    
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
+                            # 如果是story链接且数字部分已存在于premium链接中，则跳过
+                            if '/story/' in href and link_number in premium_links:
+                                continue
                             new_rows.append([formatted_datetime, title_text, href])
                             all_links.append(href)  # 添加到所有链接的列表中
 

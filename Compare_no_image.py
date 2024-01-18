@@ -9,7 +9,7 @@ from tkinter import messagebox
 
 def capture_screen():
     # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/screenshot.png'
+    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
     
     # 使用pyautogui截图并直接保存
     pyautogui.screenshot(screenshot_path)
@@ -54,7 +54,7 @@ def main():
             sleep(1)
 
             # 设置SRT文件的保存路径
-            srt_file_path = '/Users/yanzhang/Movies/逃不开的经济周期.txt'
+            srt_file_path = '/Users/yanzhang/Movies/第三种黑猩猩.txt'
 
             # 读取剪贴板内容
             clipboard_content = pyperclip.paste()

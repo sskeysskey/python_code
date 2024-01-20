@@ -13,13 +13,13 @@ sleep(0.5)
 pyautogui.click()  # 执行点击操作
 sleep(1)
 
-# 设置SRT文件的保存路径
-srt_file_path = '/Users/yanzhang/Movies/逃不开的经济周期.txt'
+# 设置txt文件的保存路径
+txt_file_path = '/Users/yanzhang/Movies/逃不开的经济周期.txt'
 
 # 读取剪贴板内容
 clipboard_content = pyperclip.paste()
 
-# 追加剪贴板内容到SRT文件
-with open(srt_file_path, 'a', encoding='utf-8-sig') as f:
+# 追加剪贴板内容到txt文件
+with open(txt_file_path, 'a', encoding='utf-8-sig') as f:
     f.write(clipboard_content)
     f.write('\n\n')  # 添加两个换行符以创建一个空行

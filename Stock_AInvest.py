@@ -1,4 +1,5 @@
 import cv2
+import pyperclip
 import pyautogui
 from time import sleep
 
@@ -30,9 +31,35 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
+def remove_even_lines_from_clipboard():
+    blacklist_file_path = "/Users/yanzhang/Documents/python_code/Resource/blacklist_topgainer.txt"
+    
+    # 从剪贴板获取内容
+    clipboard_content = pyperclip.paste()
+    
+    # 按行分割内容成为一个列表
+    lines = clipboard_content.split('\n')
+    
+    # 保留奇数行
+    odd_lines = [line for index, line in enumerate(lines) if index % 2 == 0]
+
+    # 读取黑名单文件的内容，并分割成行
+    with open(blacklist_file_path, 'r') as file:
+        blacklist = file.read().split('\n')
+
+    # 移除与黑名单匹配的行
+    filtered_lines = [line for line in odd_lines if line not in blacklist]
+    
+    # 将处理后的内容转换回字符串
+    new_content = '\n'.join(filtered_lines)
+
+    # 将新内容复制回剪贴板
+    pyperclip.copy(new_content)
+
 # 主函数
 def main():
     template_path = '/Users/yanzhang/Documents/python_code/Resource/OCR_copy.png'  # 替换为你PNG图片的实际路径
+    # 提供黑名单文件的绝对路径
     while True:
         location, shape = find_image_on_screen(template_path)
         if location:
@@ -43,6 +70,8 @@ def main():
             # 鼠标点击中心坐标
             pyautogui.click(center_x, center_y)
 
+            sleep(1)  # 简短暂停
+            remove_even_lines_from_clipboard()
             break  # 图片消失后退出循环
             
         else:

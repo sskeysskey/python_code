@@ -69,7 +69,7 @@ else:
 
     if date_found:
         # 弹窗询问用户操作
-        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【Yes】打开文件，【No】再次爬取", parent=root)
+        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【No】再次爬取， 【Yes】打开文件", parent=root)
         if response:
             # 用户选择“是”，打开当前html文件
             open_html_file(old_file_path)
@@ -80,35 +80,6 @@ else:
             print("用户选择重新爬取，继续执行程序。")
     else:
         print("没有找到匹配当天日期的内容，继续执行后续代码。")
-
-    #for old_file_path in old_file_list:
-        #with open(old_file_path, 'r', encoding='utf-8') as file:
-            #soup = BeautifulSoup(file, 'html.parser')
-            #rows = soup.find_all('tr')
-            #for row in rows:
-                #cols = row.find_all('td')
-                #for col in cols:
-                    # 我们只检查日期部分，忽略小时部分
-                    #if col.text.strip().startswith(formatted_date):
-                        #date_found = True
-                        #break
-                #if date_found:
-                    #break
-        #if date_found:
-            # 弹窗询问用户操作
-            #response = messagebox.askyesno("内容检查", "已有当天内容 【Yes】打开文件，【No】再次爬取", parent=root)
-            #if response:
-            # 用户选择“是”，打开当前html文件
-                #open_html_file(old_file_path)
-                #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-                #root.destroy()  # 关闭tkinter并结束程序
-                #break
-            #else:
-                # 用户选择“否”，继续执行后续代码进行重新爬取
-                #print("用户选择重新爬取，继续执行程序。")
-
-#if not date_found:
-    #print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
@@ -151,19 +122,6 @@ else:
                 # 从标题所在的列中提取链接
                 link = title_column.find('a')['href'] if title_column.find('a') else None
                 old_content.append([date, title, link])
-    
-    # 读取旧文件中的所有内容
-    #old_content = []
-    #with open(old_file_path, 'r', encoding='utf-8') as file:
-        #soup = BeautifulSoup(file, 'html.parser')
-        #rows = soup.find_all('tr')[1:]  # 跳过标题行
-        #for row in rows:
-            #cols = row.find_all('td')
-            #if len(cols) >= 3:  # 确保行有足够的列
-                #date = cols[0].text
-                #title = cols[1].text
-                #link = cols[2].find('a')['href'] if cols[2].find('a') else None
-                #old_content.append([date, title, link])
 
     # 抓取新内容
     new_rows = []
@@ -185,7 +143,7 @@ else:
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and 'sports' not in href:
+                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and 'sports' not in href and 'buyside' not in href:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
@@ -233,5 +191,12 @@ else:
         open_new_html_file()
         root.destroy()  # 关闭tkinter并结束程序
     else:
-        messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
-        root.destroy()  # 关闭tkinter并结束程序
+        response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n 【No】结束程序， 【Yes】打开文件", parent=root)
+        if response:
+            # 用户选择“是”，打开当前html文件
+            open_new_html_file()
+            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            root.destroy()  # 关闭tkinter并结束程序
+        else:
+            # 用户选择“否”，结束程序
+            print("用户选择结束程序。")

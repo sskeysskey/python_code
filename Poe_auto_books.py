@@ -51,7 +51,7 @@ def main():
             sleep(1)
 
             # 设置TXT文件的保存路径
-            txt_file_path = '/Users/yanzhang/Movies/bookname.txt'
+            txt_file_path = '/Users/yanzhang/Movies/芯片战争.txt'
 
             # 读取剪贴板内容
             clipboard_content = pyperclip.paste()

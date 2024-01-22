@@ -69,7 +69,7 @@ else:
 
     if date_found:
         # 弹窗询问用户操作
-        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【Yes】打开文件，【No】再次爬取", parent=root)
+        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【No】再次爬取， 【Yes】打开文件", parent=root)
         if response:
             # 用户选择“是”，打开当前html文件
             open_html_file(old_file_path)
@@ -145,7 +145,7 @@ else:
             if href and title_text:
                 #print(f"标题: {title_text}, 链接: {href}")
 
-                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href and "sports" not in href:
+                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href and "sports" not in href and "music" not in href:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
@@ -193,5 +193,12 @@ else:
         open_new_html_file()
         root.destroy()  # 关闭tkinter并结束程序
     else:
-        messagebox.showinfo("更新通知", "Sorry，没有新东西:(", parent=root)
-        root.destroy()  # 关闭tkinter并结束程序
+        response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n 【No】结束程序， 【Yes】打开文件", parent=root)
+        if response:
+            # 用户选择“是”，打开当前html文件
+            open_new_html_file()
+            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            root.destroy()  # 关闭tkinter并结束程序
+        else:
+            # 用户选择“否”，结束程序
+            print("用户选择结束程序。")

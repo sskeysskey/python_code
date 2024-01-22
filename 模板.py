@@ -128,3 +128,81 @@ def main():
     except IOError:
         print("无法打开模板图片，请检查路径是否正确。")
         return
+
+#————————————————————————————————————————————————————————————————————————————————————————
+    if date_found:
+        # 弹窗询问用户操作
+        response = messagebox.askyesnocancel("内容检查", f"今天已经爬取过一次了 {formatted_date} 【Yes】打开文件，【No】再次爬取", parent=root)
+        if response is None:
+            # 用户选择取消或按了ESC键
+            print("用户取消操作。")
+        elif response:
+            # 用户选择“是”，打开当前html文件
+            open_html_file(old_file_path)
+            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            sys.exit(0)  # 安全退出程序
+        else:
+            # 用户选择“否”，继续执行后续代码进行重新爬取
+            print("用户选择重新爬取，继续执行程序。")
+    else:
+        response = messagebox.askyesnocancel("内容检查", "没有找到今天的内容，【Yes】打开文件，【No】再次爬取", parent=root)
+        if response is None:
+            # 用户选择取消或按了ESC键
+            print("用户取消操作。")
+            sys.exit(0)  # 安全退出程序
+        elif response:
+            # 用户选择打开文件
+            os.system(f'open "{old_file_path}"')  # 假设在macOS上打开文件
+            print(f"用户选择打开文件：{old_file_path}")
+            sys.exit(0)  # 安全退出程序
+        else:
+            # 用户选择不打开，可能需要进行其他操作
+            print("用户选择不打开文件，继续执行程序。")
+
+#————————————————————————————————————————————————————————————————————————————————————————
+# 如果你确实需要控制按钮的布局和默认选项，你可能需要放弃使用messagebox模块，而是自定义一个对话框。
+# 下面是一个简单的例子，展示了如何使用Tkinter创建一个自定义对话框，其中"Yes"按钮在左边，"No"按钮在右边，并且"Yes"被默认选中
+import tkinter as tk
+from tkinter import ttk
+
+def custom_askyesno(title, message, parent):
+    # 创建一个顶层窗口
+    popup = tk.Toplevel(parent)
+    popup.grab_set()  # 使对话框成为模态
+    popup.title(title)
+
+    # 显示消息
+    message_label = ttk.Label(popup, text=message)
+    message_label.pack(pady=(10, 10), padx=10)
+
+    # 创建一个变量来存储用户的选择
+    user_choice = tk.BooleanVar(value=True)
+
+    # 创建"Yes"和"No"按钮
+    yes_button = ttk.Button(popup, text="Yes", command=lambda: user_choice.set(True))
+    no_button = ttk.Button(popup, text="No", command=lambda: user_choice.set(False))
+
+    # 按钮布局："Yes"在左边，"No"在右边
+    yes_button.pack(side="left", padx=(10, 5), pady=10)
+    no_button.pack(side="right", padx=(5, 10), pady=10)
+
+    # 等待用户作出选择
+    popup.wait_window()
+
+    return user_choice.get()
+
+# 主窗口
+root = tk.Tk()
+
+# 使用自定义的对话框
+response = custom_askyesno("内容检查", "没有新内容\n\n【Yes】打开文件，【No】结束程序", root)
+
+if response:
+    # 用户选择“Yes”，执行相关操作
+    print("用户选择了'Yes'")
+else:
+    # 用户选择“No”，执行相关操作
+    print("用户选择了'No'")
+
+root.mainloop()
+#————————————————————————————————————————————————————————————————————————————————————————

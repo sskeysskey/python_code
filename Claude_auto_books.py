@@ -46,7 +46,7 @@ def main():
             pyautogui.click(center_x, center_y)
 
             # 设置TXT文件的保存路径
-            txt_file_path = '/Users/yanzhang/Movies/bookname.txt'
+            txt_file_path = '/Users/yanzhang/Movies/come_as_you_are.txt'
 
             # 读取剪贴板内容
             clipboard_content = pyperclip.paste()

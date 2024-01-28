@@ -97,19 +97,19 @@ else:
                 date_found = True
                 break
 
-    if date_found:
+    #if date_found:
         # 弹窗询问用户操作
-        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} \n\n【No】再次爬取， 【Yes】打开文件", parent=root)
-        if response:
+        #response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} \n\n【No】再次爬取， 【Yes】打开文件", parent=root)
+        #if response:
             # 用户选择“是”，打开当前html文件
-            open_html_file(old_file_path)
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            root.destroy()  # 关闭tkinter并结束程序
-        else:
+            #open_html_file(old_file_path)
+            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            #root.destroy()  # 关闭tkinter并结束程序
+        #else:
             # 用户选择“否”，继续执行后续代码进行重新爬取
-            print("用户选择重新爬取，继续执行程序。")
-    else:
-        print("没有找到匹配当天日期的内容，继续执行后续代码。")
+            #print("用户选择重新爬取，继续执行程序。")
+    #else:
+        #print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
@@ -236,17 +236,17 @@ else:
         html_file.write("</table></body></html>")
 
     # 显示提示窗口
-    if new_content_added:
-        messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
+    #if new_content_added:
+        #messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
         open_new_html_file()
-        root.destroy()  # 关闭tkinter并结束程序
-    else:
-        response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n【No】结束程序，【Yes】打开文件", parent=root)
-        if response:
+        #root.destroy()  # 关闭tkinter并结束程序
+    #else:
+        #response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n【No】结束程序，【Yes】打开文件", parent=root)
+        #if response:
             # 用户选择“是”，打开当前html文件
-            open_new_html_file()
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            root.destroy()  # 关闭tkinter并结束程序
-        else:
+            #open_new_html_file()
+            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            #root.destroy()  # 关闭tkinter并结束程序
+        #else:
             # 用户选择“否”，结束程序
-            print("用户选择结束程序。")
+            #print("用户选择结束程序。")

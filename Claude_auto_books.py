@@ -1,8 +1,10 @@
 import re
+import os
 import cv2
 import pyperclip
 import pyautogui
 from time import sleep
+from datetime import datetime
 
 def capture_screen():
     # 定义截图路径
@@ -32,6 +34,12 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
+# 检查 soldout.png 是否存在于屏幕上
+def check_soldout_image():
+    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout.png'  # 替换为你的remaining.png图片实际路径
+    location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
+    return bool(location)
+
 # 主函数
 def main():
     template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_done_125.png'  # 替换为你PNG图片的实际路径
@@ -46,7 +54,7 @@ def main():
             pyautogui.click(center_x, center_y)
 
             # 设置TXT文件的保存路径
-            txt_file_path = '/Users/yanzhang/Movies/come_as_you_are.txt'
+            txt_file_path = '/Users/yanzhang/Documents/book.txt'
 
             # 读取剪贴板内容
             clipboard_content = pyperclip.paste()
@@ -92,8 +100,26 @@ def main():
                 txt_file.write(final_content)
                 txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
 
-            break  # 图片消失后退出循环
+            sleep(1)
+
+            # 设置stop_signal文件的保存目录
+            stop_signal_directory = '/private/tmp'
             
+            # 设置stop_signal文件的保存路径
+            now = datetime.now()
+            time_str = now.strftime("_%y_%m_%d")
+            stop_signal_file_name = f"stop_signal{time_str}.txt"
+            stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
+
+            # 检查 soldout.png 是否存在于屏幕上
+            if check_soldout_image():
+                # 如果存在，则运行另一个Python脚本
+                with open(stop_signal_path, 'w') as signal_file:
+                    signal_file.write('stop')
+                break  # 运行了另一个脚本后退出循环
+            else:
+                # 如果soldout.png不存在，则按原步骤执行
+                break  # 图片消失后退出循环
         else:
             print("未找到A图片，继续监控...")
             sleep(1)  # 简短暂停再次监控

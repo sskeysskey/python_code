@@ -17,31 +17,18 @@ def open_html_file(file_path):
 def open_new_html_file():
     webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
 
-#def is_similar(url1, url2):
+def is_similar(url1, url2):
     """
     比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
     主要比较 URL 的协议、主机名和路径。
     """
-    #parsed_url1 = urlparse(url1)
-    #parsed_url2 = urlparse(url2)
-
-    #base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
-    #base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
-
-    #return base_url1 == base_url2
-
-def is_similar(url1, url2):
-    """
-    比较两个 URL 是否相同，如果协议、主机名、路径、查询参数都相同则返回 True，否则返回 False。
-    """
     parsed_url1 = urlparse(url1)
     parsed_url2 = urlparse(url2)
 
-    # 比较协议、主机名、路径和查询参数
-    return (parsed_url1.scheme == parsed_url2.scheme and
-            parsed_url1.netloc == parsed_url2.netloc and
-            parsed_url1.path == parsed_url2.path and
-            parsed_url1.query == parsed_url2.query)
+    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    return base_url1 == base_url2
 
 # 初始化 tkinter
 root = tk.Tk()
@@ -60,7 +47,7 @@ current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/FT.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -79,19 +66,19 @@ else:
                 date_found = True
                 break
 
-    if date_found:
+    #if date_found:
         # 弹窗询问用户操作
-        response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【No】再次爬取， 【Yes】打开文件", parent=root)
-        if response:
+        #response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【No】再次爬取， 【Yes】打开文件", parent=root)
+        #if response:
             # 用户选择“是”，打开当前html文件
-            open_html_file(old_file_path)
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            root.destroy()  # 关闭tkinter并结束程序
-        else:
+            #open_html_file(old_file_path)
+            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            #root.destroy()  # 关闭tkinter并结束程序
+        #else:
             # 用户选择“否”，继续执行后续代码进行重新爬取
-            print("用户选择重新爬取，继续执行程序。")
-    else:
-        print("没有找到匹配当天日期的内容，继续执行后续代码。")
+            #print("用户选择重新爬取，继续执行程序。")
+    #else:
+        #print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
@@ -107,10 +94,10 @@ service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
 # 打开 FT 网站
-driver.get("https://www.ftchinese.com/")
+driver.get("https://www.ft.com/")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
+file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/FT.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -138,10 +125,9 @@ else:
     # 抓取新内容
     new_rows = []
     all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
-    premium_links = set()  # 存储已发现的premium链接数字部分
 
     try:
-        css_selector = "a[href*='/premium/'], a[href*='interactive'], a[href*='story']"
+        css_selector = "a[href*='/content/']"
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
         for title_element in titles_elements:
@@ -149,18 +135,11 @@ else:
             title_text = title_element.text.strip()
 
             if href and title_text:
-                # 提取链接中的数字部分，假设链接结构为 https://www.ftchinese.com/premium/001101900
-                link_number = href.rstrip('/').split('/')[-1]
-                
-                # 检查是否已存在相同数字的premium链接
-                if '/premium/' in href:
-                    premium_links.add(link_number)
-                    
+                #print(f"标题: {title_text}, 链接: {href}")
+
+                if 'podcasts' not in title_text and "film" not in title_text:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
-                            # 如果是story链接且数字部分已存在于premium链接中，则跳过
-                            if '/story/' in href and link_number in premium_links:
-                                continue
                             new_rows.append([formatted_datetime, title_text, href])
                             all_links.append(href)  # 添加到所有链接的列表中
 
@@ -177,7 +156,7 @@ else:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/ftchinese.html"
+    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/FT.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")
@@ -201,17 +180,17 @@ else:
         html_file.write("</table></body></html>")
 
     # 显示提示窗口
-    if new_content_added:
-        messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
+    #if new_content_added:
+        #messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
         open_new_html_file()
-        root.destroy()  # 关闭tkinter并结束程序
-    else:
-        response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n 【No】结束程序， 【Yes】打开文件", parent=root)
-        if response:
+        #root.destroy()  # 关闭tkinter并结束程序
+    #else:
+        #response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n 【No】结束程序， 【Yes】打开文件", parent=root)
+        #if response:
             # 用户选择“是”，打开当前html文件
-            open_new_html_file()
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            root.destroy()  # 关闭tkinter并结束程序
-        else:
+            #open_new_html_file()
+            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
+            #root.destroy()  # 关闭tkinter并结束程序
+        #else:
             # 用户选择“否”，结束程序
-            print("用户选择结束程序。")
+            #print("用户选择结束程序。")

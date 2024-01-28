@@ -87,7 +87,7 @@ def main():
             final_content = segment_content + modified_content
 
             # 设置txt文件的保存目录
-            txt_directory = '/Users/yanzhang/Documents'
+            txt_directory = '/Users/yanzhang/Documents/News'
              
             # 设置TXT文件的保存路径
             now = datetime.now()

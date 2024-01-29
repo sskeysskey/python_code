@@ -1,6 +1,7 @@
 import re
 import os
 import cv2
+import sys
 import pyperclip
 import pyautogui
 from time import sleep
@@ -34,27 +35,26 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
-# 检查 soldout.png 是否存在于屏幕上
-def check_soldout_image():
-    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout.png'  # 替换为你的remaining.png图片实际路径
-    location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
-    return bool(location)
+template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout2.png'  # 替换为你PNG图片的实际路径
 
-# 设置stop_signal文件的保存目录
-stop_signal_directory = '/private/tmp'
+sleep(2)
+while True:
+        location, shape = find_image_on_screen(template_path2)
+        if location:
+            # 设置stop_signal文件的保存目录
+            stop_signal_directory = '/private/tmp'
             
             # 设置stop_signal文件的保存路径
-now = datetime.now()
-time_str = now.strftime("_%y_%m_%d")
-stop_signal_file_name = f"stop_signal{time_str}.txt"
-stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
+            now = datetime.now()
+            time_str = now.strftime("_%m_%d_%H")
+            stop_signal_file_name = f"stop_signal{time_str}.txt"
+            stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
 
-            # 检查 soldout.png 是否存在于屏幕上
-            
-                # 如果存在，则运行另一个Python脚本
-if check_soldout_image():
-    with open(stop_signal_path, 'w') as signal_file:
-        signal_file.write('stop')
-else:
-    print("未找到A图片，继续监控...")
+            with open(stop_signal_path, 'w') as signal_file:
+                    signal_file.write('stop')
+            sys.exit(0)  # 安全退出程序
+        else:
+            print("没找到图片，继续执行...")
+            break
+
             

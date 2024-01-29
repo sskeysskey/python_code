@@ -1,6 +1,7 @@
 import re
 import os
 import cv2
+import sys
 import pyperclip
 import pyautogui
 from time import sleep
@@ -36,15 +37,35 @@ def find_image_on_screen(template_path, threshold=0.9):
 
 # 检查 soldout.png 是否存在于屏幕上
 def check_soldout_image():
-    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout.png'  # 替换为你的remaining.png图片实际路径
+    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout1.png'  # 替换为你的remaining.png图片实际路径
     location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
     return bool(location)
 
 # 主函数
 def main():
-    template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_done_125.png'  # 替换为你PNG图片的实际路径
+    template_path1 = '/Users/yanzhang/Documents/python_code/Resource/claude_done_125.png'
+    template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout2.png'
+    sleep(2)
+
+    location, shape = find_image_on_screen(template_path2)
+    if location:
+            # 设置stop_signal文件的保存目录
+            stop_signal_directory = '/private/tmp'
+            
+            # 设置stop_signal文件的保存路径
+            now = datetime.now()
+            time_str = now.strftime("_%m_%d_%H")
+            stop_signal_file_name = f"stop_signal{time_str}.txt"
+            stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
+
+            with open(stop_signal_path, 'w') as signal_file:
+                    signal_file.write('stop')
+            sys.exit(0)  # 安全退出程序
+    else:
+            print("没找到图片，继续执行...")
+
     while True:
-        location, shape = find_image_on_screen(template_path)
+        location, shape = find_image_on_screen(template_path1)
         if location:
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
@@ -107,7 +128,7 @@ def main():
             
             # 设置stop_signal文件的保存路径
             now = datetime.now()
-            time_str = now.strftime("_%y_%m_%d")
+            time_str = now.strftime("_%m_%d_%H")
             stop_signal_file_name = f"stop_signal{time_str}.txt"
             stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
 

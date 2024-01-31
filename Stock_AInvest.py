@@ -58,25 +58,31 @@ def remove_even_lines_from_clipboard():
 
 # 主函数
 def main():
-    template_path = '/Users/yanzhang/Documents/python_code/Resource/OCR_copy.png'  # 替换为你PNG图片的实际路径
-    # 提供黑名单文件的绝对路径
-    while True:
-        location, shape = find_image_on_screen(template_path)
-        if location:
-            # 计算中心坐标
-            center_x = (location[0] + shape[1] // 2) // 2
-            center_y = (location[1] + shape[0] // 2) // 2
-            
-            # 鼠标点击中心坐标
-            pyautogui.click(center_x, center_y)
+    try:
+        template_path = '/Users/yanzhang/Documents/python_code/Resource/OCR_copy.png'  # 替换为你PNG图片的实际路径
+        # 提供黑名单文件的绝对路径
+        while True:
+            location, shape = find_image_on_screen(template_path)
+            if location:
+                # 计算中心坐标
+                center_x = (location[0] + shape[1] // 2) // 2
+                center_y = (location[1] + shape[0] // 2) // 2
+                
+                # 鼠标点击中心坐标
+                pyautogui.click(center_x, center_y)
 
-            sleep(1)  # 简短暂停
-            remove_even_lines_from_clipboard()
-            break  # 图片消失后退出循环
-            
-        else:
-            print("未找到A图片，继续监控...")
-            sleep(1)  # 简短暂停再次监控
+                sleep(1)  # 简短暂停
+                remove_even_lines_from_clipboard()
+                break  # 图片消失后退出循环
+                
+            else:
+                print("未找到A图片，继续监控...")
+                sleep(1)  # 简短暂停再次监控
+    finally:
+        screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+        if os.path.exists(screenshot_path):
+            os.remove(screenshot_path)
+            print("截图文件已删除。")
 
 if __name__ == '__main__':
     main()

@@ -169,14 +169,22 @@ else:
     if new_content_added:
         messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
         open_new_html_file()
-        root.destroy()  # 关闭tkinter并结束程序
     else:
         response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容 \n\n 【No】结束程序， 【Yes】打开文件", parent=root)
         if response:
             # 用户选择“是”，打开当前html文件
             open_new_html_file()
             print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            root.destroy()  # 关闭tkinter并结束程序
         else:
             # 用户选择“否”，结束程序
             print("用户选择结束程序。")
+
+# 确保关闭所有 tkinter 窗口
+root.destroy()
+
+screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+try:
+    os.remove(screenshot_path)
+    print(f"截图文件 {screenshot_path} 已被删除。")
+except OSError as e:
+    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

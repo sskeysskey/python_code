@@ -2,9 +2,7 @@ import os
 import glob
 import datetime
 import webbrowser
-import tkinter as tk
 from bs4 import BeautifulSoup
-from tkinter import messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -32,18 +30,6 @@ def is_similar(url1, url2):
 
     return base_url1 == base_url2
 
-# 初始化 tkinter
-root = tk.Tk()
-root.withdraw()  # 不显示主窗口
-
-# 设置窗口在屏幕正中间
-screen_width = root.winfo_screenwidth()
-screen_height = root.winfo_screenheight()
-x_cordinate = int((screen_width/2) - (200/2))
-y_cordinate = int((screen_height/2) - (100/2)) - 100
-root.geometry("{}x{}+{}+{}".format(200, 100, x_cordinate, y_cordinate))
-#root.attributes('-topmost', True)  # 窗口置于最前台
-
 # 获取当前日期
 current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
@@ -67,20 +53,6 @@ else:
             if date_cell and date_cell.text.strip().startswith(formatted_date):
                 date_found = True
                 break
-
-    #if date_found:
-        # 弹窗询问用户操作
-        #response = messagebox.askyesno("内容检查", f"已有当天内容 {formatted_date} 【No】再次爬取， 【Yes】打开文件", parent=root)
-        #if response:
-            # 用户选择“是”，打开当前html文件
-            #open_html_file(old_file_path)
-            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            #root.destroy()  # 关闭tkinter并结束程序
-        #else:
-            # 用户选择“否”，继续执行后续代码进行重新爬取
-            #print("用户选择重新爬取，继续执行程序。")
-    #else:
-        #print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
 current_year = datetime.datetime.now().year
@@ -180,18 +152,11 @@ else:
         # 结束表格和 HTML 结构
         html_file.write("</table></body></html>")
 
-    # 显示提示窗口
-    #if new_content_added:
-        #messagebox.showinfo("更新通知", "抓到新内容了ˆ_ˆ速看！！", parent=root)
-        open_new_html_file()
-        #root.destroy()  # 关闭tkinter并结束程序
-    #else:
-        #response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容\n\n 【No】结束程序， 【Yes】打开文件", parent=root)
-        #if response:
-            # 用户选择“是”，打开当前html文件
-            #open_new_html_file()
-            #print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-            #root.destroy()  # 关闭tkinter并结束程序
-        #else:
-            # 用户选择“否”，结束程序
-            #print("用户选择结束程序。")
+open_new_html_file()
+
+screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+try:
+    os.remove(screenshot_path)
+    print(f"截图文件 {screenshot_path} 已被删除。")
+except OSError as e:
+    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

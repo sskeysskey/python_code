@@ -1,3 +1,4 @@
+import os
 import cv2
 import pyautogui
 from time import sleep
@@ -40,25 +41,31 @@ def click_image(location, shape):
 
 # 主函数
 def main():
-    template_path1 = '/Users/yanzhang/Documents/python_code/Resource/claude_new_chat.png'
-    template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_message.png'
-    while True:
-        location, shape = find_image_on_screen(template_path1)
-        if location:
-            click_image(location, shape)
-            break  # 图片消失后退出循环
-        else:
-            print("未找到A图片，继续监控...")
-            sleep(1)  # 简短暂停再次监控
+    try:
+        template_path1 = '/Users/yanzhang/Documents/python_code/Resource/claude_new_chat.png'
+        template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_message.png'
+        while True:
+            location, shape = find_image_on_screen(template_path1)
+            if location:
+                click_image(location, shape)
+                break  # 图片消失后退出循环
+            else:
+                print("未找到A图片，继续监控...")
+                sleep(1)  # 简短暂停再次监控
 
-    # 点击第一张图片后，检测第二张图片是否出现
-    while True:
-        location, shape = find_image_on_screen(template_path2)
-        if location:
-            break
-        else:
-            print("未找到第二张图片，继续监控...")
-            sleep(1)
+        # 点击第一张图片后，检测第二张图片是否出现
+        while True:
+            location, shape = find_image_on_screen(template_path2)
+            if location:
+                break
+            else:
+                print("未找到第二张图片，继续监控...")
+                sleep(1)
+    finally:
+        screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+        if os.path.exists(screenshot_path):
+            os.remove(screenshot_path)
+            print("截图文件已删除。")
 
 if __name__ == '__main__':
     main()

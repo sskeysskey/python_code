@@ -36,13 +36,19 @@ def find_image_on_screen(template_path, threshold=0.9):
 # 主函数
 def main():
     try:
-        template_path = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'  # 替换为你PNG图片的实际路径
+        template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
+        template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
         while True:
-            location, shape = find_image_on_screen(template_path)
+            location, shape = find_image_on_screen(template_path_stop)
             if location:
-                print("找到A图片，继续监控...")
+                print("找到poe_stop图片，继续监控...")
+                # 检测poe_stillwaiting.png图片
+                location, shape = find_image_on_screen(template_path_waiting)
+                if location:
+                    print("找到poe_stillwaiting图片，执行页面刷新操作...")
+                    # 执行页面刷新（模拟Command + R）
+                    pyautogui.hotkey('command', 'r')
                 sleep(1)  # 简短暂停再次监控
-
             else:
                 pyautogui.click(button='right')
                 sleep(0.5)
@@ -98,7 +104,6 @@ def main():
                 with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
                     txt_file.write(final_content)
                     txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
-
                 break  # 图片消失后退出循环
     finally:
         screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'

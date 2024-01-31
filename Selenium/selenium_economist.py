@@ -131,7 +131,8 @@ template_path = '/Users/yanzhang/Documents/python_code/Resource/economist_accept
 
 found = False
 start_time = time.time()
-timeout = 120  # 设置2分钟超时时间
+timeout = 60  # 设置1分钟超时时间
+time.sleep(1)
 
 # 开始循环，直到找到图片或者超时
 while not found and time.time() - start_time < timeout:
@@ -147,10 +148,10 @@ while not found and time.time() - start_time < timeout:
         pyautogui.click(center_x, center_y)
     else:
         print("未找到图片，等待后再次尝试。")
-        time.sleep(5)  # 等待5秒后再次尝试
+        time.sleep(1)  # 等待5秒后再次尝试
 
 if not found:
-    print("2分钟内未找到图片，继续执行后续程序。")
+    print("1分钟内未找到图片，继续执行后续程序。")
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"

@@ -64,7 +64,7 @@ current_datetime = datetime.datetime.now()
 formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+file_pattern = "/Users/yanzhang/Documents/News/economist.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -126,7 +126,7 @@ if not found:
     print("1分钟内未找到图片，继续执行后续程序。")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+file_pattern = "/Users/yanzhang/Documents/News/economist.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -185,7 +185,7 @@ else:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
     # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/sskeysskey.github.io/news/economist.html"
+    new_html_path = f"/Users/yanzhang/Documents/News/economist.html"
     with open(new_html_path, 'w', encoding='utf-8') as html_file:
         # 写入 HTML 基础结构和表格开始标签
         html_file.write("<html><body><table border='1'>\n")

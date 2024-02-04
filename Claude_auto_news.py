@@ -2,6 +2,7 @@ import re
 import os
 import cv2
 import sys
+import html
 import pyperclip
 import pyautogui
 from time import sleep
@@ -41,8 +42,81 @@ def check_soldout_image():
     location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
     return bool(location)
 
+def append_to_html(html_file_path, segment_content, modified_content):
+    # 获取当前的系统时间，并格式化为字符串
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # HTML转义段落和修改后的内容
+    escaped_segment = html.escape(segment_content).replace('\n', '<br>\n')
+    escaped_modified = html.escape(modified_content).replace('\n', '<br>\n')
+    
+    # 读取整个HTML文件内容
+    with open(html_file_path, 'r', encoding='utf-8-sig') as html_file:
+        html_content = html_file.read()
+
+    # 构造新的表格行
+    new_row = f"""
+        <tr>
+            <td>{current_time}</td>
+            <td>{escaped_modified}</td>
+        </tr>
+    """
+
+    # 找到插入点（在</tr>标签后的第一次出现的位置，这意味着在表格的开头）
+    insert_position = html_content.find("</tr>") + 5
+
+    # 插入新的表格行
+    updated_html_content = html_content[:insert_position] + new_row + html_content[insert_position:]
+
+    # 写回修改后的HTML内容
+    with open(html_file_path, 'w', encoding='utf-8-sig') as html_file:
+        html_file.write(updated_html_content)
+
+def create_html_skeleton(html_file_path, title):
+    # 创建HTML框架，并设定字体大小
+    with open(html_file_path, 'w', encoding='utf-8-sig') as html_file:
+        html_file.write(f"""
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+            <meta charset="UTF-8">
+            <title>{title}</title>
+            <style>
+                body {{
+                    font-size: 28px; /* 这里设置字体大小 */
+                }}
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                }}
+                th, td {{
+                    padding: 10px;
+                    text-align: left;
+                    border-bottom: 1px solid #ddd;
+                }}
+            </style>
+        </head>
+        <body>
+            <table>
+                <tr>
+                    <th>时间</th>
+                    <th>摘要</th>
+                </tr>
+        """)
+
+def close_html_skeleton(html_file_path):
+    # 结束HTML框架
+    with open(html_file_path, 'a', encoding='utf-8-sig') as html_file:
+        html_file.write("""
+            </table>
+        </body>
+        </html>
+        """)
+
 # 主函数
 def main():
+    html_skeleton_created = False
+    html_file_path = ''  # 用空字符串初始化
     try:
         template_path1 = '/Users/yanzhang/Documents/python_code/Resource/claude_done_125.png'
         template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout2.png'
@@ -106,31 +180,34 @@ def main():
                 # 读取/tmp/segment.txt文件内容
                 segment_file_path = '/tmp/segment.txt'
                 with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-                    segment_content = segment_file.read()
+                    segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
-                # 在segment_content后面添加一个换行符
-                segment_content += '\n'
+                # 确定segment内容，并选择相应的HTML文件
+                segment_to_html_file = {
+                    "technologyreview": "technologyreview.html",
+                    "economist": "economist.html",
+                    "wsj": "wsj.html",
+                    "nytimes": "nytimes.html",
+                    "ft": "FT.html",
+                    "nikkei": "nikkei.html",
+                }
+
+                # 根据segment内容获取对应的HTML文件名
+                html_file_name = segment_to_html_file.get(segment_content.lower(), "other.html")
+                html_file_path = os.path.join('/Users/yanzhang/Documents/sskeysskey.github.io/news', html_file_name)
+
+                # 根据segment内容获取对应的标题
+                title = segment_content if segment_content.lower() in segment_to_html_file else "新闻摘要"
+
+                # 检查HTML文件是否已经存在
+                html_skeleton_created = os.path.isfile(html_file_path)
+
+                # 检查HTML文件是否已经存在
+                if not html_skeleton_created:
+                    create_html_skeleton(html_file_path, title)
                 
-                # 将读取到的segment_content内容插入在剪贴板内容的最前面
-                final_content = segment_content + modified_content
-
-                # 设置txt文件的保存目录
-                txt_directory = '/Users/yanzhang/Documents/News'
-                
-                # 设置TXT文件的保存路径
-                now = datetime.now()
-                time_str = now.strftime("_%y_%m_%d")
-                txt_file_name = f"News{time_str}.txt"
-                txt_file_path = os.path.join(txt_directory, txt_file_name)
-
-                if not os.path.isfile(txt_file_path):
-                    with open(txt_file_path, 'w', encoding='utf-8-sig') as txt_file:
-                        pass  # 创建文件后不进行任何操作，文件会被关闭
-
-                # 追加处理后的内容到TXT文件
-                with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
-                    txt_file.write(final_content)
-                    txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
+                # 追加内容到HTML文件
+                append_to_html(html_file_path, segment_content, modified_content)
 
                 sleep(1)
 
@@ -158,6 +235,10 @@ def main():
                 sleep(1)  # 简短暂停再次监控
     
     finally:
+        # 最后，关闭HTML框架
+        if html_skeleton_created and not os.path.isfile(html_file_path):
+            close_html_skeleton(html_file_path)
+            
         screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
         if os.path.exists(screenshot_path):
             os.remove(screenshot_path)

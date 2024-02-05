@@ -30,7 +30,7 @@ root.geometry("{}x{}+{}+{}".format(200, 100, x_cordinate, y_cordinate))
 
 # 获取当前日期
 current_datetime = datetime.datetime.now()
-formatted_date = current_datetime.strftime("%Y.%m.%d")  # 用于检查日期匹配
+formatted_date = current_datetime.strftime("%Y_%m_%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
 file_pattern = "/Users/yanzhang/Documents/News/technologyreview.html"
@@ -70,7 +70,7 @@ else:
 current_year = datetime.datetime.now().year
 current_month = datetime.datetime.now().month
 current_day = datetime.datetime.now().day
-formatted_datetime = current_datetime.strftime("%Y.%m.%d_%H")
+formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"

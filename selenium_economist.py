@@ -154,7 +154,6 @@ if not found:
     print("1分钟内未找到图片，继续执行后续程序。")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/News/economist.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:

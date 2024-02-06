@@ -169,6 +169,30 @@ def main():
                 with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
                     segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
+                # 在segment_content后面添加两个换行符
+                segment_content += '\n\n'
+
+                # 将读取到的segment_content内容插入在剪贴板内容的最前面
+                final_content = segment_content + modified_content
+
+                # 设置txt文件的保存目录
+                txt_directory = '/Users/yanzhang/Documents/News'
+                
+                # 设置TXT文件的保存路径
+                now = datetime.now()
+                time_str = now.strftime("_%y_%m_%d")
+                txt_file_name = f"News{time_str}.txt"
+                txt_file_path = os.path.join(txt_directory, txt_file_name)
+
+                if not os.path.isfile(txt_file_path):
+                    with open(txt_file_path, 'w', encoding='utf-8-sig') as txt_file:
+                        pass  # 创建文件后不进行任何操作，文件会被关闭
+
+                # 追加处理后的内容到TXT文件
+                with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
+                    txt_file.write(final_content)
+                    txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
+
                 # 确定segment内容，并选择相应的HTML文件
                 segment_to_html_file = {
                     "technologyreview": "technologyreview.html",

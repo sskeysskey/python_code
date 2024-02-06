@@ -1,15 +1,17 @@
 import os
 import re
 import glob
-import datetime
 import webbrowser
 import tkinter as tk
 from bs4 import BeautifulSoup
 from tkinter import messagebox
 from selenium import webdriver
 from urllib.parse import urlparse
+from fake_useragent import UserAgent
+from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
@@ -44,7 +46,7 @@ root.geometry("{}x{}+{}+{}".format(200, 100, x_cordinate, y_cordinate))
 #root.attributes('-topmost', True)  # 窗口置于最前台
 
 # 获取当前日期
-current_datetime = datetime.datetime.now()
+current_datetime = datetime.now()
 formatted_date = current_datetime.strftime("%Y_%m_%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
@@ -82,23 +84,34 @@ else:
         print("没有找到匹配当天日期的内容，继续执行后续代码。")
 
 # 获取当前日期
-current_year = datetime.datetime.now().year
-current_month = datetime.datetime.now().month
-current_day = datetime.datetime.now().day
+current_year = datetime.now().year
+current_month = datetime.now().month
+current_day = datetime.now().day
 formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
+
+# 初始化 UserAgent 对象
+ua = UserAgent()
+
+# 生成随机的用户代理字符串
+user_agent = ua.random
+
+# 创建 Chrome 选项对象
+chrome_options = Options()
+
+# 设置用户代理
+chrome_options.add_argument(f"user-agent={user_agent}")
 
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
 # 设置 ChromeDriver
 service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # 打开 WSJ 网站
 driver.get("https://www.wsj.com/")
 
 # 查找旧的 CSV 文件
-file_pattern = "/Users/yanzhang/Documents/News/wsj.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:
@@ -108,7 +121,11 @@ else:
     # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
     old_file_path = old_file_list[0]
 
-    # 读取旧文件中的所有内容
+    # 计算当前日期7天前的日期
+    current_date = datetime.now()
+    seven_days_ago = current_date - timedelta(days=7)
+    
+    # 读取旧文件中的所有内容，并删除7天前的内容
     old_content = []
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
@@ -116,12 +133,16 @@ else:
         for row in rows:
             cols = row.find_all('td')
             if len(cols) >= 2:  # 确保行有足够的列
-                date = cols[0].text.strip()
-                title_column = cols[1]
-                title = title_column.text.strip()
-                # 从标题所在的列中提取链接
-                link = title_column.find('a')['href'] if title_column.find('a') else None
-                old_content.append([date, title, link])
+                date_str = cols[0].text.strip()
+                # 解析日期字符串
+                date = datetime.strptime(date_str, '%Y_%m_%d_%H')
+                # 若日期大于等于7天前的日期，则保留
+                if date >= seven_days_ago:
+                    title_column = cols[1]
+                    title = title_column.text.strip()
+                    # 从标题所在的列中提取链接
+                    link = title_column.find('a')['href'] if title_column.find('a') else None
+                    old_content.append([date_str, title, link])
 
     # 抓取新内容
     new_rows = []

@@ -1,143 +1,166 @@
-import re
 import os
-import cv2
-import pyperclip
-import pyautogui
-from time import sleep
+import re
+import glob
+import webbrowser
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from urllib.parse import urlparse
+from fake_useragent import UserAgent
 from datetime import datetime, timedelta
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
-def capture_screen():
-    # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-    # 使用pyautogui截图并直接保存
-    pyautogui.screenshot(screenshot_path)
-    # 读取刚才保存的截图文件
-    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
-    # 确保screenshot已经正确加载
-    if screenshot is None:
-        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
+def open_html_file(file_path):
+    webbrowser.open('file://' + os.path.realpath(file_path), new=2)
+    exit()  # 终止程序
+
+def open_new_html_file():
+    webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
+
+def is_similar(url1, url2):
+    """
+    比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
+    主要比较 URL 的协议、主机名和路径。
+    """
+    parsed_url1 = urlparse(url1)
+    parsed_url2 = urlparse(url2)
+
+    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
+    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
+
+    return base_url1 == base_url2
+
+# 获取当前日期
+current_datetime = datetime.now()
+current_year = datetime.now().year
+current_month = datetime.now().month
+current_day = datetime.now().day
+formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
+
+# 初始化 UserAgent 对象
+ua = UserAgent()
+
+# 生成随机的用户代理字符串
+user_agent = ua.random
+
+# 创建 Chrome 选项对象
+chrome_options = Options()
+
+# 设置用户代理
+chrome_options.add_argument(f"user-agent={user_agent}")
+
+# ChromeDriver 路径
+chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
+
+# 设置 ChromeDriver
+service = Service(executable_path=chrome_driver_path)
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+# 打开 WSJ 网站
+driver.get("https://www.wsj.com/")
+
+# 查找旧的 CSV 文件
+file_pattern = "/Users/yanzhang/Documents/News/wsj.html"
+old_file_list = glob.glob(file_pattern)
+
+if not old_file_list:
+    print("未找到符合条件的旧文件。")
+    # 处理未找到旧文件的情况
+else:
+    # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
+    old_file_path = old_file_list[0]
+
+    # 计算当前日期7天前的日期
+    current_date = datetime.now()
+    seven_days_ago = current_date - timedelta(days=7)
     
-    # 返回读取的截图数据
-    return screenshot
+    # 读取旧文件中的所有内容，并删除7天前的内容
+    old_content = []
+    with open(old_file_path, 'r', encoding='utf-8') as file:
+        soup = BeautifulSoup(file, 'html.parser')
+        rows = soup.find_all('tr')[1:]  # 跳过标题行
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 2:  # 确保行有足够的列
+                date_str = cols[0].text.strip()
+                # 解析日期字符串
+                date = datetime.strptime(date_str, '%Y_%m_%d_%H')
+                # 若日期大于等于7天前的日期，则保留
+                if date >= seven_days_ago:
+                    title_column = cols[1]
+                    title = title_column.text.strip()
+                    # 从标题所在的列中提取链接
+                    link = title_column.find('a')['href'] if title_column.find('a') else None
+                    old_content.append([date_str, title, link])
 
-# 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
-    screen = capture_screen()
-    result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    # 释放截图和模板图像以节省内存
-    del screen
-    if max_val >= threshold:
-        return max_loc, template.shape
-    else:
-        return None, None
+    # 抓取新内容
+    new_rows = []
+    all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
-def append_to_html(html_file_path, segment_content, modified_content):
-    # 追加内容到HTML文件
-    with open(html_file_path, 'a', encoding='utf-8-sig') as html_file:
-        html_file.write(f"""
-            <tr>
-                <td>{segment_content}</td>
-                <td>{modified_content}</td>
-            </tr>
-        """)
+    try:        
+        css_selector = "//span[contains(@class, 'WSJTheme--headlineText')]/parent::a"
+        titles_elements = driver.find_elements(By.XPATH, css_selector)
 
-def create_html_skeleton(html_file_path):
-    # 创建HTML框架
-    with open(html_file_path, 'w', encoding='utf-8-sig') as html_file:
-        html_file.write("""
-        <!DOCTYPE html>
-        <html lang="zh-CN">
-        <head>
-            <meta charset="UTF-8">
-            <title>新闻摘要</title>
-        </head>
-        <body>
-            <table border="1">
-                <tr>
-                    <th>来源</th>
-                    <th>摘要</th>
-                </tr>
-        """)
+        print(f"找到 {len(titles_elements)} 个标题元素。")
 
-def close_html_skeleton(html_file_path):
-    # 结束HTML框架
-    with open(html_file_path, 'a', encoding='utf-8-sig') as html_file:
-        html_file.write("""
-            </table>
-        </body>
-        </html>
-        """)
+        for title_element in titles_elements:
+            href = title_element.get_attribute('href')
+            title_text = title_element.text.strip()
+            
+            # 此处添加移除阅读时间标记的逻辑
+            title_text = re.sub(r'\d+ min read', '', title_text).strip()
 
-# 主函数
-def main():
-                pyautogui.click(button='right')
-                sleep(0.5)
-                # 移动鼠标并再次点击
-                pyautogui.moveRel(110, 118)  # 往右移动110，往下移动118
-                sleep(0.5)
-                pyautogui.click()  # 执行点击操作
-                sleep(1)
+            if href and title_text:
+                #print(f"标题: {title_text}, 链接: {href}")
 
-                # 读取剪贴板内容
-                clipboard_content = pyperclip.paste()
-
-                # 使用splitlines()分割剪贴板内容为多行
-                lines = clipboard_content.splitlines()
-                # 移除空行
-                non_empty_lines = [line for line in lines if line.strip()]
-
-                # 判断第一句是否以“首先”或“第一”开头
-                first_sentence_start_with_special = non_empty_lines and \
-                    (non_empty_lines[0].startswith('首先') or non_empty_lines[0].startswith('第一'))
-
-                # 计算非空行中以数字或符号开头的行数
-                num_start_with_digit_symbol_or_chinese_char = sum(bool(re.match(r'^[\d\W]|^第', line)) for line in non_empty_lines)
-
-                # 判断是否超过50%
-                if num_start_with_digit_symbol_or_chinese_char > len(non_empty_lines) / 2:
-                    # 判断最后一行是否以数字或“第”字开头
-                    if not non_empty_lines[-1].startswith(('第',)) and not re.match(r'^\d', non_empty_lines[-1]):
-                        # 如果不是，则剪贴板中第一行和最后一句都删除
-                        modified_content = '\n'.join(non_empty_lines[(0 if first_sentence_start_with_special else 1):-1])
-                    else:
-                        # 如果是，则只删除第一行
-                        modified_content = '\n'.join(non_empty_lines[(0 if first_sentence_start_with_special else 1):])
-                else:
-                    # 如果不足50%，则只删除第一句（除非第一句以“首先”或“第一”开头）
-                    modified_content = '\n'.join(non_empty_lines[(0 if first_sentence_start_with_special else 1):])
-
-                # 读取/tmp/segment.txt文件内容
-                segment_file_path = '/tmp/segment.txt'
-                with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-                    segment_content = segment_file.read()
-
-                # 在segment_content后面添加一个换行符
-                segment_content += '\n'
-
-                # 设置txt文件的保存目录
-                txt_directory = '/Users/yanzhang/Documents/News'
+                if 'www.wsj.com' in href and 'podcasts' not in href and 'www.wsj.com/video' not in href and 'sports' not in href and 'buyside' not in href:
+                    if not any(is_similar(href, old_link) for _, _, old_link in old_content):
+                        if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
+                            new_rows.append([formatted_datetime, title_text, href])
+                            all_links.append(href)  # 添加到所有链接的列表中
                 
-                # 追加处理后的内容到HTML文件
-                now = datetime.now()
-                time_str = now.strftime("_%y_%m_%d")
-                html_file_name = f"News{time_str}.html"
-                html_file_path = os.path.join(txt_directory, html_file_name)
+    except Exception as e:
+        print(f"抓取过程中出现错误: {e}")
 
-                # 检查HTML文件是否已经存在
-                if not os.path.isfile(html_file_path):
-                    # 创建HTML框架
-                    create_html_skeleton(html_file_path)
+    # 关闭驱动
+    driver.quit()
 
-                # 追加内容到HTML文件
-                append_to_html(html_file_path, segment_content, modified_content)
+    try:
+        os.remove(old_file_path)
+        print(f"文件 {old_file_path} 已被删除。")
+    except OSError as e:
+        print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
-                if not os.path.isfile(html_file_path):
-                    close_html_skeleton(html_file_path)
-                
+    # 创建 HTML 文件
+    new_html_path = f"/Users/yanzhang/Documents/News/wsj.html"
+    with open(new_html_path, 'w', encoding='utf-8') as html_file:
+        # 写入 HTML 基础结构和表格开始标签
+        html_file.write("<html><body><table border='1'>\n")
 
-if __name__ == '__main__':
-    main()
+        # 写入标题行
+        html_file.write("<tr><th>Date</th><th>Title</th></tr>\n")
+
+        # 写入新抓取的内容
+        new_content_added = False
+        for row in new_rows:
+            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+            new_content_added = True
+    
+        # 写入旧内容
+        for row in old_content:
+            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>" if row[2] else row[1]
+            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+
+        # 结束表格和 HTML 结构
+        html_file.write("</table></body></html>")
+
+open_new_html_file()
+
+screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+try:
+    os.remove(screenshot_path)
+    print(f"截图文件 {screenshot_path} 已被删除。")
+except OSError as e:
+    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

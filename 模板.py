@@ -209,3 +209,30 @@ root.mainloop()
 #terminal 指令
 #sed -i '' 's/\([0-9]\{4\}\)\.\([0-9]\{2\}\)\.\([0-9]\{2\}\)_/\1_\2_\3_/' /Users/yanzhang/Documents/News/wsj.html
 #————————————————————————————————————————————————————————————————————————————————————————
+#备份用，原来在爬虫economist代码里的,在添加了七天过滤功能之前的
+# 查找旧的 html 文件
+file_pattern = "/Users/yanzhang/Documents/News/economist.html"
+old_file_list = glob.glob(file_pattern)
+
+if not old_file_list:
+    print("未找到符合条件的旧文件。")
+    # 处理未找到旧文件的情况
+else:
+    # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
+    old_file_path = old_file_list[0]
+
+    # 读取旧文件中的所有内容
+    old_content = []
+    with open(old_file_path, 'r', encoding='utf-8') as file:
+        soup = BeautifulSoup(file, 'html.parser')
+        rows = soup.find_all('tr')[1:]  # 跳过标题行
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) >= 2:  # 确保行有足够的列
+                date = cols[0].text.strip()
+                title_column = cols[1]
+                title = title_column.text.strip()
+                # 从标题所在的列中提取链接
+                link = title_column.find('a')['href'] if title_column.find('a') else None
+                old_content.append([date, title, link])
+#————————————————————————————————————————————————————————————————————————————————————————

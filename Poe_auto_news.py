@@ -169,11 +169,8 @@ def main():
                 with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
                     segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
-                # 在segment_content后面添加两个换行符
-                segment_content += '\n\n'
-
                 # 将读取到的segment_content内容插入在剪贴板内容的最前面
-                final_content = segment_content + modified_content
+                final_content = segment_content + '\n\n' + modified_content
 
                 # 设置txt文件的保存目录
                 txt_directory = '/Users/yanzhang/Documents/News'

@@ -8,6 +8,7 @@ EQC
 FQC
 ??
 MGEE
+BG
 DD
 BGNE
 BZ

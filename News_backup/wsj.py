@@ -4,7 +4,7 @@ import os
 
 # 定义文件路径
 source_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html'
-backup_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj_backup.html'
+backup_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/backup/news/wsj_backup.html'
 
 # 定义两天前的日期
 previous_day = datetime.now() - timedelta(days=3)

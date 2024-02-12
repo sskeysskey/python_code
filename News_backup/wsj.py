@@ -4,11 +4,45 @@ import os
 
 # 定义文件路径
 source_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html'
-backup_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/backup/news/wsj_backup.html'
+backup_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/backup/wsj_backup.html'
 
 # 定义两天前的日期
-previous_day = datetime.now() - timedelta(days=3)
+previous_day = datetime.now() - timedelta(days=0)
 print(f"Previous day is set to: {previous_day}")
+
+# 美化表格的CSS样式
+table_styles = """
+<style>
+    body {
+        font-size: 28px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 2px solid #000;
+        box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    }
+    th, td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 2px solid #000;
+        border-right: 2px solid #000;
+    }
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    tr:hover {
+        background-color: #f5f5f5;
+    }
+    tr:last-child td {
+        border-bottom: 2px solid #000;
+    }
+    td:last-child, th:last-child {
+        border-right: none;
+    }
+</style>
+"""
 
 # 读取源文件内容
 with open(source_file_path, 'r', encoding='utf-8') as file:
@@ -41,7 +75,9 @@ for date_cell in date_cells:
 # 检查备份文件是否存在，如果不存在则创建并添加HTML结构标签
 if not os.path.exists(backup_file_path):
     with open(backup_file_path, 'w', encoding='utf-8') as file:
-        file.write('<html>\n<head><title>Backup</title></head>\n<body>\n<table>\n')
+        file.write('<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Backup</title>\n')
+        file.write(table_styles)  # 添加美化表格的CSS样式
+        file.write('</head>\n<body>\n<table>\n')
         file.write('<tr><th>时间</th><th>摘要</th></tr>\n')  # 添加表头
 
 # 将修改后的内容写回源文件

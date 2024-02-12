@@ -76,19 +76,35 @@ def create_html_skeleton(html_file_path, title):
             <meta charset="UTF-8">
             <title>{title}</title>
             <style>
-                body {{
-                    font-size: 28px; /* 这里设置字体大小 */
-                }}
-                table {{
-                    width: 100%;
-                    border-collapse: collapse;
-                }}
-                th, td {{
-                    padding: 10px;
-                    text-align: left;
-                    border-bottom: 1px solid #ddd;
-                }}
-            </style>
+    body {{
+        font-size: 28px; /* 设置字体大小 */
+    }}
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        border: 2px solid #000; /* 加粗整个表格的外边框 */
+        box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2); /* 增加阴影效果 */
+    }}
+    th, td {{
+        padding: 10px;
+        text-align: left;
+        border-bottom: 2px solid #000;
+        border-right: 2px solid #000; /* 增加垂直分割线 */
+    }}
+    th {{
+        background-color: #f2f2f2; /* 表头背景色 */
+        font-weight: bold; /* 表头字体加粗 */
+    }}
+    tr:hover {{
+        background-color: #f5f5f5; /* 鼠标悬浮时行背景色变化 */
+    }}
+    tr:last-child td {{
+        border-bottom: 2px solid #000; /* 最后一行的底部边框加粗 */
+    }}
+    td:last-child, th:last-child {{
+        border-right: none; /* 最后一列去除垂直分割线 */
+    }}
+</style>
         </head>
         <body>
             <table>

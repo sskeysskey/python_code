@@ -29,6 +29,7 @@ def is_similar(url1, url2):
     return base_url1 == base_url2
 
 # 获取当前日期
+current_datetime = datetime.now()
 current_year = datetime.now().year
 current_month = datetime.now().month
 current_day = datetime.now().day

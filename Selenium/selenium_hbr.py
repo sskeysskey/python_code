@@ -46,6 +46,7 @@ driver = webdriver.Chrome(service=service)
 driver.get("https://hbr.org/")
 
 # 查找旧的 html 文件
+file_pattern = "/Users/yanzhang/Documents/News/hbr.html"
 old_file_list = glob.glob(file_pattern)
 
 if not old_file_list:

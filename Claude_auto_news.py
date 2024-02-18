@@ -202,8 +202,13 @@ def main():
                 with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
                     segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
+                # 读取/tmp/site.txt文件内容
+                site_file_path = '/tmp/site.txt'
+                with open(site_file_path, 'r', encoding='utf-8-sig') as site_file:
+                    site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
+
                 # 将读取到的segment_content内容插入在剪贴板内容的最前面
-                final_content = segment_content + '\n\n' + modified_content
+                final_content = segment_content + '\n' + site_content + '\n\n' + modified_content
 
                 # 设置txt文件的保存目录
                 txt_directory = '/Users/yanzhang/Documents/News'

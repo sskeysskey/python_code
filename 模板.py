@@ -236,3 +236,27 @@ else:
                 link = title_column.find('a')['href'] if title_column.find('a') else None
                 old_content.append([date, title, link])
 #————————————————————————————————————————————————————————————————————————————————————————
+# 检查 soldout1.png 是否存在于屏幕上
+def check_soldout1_image():
+    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout1.png'  # 替换为你的remaining.png图片实际路径
+    location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
+    return bool(location)
+
+# 检查 soldout2.png 是否存在于屏幕上
+def check_soldout2_image():
+    remaining_template_path = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout2.png'  # 替换为你的remaining.png图片实际路径
+    location, shape = find_image_on_screen(remaining_template_path, threshold=0.9)
+    return bool(location)
+
+# 检查 soldout1.png 是否存在于屏幕上
+if not check_soldout1_image():
+    # 如果存在，则写文件
+    if check_soldout2_image():
+        with open(stop_signal_path, 'w') as signal_file:
+            signal_file.write('stop')
+else:
+    with open(stop_signal_path, 'w') as signal_file:
+        signal_file.write('stop')
+    # 如果soldout.png不存在，则按原步骤执行
+break
+#————————————————————————————————————————————————————————————————————————————————————————

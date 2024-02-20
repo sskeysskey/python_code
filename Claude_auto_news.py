@@ -1,7 +1,6 @@
 import re
 import os
 import cv2
-import sys
 import html
 import pyperclip
 import pyautogui
@@ -138,8 +137,9 @@ def main():
         template_path2 = '/Users/yanzhang/Documents/python_code/Resource/claude_soldout2.png'
         sleep(2)
 
-        location, shape = find_image_on_screen(template_path2)
-        if location:
+        while True:
+            location, shape = find_image_on_screen(template_path2)
+            if location:
                 # 设置stop_signal文件的保存目录
                 stop_signal_directory = '/private/tmp'
                 
@@ -151,11 +151,10 @@ def main():
 
                 with open(stop_signal_path, 'w') as signal_file:
                         signal_file.write('stop')
-                sys.exit(0)  # 安全退出程序
-        else:
+                break
+            else:
                 print("没找到图片，继续执行...")
 
-        while True:
             location, shape = find_image_on_screen(template_path1)
             if location:
                 # 计算中心坐标
@@ -268,7 +267,7 @@ def main():
                 stop_signal_file_name = f"stop_signal{time_str}.txt"
                 stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
 
-                # 检查 soldout.png 是否存在于屏幕上
+                # 检查 soldout1.png 是否存在于屏幕上
                 if check_soldout_image():
                     # 如果存在，则写文件
                     with open(stop_signal_path, 'w') as signal_file:
@@ -277,7 +276,6 @@ def main():
                 else:
                     # 如果soldout.png不存在，则按原步骤执行
                     break
-                
             else:
                 print("未找到A图片，继续监控...")
                 sleep(1)  # 简短暂停再次监控

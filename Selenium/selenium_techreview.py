@@ -42,11 +42,11 @@ else:
     # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
     old_file_path = old_file_list[0]
 
-    # 计算当前日期26天前的日期
+    # 计算当前日期35天前的日期
     current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=26)
+    seven_days_ago = current_date - timedelta(days=35)
     
-    # 读取旧文件中的所有内容，并删除26天前的内容
+    # 读取旧文件中的所有内容，并删除35天前的内容
     old_content = []
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')

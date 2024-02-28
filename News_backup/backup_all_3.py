@@ -12,7 +12,6 @@ target_files = [
     "FT.html",
     "nikkei.html",
     "nytimes.html",
-    "technologyreview.html",
     "wsj.html",
     "bloomberg.html",
     "hbr.html"
@@ -53,7 +52,7 @@ css_styles = """
 """
 
 # 定义两天前的日期
-previous_day = datetime.now() - timedelta(days=1)
+previous_day = datetime.now() - timedelta(days=3)
 print(f"Previous day is set to: {previous_day}")
 
 # 处理特定的文件

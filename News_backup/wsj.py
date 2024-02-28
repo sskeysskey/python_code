@@ -7,7 +7,7 @@ source_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/wsj.html
 backup_file_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/backup/wsj_backup.html'
 
 # 定义两天前的日期
-previous_day = datetime.now() - timedelta(days=0)
+previous_day = datetime.now() - timedelta(days=3)
 print(f"Previous day is set to: {previous_day}")
 
 # 美化表格的CSS样式

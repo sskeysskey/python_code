@@ -12,7 +12,6 @@ target_files = [
     "FT.html",
     "nikkei.html",
     "nytimes.html",
-    "technologyreview.html",
     "wsj.html",
     "bloomberg.html",
     "hbr.html"

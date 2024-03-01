@@ -142,7 +142,7 @@ def main():
                     pyautogui.click(x=635, y=493)
                     sleep(0.5)
                     pyautogui.hotkey('command', 'r')
-                sleep(1)  # 简短暂停再次监控
+                sleep(3)  # 简短暂停再次监控
             else:
                 pyautogui.click(button='right')
                 sleep(0.5)

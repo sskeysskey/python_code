@@ -48,7 +48,7 @@ def main():
                     print("找到poe_stillwaiting图片，执行页面刷新操作...")
                     # 执行页面刷新（模拟Command + R）
                     pyautogui.hotkey('command', 'r')
-                sleep(1)  # 简短暂停再次监控
+                sleep(3)  # 简短暂停再次监控
             else:
                 pyautogui.click(button='right')
                 sleep(0.5)

@@ -1,14 +1,46 @@
-import os
-from datetime import datetime
+import re
+import sys
+import tkinter as tk
+from tkinter import filedialog
 
-# 设置stop_signal文件的保存目录
-stop_signal_directory = '/private/tmp'
+# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
+url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*')
 
-# 设置stop_signal文件的保存路径
-now = datetime.now()
-time_str = now.strftime("_%m_%d_%H")
-stop_signal_file_name = f"stop_signal{time_str}.txt"
-stop_signal_path = os.path.join(stop_signal_directory, stop_signal_file_name)
+# 初始化Tkinter，不显示主窗口
+root = tk.Tk()
+root.withdraw()
 
-with open(stop_signal_path, 'w') as signal_file:
-        signal_file.write('stop')
+# 弹出文件选择对话框，选择源文件
+source_file_path = filedialog.askopenfilename(
+    title='选择要处理的文件',
+    filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
+)
+
+# 用户没有选择文件则退出
+if not source_file_path:
+    print('没有选择文件。')
+    sys.exit()
+
+# 读取文件内容
+with open(source_file_path, 'r', encoding='utf-8') as file:
+    content = file.read()
+
+# 替换掉所有的URL链接
+clean_content = re.sub(url_pattern, '', content)
+
+# 弹出文件保存对话框，选择目标文件
+target_file_path = filedialog.asksaveasfilename(
+    title='保存处理后的文件',
+    filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
+)
+
+# 用户没有选择文件则退出
+if not target_file_path:
+    print('没有选择保存的文件。')
+    sys.exit()
+
+# 将处理后的内容写入到用户选定的目标文件
+with open(target_file_path, 'w', encoding='utf-8') as file:
+    file.write(clean_content)
+
+print('所有带有http://或https://前缀以及以www.开头的网址链接已从文件中删除。')

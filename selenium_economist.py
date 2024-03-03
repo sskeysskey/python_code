@@ -163,11 +163,11 @@ else:
     # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
     old_file_path = old_file_list[0]
 
-    # 计算当前日期7天前的日期
+    # 计算当前日期30天前的日期
     current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=17)
+    seven_days_ago = current_date - timedelta(days=30)
     
-    # 读取旧文件中的所有内容，并删除7天前的内容
+    # 读取旧文件中的所有内容，并删除30天前的内容
     old_content = []
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
@@ -178,7 +178,7 @@ else:
                 date_str = cols[0].text.strip()
                 # 解析日期字符串
                 date = datetime.strptime(date_str, '%Y_%m_%d_%H')
-                # 若日期大于等于7天前的日期，则保留
+                # 若日期大于等于30天前的日期，则保留
                 if date >= seven_days_ago:
                     title_column = cols[1]
                     title = title_column.text.strip()

@@ -58,7 +58,7 @@ else:
 
     # 计算当前日期26天前的日期
     current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=20)
+    seven_days_ago = current_date - timedelta(days=30)
     
     # 读取旧文件中的所有内容，并删除20天前的内容
     old_content = []

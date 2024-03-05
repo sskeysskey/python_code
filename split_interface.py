@@ -1,5 +1,9 @@
+import re
+import sys
+import pyperclip
 import tkinter as tk
 from tkinter.font import Font
+from tkinter import filedialog
 from split_clipboard import save_segments, get_clipboard_size
 
 def on_escape(event=None):
@@ -27,12 +31,40 @@ def on_split(event=None):
     try:
         save_segments(n)
         info_label.config(text=f"分割完成，共分割成{n}部分")
-        root.destroy()  # 执行完毕后关闭窗口
     except Exception as e:
         info_label.config(text=f"发生错误：{e}")
+    finally:
+        # 无论是否发生异常，都关闭Tkinter窗口
+        root.destroy()  # 执行完毕后关闭窗口
 
-# 创建 Tkinter 窗口
+# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
+url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*')
+
+# 初始化Tkinter，不显示主窗口
 root = tk.Tk()
+# root.withdraw()
+
+# 弹出文件选择对话框，选择源文件
+source_file_path = filedialog.askopenfilename(
+    title='选择要处理的文件',
+    filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
+)
+
+# 用户没有选择文件则退出
+if not source_file_path:
+    print('没有选择文件。')
+    sys.exit()
+
+# 读取文件内容
+with open(source_file_path, 'r', encoding='utf-8') as file:
+    content = file.read()
+
+# 替换掉所有的URL链接
+clean_content = re.sub(url_pattern, '', content)
+
+# 将处理后的内容写入剪贴板
+pyperclip.copy(clean_content)
+
 root.title("分割文本")
 
 # 设置字体
@@ -66,3 +98,6 @@ center_window(root)
 
 # 运行 Tkinter 事件循环
 root.mainloop()
+
+# 在Tkinter事件循环结束后添加退出程序的调用
+sys.exit()

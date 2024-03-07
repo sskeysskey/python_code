@@ -46,17 +46,18 @@ def main():
                 location, shape = find_image_on_screen(template_path_waiting)
                 if location:
                     print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                    # 执行页面刷新（模拟Command + R）
+                    pyautogui.click(x=617, y=578)
+                    sleep(1)
                     pyautogui.hotkey('command', 'r')
-                sleep(1)  # 简短暂停再次监控
+                sleep(3)  # 简短暂停再次监控
             else:
                 pyautogui.click(button='right')
-                sleep(0.5)
+                sleep(1)
                 # 移动鼠标并再次点击
                 pyautogui.moveRel(110, 118)  # 往右移动110，往下移动118
-                sleep(0.5)
-                pyautogui.click()  # 执行点击操作
                 sleep(1)
+                pyautogui.click()  # 执行点击操作
+                sleep(0.5)
 
                 # 设置TXT文件的保存路径
                 txt_file_path = '/Users/yanzhang/Documents/book.txt'

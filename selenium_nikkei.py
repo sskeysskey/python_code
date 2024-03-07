@@ -110,7 +110,7 @@ else:
 
     # 计算当前日期14天前的日期
     current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=16)
+    seven_days_ago = current_date - timedelta(days=18)
     
     # 读取旧文件中的所有内容，并删除14天前的内容
     old_content = []

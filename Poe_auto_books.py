@@ -3,6 +3,7 @@ import os
 import cv2
 import pyperclip
 import pyautogui
+import subprocess
 from time import sleep
 
 def capture_screen():
@@ -51,13 +52,15 @@ def main():
                     pyautogui.hotkey('command', 'r')
                 sleep(3)  # 简短暂停再次监控
             else:
-                pyautogui.click(button='right')
-                sleep(1)
-                # 移动鼠标并再次点击
-                pyautogui.moveRel(110, 118)  # 往右移动110，往下移动118
-                sleep(1)
-                pyautogui.click()  # 执行点击操作
-                sleep(0.5)
+                script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy.scpt'
+                try:
+                    # 运行AppleScript文件
+                    process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
+                    # 输出AppleScript的返回结果
+                    print(process.stdout.strip())
+                except subprocess.CalledProcessError as e:
+                    # 如果有错误发生，打印错误信息
+                    print(f"Error running AppleScript: {e}")
 
                 # 设置TXT文件的保存路径
                 txt_file_path = '/Users/yanzhang/Documents/book.txt'

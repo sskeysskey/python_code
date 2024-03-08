@@ -131,7 +131,7 @@ template_path = '/Users/yanzhang/Documents/python_code/Resource/economist_accept
 
 found = False
 start_time = time.time()
-timeout = 60  # 设置1分钟超时时间
+timeout = 20  # 设置1分钟超时时间
 time.sleep(1)
 
 # 开始循环，直到找到图片或者超时

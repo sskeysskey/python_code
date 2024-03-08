@@ -47,12 +47,12 @@ def main():
                 location, shape = find_image_on_screen(template_path_waiting)
                 if location:
                     print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                    pyautogui.click(x=617, y=578)
+                    pyautogui.click(x=617, y=558)
                     sleep(1)
                     pyautogui.hotkey('command', 'r')
                 sleep(3)  # 简短暂停再次监控
             else:
-                script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy.scpt'
+                script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
                 try:
                     # 运行AppleScript文件
                     process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)

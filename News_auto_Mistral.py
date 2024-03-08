@@ -145,7 +145,7 @@ def main():
                     pyautogui.hotkey('command', 'r')
                 sleep(3)  # 简短暂停再次监控
             else:
-                script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy.scpt'
+                script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_news.scpt'
                 try:
                     # 运行AppleScript文件
                     process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)

@@ -145,6 +145,7 @@ def main():
                     pyautogui.hotkey('command', 'r')
                 sleep(3)  # 简短暂停再次监控
             else:
+                sleep(5)  # 简短暂停再次监控
                 script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_news.scpt'
                 try:
                     # 运行AppleScript文件
@@ -229,7 +230,7 @@ def main():
                 # 追加内容到HTML文件
                 append_to_html(html_file_path, segment_content, modified_content)
                 break
-                
+            
     finally:
         # 最后，关闭HTML框架
         if html_skeleton_created and not os.path.isfile(html_file_path):

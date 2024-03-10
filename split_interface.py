@@ -37,8 +37,8 @@ def on_split(event=None):
         # 无论是否发生异常，都关闭Tkinter窗口
         root.destroy()  # 执行完毕后关闭窗口
 
-# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
-url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*')
+# 正则表达式，匹配http://, https://, www.开头或以.com结尾，直到空格或换行符的字符串
+url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*|[^ \n]*\.com')
 
 # 初始化Tkinter，不显示主窗口
 root = tk.Tk()

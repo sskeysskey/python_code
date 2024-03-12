@@ -2,6 +2,7 @@ import re
 import os
 import cv2
 import html
+import time
 import pyperclip
 import pyautogui
 import subprocess
@@ -131,6 +132,7 @@ def main():
     try:
         template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
         template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
+        template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
         while True:
             location, shape = find_image_on_screen(template_path_stop)
             if location:
@@ -155,6 +157,25 @@ def main():
                 except subprocess.CalledProcessError as e:
                     # 如果有错误发生，打印错误信息
                     print(f"Error running AppleScript: {e}")
+
+                # 设置寻找copy_success.png图片的超时时间为10秒
+                timeout = time.time() + 10
+                found_success_image = False
+                while time.time() < timeout:
+                    location, shape = find_image_on_screen(template_path_success)
+                    if location:
+                        print("找到copy_success图片，继续执行程序...")
+                        found_success_image = True
+                        break
+                    time.sleep(1)  # 每次检测间隔1秒
+
+                if not found_success_image:
+                    print("在10秒内未找到copy_success图片，退出程序。")
+                    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
+                    if os.path.exists(screenshot_path):
+                        os.remove(screenshot_path)
+                        print("截图文件已删除。")
+                    sys.exit()
 
                 # 读取剪贴板内容
                 clipboard_content = pyperclip.paste()
@@ -210,9 +231,7 @@ def main():
                 segment_to_html_file = {
                     "technologyreview": "technologyreview.html",
                     "economist": "economist.html",
-                    "wsj": "wsj.html",
                     "nytimes": "nytimes.html",
-                    "ft": "FT.html",
                     "nikkei": "nikkei.html",
                     "bloomberg": "bloomberg.html",
                     "hbr": "hbr.html",

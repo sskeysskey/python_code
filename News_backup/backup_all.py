@@ -2,6 +2,18 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import os
 
+# 确保CSS样式被包含在备份文件中的函数
+def ensure_css_in_backup(file_path, css_styles):
+    with open(file_path, 'r+', encoding='utf-8') as file:
+        content = file.read()
+        # 检查是否已经包含CSS样式
+        if '<style>' not in content:
+            # 如果没有，则在<body>标签之前插入CSS样式
+            content = content.replace('<body>', f'<head><title>Backup</title>\n{css_styles}</head>\n<body>')
+            file.seek(0)
+            file.write(content)
+            file.truncate()  # 删除旧内容后面的部分
+
 # 定义文件路径
 source_dir_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news'
 backup_dir_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/backup'
@@ -9,10 +21,8 @@ backup_dir_path = '/Users/yanzhang/Documents/sskeysskey.github.io/news/backup'
 # 定义目标文件列表
 target_files = [
     "economist.html",
-    "FT.html",
     "nikkei.html",
     "nytimes.html",
-    "wsj.html",
     "bloomberg.html",
     "hbr.html"
 ]
@@ -66,37 +76,44 @@ for file_name in target_files:
         content = file.read()
         soup = BeautifulSoup(content, 'html.parser')
 
+    # 找到所有日期项
+    date_cells = soup.find_all('td')
+
+    # 移除两天前的内容并准备写入备份文件的内容
     backup_content = ''
-    for date_cell in soup.find_all('td'):
+    for date_cell in date_cells:
+        date_str = date_cell.get_text().strip()
+        # 尝试提取和转换日期字符串
         try:
-            date_text = date_cell.get_text().strip()
-            article_date = datetime.strptime(date_text, '%Y-%m-%d %H:%M:%S')
+            article_date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+            # 检查日期是否是一天前
             if article_date <= previous_day:
                 parent_row = date_cell.find_parent('tr')
-                backup_content += str(parent_row) + '\n'
-                parent_row.decompose()
+                if parent_row:
+                    backup_content += str(parent_row) + '\n'
+                    parent_row.decompose()
         except ValueError:
-            continue
+            continue  # 解析失败则跳过当前循环
 
-    # 写回修改后的HTML到原始文件
+    # 将修改后的内容写回源文件
     with open(source_file_path, 'w', encoding='utf-8') as file:
         file.write(str(soup))
 
-    # 如果有要备份的内容
+    # 处理备份文件
     if backup_content:
-        # 检查备份文件是否存在，不存在则创建
-        if not os.path.exists(backup_file_path):
-            with open(backup_file_path, 'w', encoding='utf-8') as bfile:
-                #bfile.write('<html><head><title>Backup</title></head><body><table>\n')
-                file.write('<html>\n<head><title>Backup</title>\n')
-                file.write(css_styles)
+        # 如果备份文件不存在，或者为新文件，则添加头部
+        if not os.path.isfile(backup_file_path) or os.path.getsize(backup_file_path) == 0:
+            with open(backup_file_path, 'w', encoding='utf-8') as file:
+                file.write('<!DOCTYPE html>\n<html>\n')
+                file.write('<head>\n<title>Backup</title>\n')
+                file.write(css_styles)  # 确保CSS样式被添加到<head>标签内
                 file.write('</head>\n<body>\n<table>\n')
-                bfile.write('<tr><th>时间</th><th>摘要</th></tr>\n')
-
-        # 追加内容到备份文件
-        with open(backup_file_path, 'a', encoding='utf-8') as bfile:
-            bfile.write(backup_content)
-        
-        # 确保备份文件的HTML闭合
-        with open(backup_file_path, 'a', encoding='utf-8') as bfile:
-            bfile.write('</table></body></html>')
+                file.write('<tr><th>时间</th><th>摘要</th></tr>\n')
+                file.write(backup_content)
+                file.write('</table>\n</body>\n</html>')
+        else:
+            # 如果备份文件已存在，确保CSS样式存在
+            ensure_css_in_backup(backup_file_path, css_styles)
+            # 追加新的备份内容
+            with open(backup_file_path, 'a', encoding='utf-8') as file:
+                file.write(backup_content)

@@ -1,5 +1,6 @@
 import re
 import sys
+import shutil
 import pyperclip
 import tkinter as tk
 from tkinter.font import Font
@@ -98,6 +99,24 @@ center_window(root)
 
 # 运行 Tkinter 事件循环
 root.mainloop()
+
+# 新增的移动文件函数
+def move_file_to_backup(file_path, destination_folder):
+    # 获取文件名
+    file_name = file_path.split('/')[-1]
+    # 构造目标路径
+    destination_path = f"{destination_folder}/{file_name}"
+    try:
+        # 移动文件
+        shutil.move(file_path, destination_path)
+        print(f"文件已移动到：{destination_path}")
+    except Exception as e:
+        # 如果出现异常，打印异常信息
+        print(f"移动文件时发生错误：{e}")
+
+# 调用函数，移动文件
+backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"
+move_file_to_backup(source_file_path, backup_folder)
 
 # 在Tkinter事件循环结束后添加退出程序的调用
 sys.exit()

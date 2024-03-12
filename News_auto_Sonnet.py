@@ -157,10 +157,15 @@ def main():
                 # 读取剪贴板内容
                 clipboard_content = pyperclip.paste()
 
-                # 使用splitlines()分割剪贴板内容为多行
-                lines = clipboard_content.splitlines()
-                # 移除空行
-                non_empty_lines = [line for line in lines if line.strip()]
+                # 检查clipboard_content是否为None或者是否是一个字符串
+                if clipboard_content:
+                    # 使用splitlines()分割剪贴板内容为多行
+                    lines = clipboard_content.splitlines()
+                    # 移除空行
+                    non_empty_lines = [line for line in lines if line.strip()]
+                else:
+                    print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
+                    non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
 
                 # 将非空行合并为一个字符串，用换行符分隔
                 modified_content = '\n'.join(non_empty_lines)

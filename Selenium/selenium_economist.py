@@ -4,6 +4,8 @@ import time
 import glob
 import pyautogui
 import webbrowser
+import numpy as np
+from PIL import ImageGrab
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.parse import urlparse
@@ -32,16 +34,10 @@ def is_similar(url1, url2):
     return base_url1 == base_url2
 
 def capture_screen():
-    # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-    # 使用pyautogui截图并直接保存
-    pyautogui.screenshot(screenshot_path)
-    # 读取刚才保存的截图文件
-    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
-    # 确保screenshot已经正确加载
-    if screenshot is None:
-        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
-    # 返回读取的截图数据
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
 # 查找图片
@@ -194,10 +190,3 @@ else:
         html_file.write("</table></body></html>")
 
 open_new_html_file()
-
-screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-try:
-    os.remove(screenshot_path)
-    print(f"截图文件 {screenshot_path} 已被删除。")
-except OSError as e:
-    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

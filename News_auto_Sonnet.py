@@ -6,21 +6,16 @@ import time
 import pyperclip
 import pyautogui
 import subprocess
+import numpy as np
 from time import sleep
+from PIL import ImageGrab
 from datetime import datetime
 
 def capture_screen():
-    # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-    # 使用pyautogui截图并直接保存
-    pyautogui.screenshot(screenshot_path)
-    # 读取刚才保存的截图文件
-    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
-    # 确保screenshot已经正确加载
-    if screenshot is None:
-        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
-    
-    # 返回读取的截图数据
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
 # 查找图片
@@ -145,7 +140,7 @@ def main():
                     pyautogui.hotkey('command', 'r')
                 sleep(3)  # 简短暂停再次监控
             else:
-                sleep(5)
+                sleep(4)
                 script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_news.scpt'
                 try:
                     # 运行AppleScript文件
@@ -156,23 +151,18 @@ def main():
                     # 如果有错误发生，打印错误信息
                     print(f"Error running AppleScript: {e}")
 
-                # 设置寻找copy_success.png图片的超时时间为10秒
-                timeout = time.time() + 10
+                # 设置寻找copy_success.png图片的超时时间为5秒
+                timeout = time.time() + 5
                 found_success_image = False
-                while time.time() < timeout:
+                while not found_success_image and time.time() < timeout:
                     location, shape = find_image_on_screen(template_path_success)
                     if location:
                         print("找到copy_success图片，继续执行程序...")
                         found_success_image = True
-                        break
                     time.sleep(1)  # 每次检测间隔1秒
 
                 if not found_success_image:
-                    print("在10秒内未找到copy_success图片，退出程序。")
-                    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-                    if os.path.exists(screenshot_path):
-                        os.remove(screenshot_path)
-                        print("截图文件已删除。")
+                    print("在5秒内未找到copy_success图片，退出程序。")
                     sys.exit()
 
                 # 读取剪贴板内容
@@ -257,11 +247,6 @@ def main():
         # 最后，关闭HTML框架
         if html_skeleton_created and not os.path.isfile(html_file_path):
             close_html_skeleton(html_file_path)
-
-        screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-        if os.path.exists(screenshot_path):
-            os.remove(screenshot_path)
-            print("截图文件已删除。")
 
 if __name__ == '__main__':
     main()

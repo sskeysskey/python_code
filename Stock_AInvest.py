@@ -2,19 +2,15 @@ import cv2
 import os
 import pyperclip
 import pyautogui
+import numpy as np
 from time import sleep
+from PIL import ImageGrab
 
 def capture_screen():
-    # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-    # 使用pyautogui截图并直接保存
-    pyautogui.screenshot(screenshot_path)
-    # 读取刚才保存的截图文件
-    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
-    # 确保screenshot已经正确加载
-    if screenshot is None:
-        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
-    # 返回读取的截图数据
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
 # 查找图片
@@ -59,10 +55,10 @@ def remove_even_lines_from_clipboard():
 
 # 主函数
 def main():
-    try:
         template_path = '/Users/yanzhang/Documents/python_code/Resource/OCR_copy.png'  # 替换为你PNG图片的实际路径
         # 提供黑名单文件的绝对路径
-        while True:
+        found = False
+        while not found:
             location, shape = find_image_on_screen(template_path)
             if location:
                 # 计算中心坐标
@@ -74,16 +70,11 @@ def main():
 
                 sleep(1)  # 简短暂停
                 remove_even_lines_from_clipboard()
-                break  # 图片消失后退出循环
+                found = True
                 
             else:
                 print("未找到A图片，继续监控...")
                 sleep(1)  # 简短暂停再次监控
-    finally:
-        screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-        if os.path.exists(screenshot_path):
-            os.remove(screenshot_path)
-            print("截图文件已删除。")
 
 if __name__ == '__main__':
     main()

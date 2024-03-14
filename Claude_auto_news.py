@@ -4,20 +4,16 @@ import cv2
 import html
 import pyperclip
 import pyautogui
+import numpy as np
 from time import sleep
+from PIL import ImageGrab
 from datetime import datetime
 
 def capture_screen():
-    # 定义截图路径
-    screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-    # 使用pyautogui截图并直接保存
-    pyautogui.screenshot(screenshot_path)
-    # 读取刚才保存的截图文件
-    screenshot = cv2.imread(screenshot_path, cv2.IMREAD_COLOR)
-    # 确保screenshot已经正确加载
-    if screenshot is None:
-        raise FileNotFoundError(f"截图未能正确保存或读取于路径 {screenshot_path}")
-    # 返回读取的截图数据
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
 # 查找图片
@@ -234,9 +230,7 @@ def main():
                 segment_to_html_file = {
                     "technologyreview": "technologyreview.html",
                     "economist": "economist.html",
-                    "wsj": "wsj.html",
                     "nytimes": "nytimes.html",
-                    "ft": "FT.html",
                     "nikkei": "nikkei.html",
                     "bloomberg": "bloomberg.html",
                     "hbr": "hbr.html",
@@ -287,11 +281,6 @@ def main():
         # 最后，关闭HTML框架
         if html_skeleton_created and not os.path.isfile(html_file_path):
             close_html_skeleton(html_file_path)
-            
-        screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-        if os.path.exists(screenshot_path):
-            os.remove(screenshot_path)
-            print("截图文件已删除。")
 
 if __name__ == '__main__':
     main()

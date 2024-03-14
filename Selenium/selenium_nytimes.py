@@ -145,10 +145,3 @@ else:
         html_file.write("</table></body></html>")
 
 open_new_html_file()
-
-screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-try:
-    os.remove(screenshot_path)
-    print(f"截图文件 {screenshot_path} 已被删除。")
-except OSError as e:
-    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

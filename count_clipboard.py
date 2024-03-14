@@ -1,5 +1,5 @@
-import pyperclip
 import re
+import pyperclip
 import tkinter as tk
 from tkinter.font import Font
 

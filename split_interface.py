@@ -7,7 +7,12 @@ from tkinter.font import Font
 from tkinter import filedialog
 from split_clipboard import save_segments, get_clipboard_size
 
+# 在 on_escape 函数中设置一个标志位
+file_moved = False  # 全局变量，初始值为False
+
 def on_escape(event=None):
+    global file_moved
+    file_moved = False  # 用户按下ESC，设置标志位为False
     root.destroy()
 
 def center_window(win):
@@ -19,6 +24,7 @@ def center_window(win):
     win.geometry(f'{width}x{height}+{x}+{y}')
 
 def on_split(event=None):
+    global file_moved
     n_str = entry.get()
     if not n_str.isdigit():
         info_label.config(text="请输入有效的数字")
@@ -32,11 +38,26 @@ def on_split(event=None):
     try:
         save_segments(n)
         info_label.config(text=f"分割完成，共分割成{n}部分")
+        file_moved = True  # 分割成功，设置标志位为True
     except Exception as e:
         info_label.config(text=f"发生错误：{e}")
     finally:
         # 无论是否发生异常，都关闭Tkinter窗口
         root.destroy()  # 执行完毕后关闭窗口
+
+# 新增的移动文件函数
+def move_file_to_backup(file_path, destination_folder):
+    # 获取文件名
+    file_name = file_path.split('/')[-1]
+    # 构造目标路径
+    destination_path = f"{destination_folder}/{file_name}"
+    try:
+        # 移动文件
+        shutil.move(file_path, destination_path)
+        print(f"文件已移动到：{destination_path}")
+    except Exception as e:
+        # 如果出现异常，打印异常信息
+        print(f"移动文件时发生错误：{e}")
 
 # 正则表达式，匹配http://, https://, www.开头或以.com结尾，直到空格或换行符的字符串
 url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*|[^ \n]*\.com')
@@ -90,33 +111,25 @@ entry.bind('<Return>', on_split)  # 不需要 lambda 表达式
 # 绑定 Esc 键到 on_escape 函数
 root.bind('<Escape>', on_escape)
 
-# 创建按钮
-#split_button = tk.Button(root, text="分割", command=on_split, font=font)
-#split_button.pack(pady=10, padx=60)
-
 # 窗口居中
 center_window(root)
+
+# 提升窗口到最前
+root.lift()
+# 强制窗口获得焦点
+root.focus_force()
+# 让输入框获得焦点
+entry.focus_set()
 
 # 运行 Tkinter 事件循环
 root.mainloop()
 
-# 新增的移动文件函数
-def move_file_to_backup(file_path, destination_folder):
-    # 获取文件名
-    file_name = file_path.split('/')[-1]
-    # 构造目标路径
-    destination_path = f"{destination_folder}/{file_name}"
-    try:
-        # 移动文件
-        shutil.move(file_path, destination_path)
-        print(f"文件已移动到：{destination_path}")
-    except Exception as e:
-        # 如果出现异常，打印异常信息
-        print(f"移动文件时发生错误：{e}")
-
 # 调用函数，移动文件
 backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"
-move_file_to_backup(source_file_path, backup_folder)
+
+# 在程序的最后部分，仅在 file_moved 为 True 时移动文件
+if file_moved:  # 检查标志位是否为True
+    move_file_to_backup(source_file_path, backup_folder)
 
 # 在Tkinter事件循环结束后添加退出程序的调用
 sys.exit()

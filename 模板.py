@@ -287,3 +287,15 @@ else:
         # 如果不足50%，则只删除第一句（除非第一句以“首先”或“第一”开头）
         modified_content = '\n'.join(non_empty_lines[(0 if first_sentence_start_with_special else 1):])
 #————————————————————————————————————————————————————————————————————————————————————————
+#正则表达式备份
+url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*|[^ \n]*\.com')
+url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*|\s[^ \n]*\.com[^ \n]*(?=\s|$)')
+url_pattern = re.compile(r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|[^ \n]*www\.[^ \n]*(?=\s|$)|[^ \n]*\.com[^ \n]*(?=\s|$))')
+
+# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
+url_pattern = re.compile(
+    r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
+    r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
+    r'[^ \n]*\.(com|gov|edu|cn|us)[^ \n]*(?=\s|$))'
+)
+#————————————————————————————————————————————————————————————————————————————————————————

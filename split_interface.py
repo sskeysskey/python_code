@@ -59,8 +59,12 @@ def move_file_to_backup(file_path, destination_folder):
         # 如果出现异常，打印异常信息
         print(f"移动文件时发生错误：{e}")
 
-# 正则表达式，匹配http://, https://, www.开头或以.com结尾，直到空格或换行符的字符串
-url_pattern = re.compile(r'(http[s]?://|www\.)[^ \n]*|[^ \n]*\.com')
+# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
+url_pattern = re.compile(
+    r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
+    r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
+    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css)[^ \n]*(?=\s|$))'
+)
 
 # 初始化Tkinter，不显示主窗口
 root = tk.Tk()

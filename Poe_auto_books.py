@@ -35,7 +35,9 @@ def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
-    while True:
+    template_path_retry = '/Users/yanzhang/Documents/python_code/Resource/poe_retry.png'
+    found_stop = True
+    while found_stop:
         location, shape = find_image_on_screen(template_path_stop)
         if location:
             print("找到poe_stop图片，继续监控...")
@@ -48,65 +50,86 @@ def main():
                 pyautogui.hotkey('command', 'r')
             sleep(3)  # 简短暂停再次监控
         else:
-            script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
-            try:
-                # 运行AppleScript文件
-                process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
-                # 输出AppleScript的返回结果
-                print(process.stdout.strip())
-            except subprocess.CalledProcessError as e:
-                # 如果有错误发生，打印错误信息
-                print(f"Error running AppleScript: {e}")
+            print("Stop图片没有了...")
+            found_stop = False
 
-            # 设置寻找copy_success.png图片的超时时间为5秒
-            timeout = time.time() + 5
-            found_success_image = False
-            while not found_success_image and time.time() < timeout:
-                location, shape = find_image_on_screen(template_path_success)
-                if location:
-                    print("找到copy_success图片，继续执行程序...")
-                    found_success_image = True
-                time.sleep(1)  # 每次检测间隔1秒
+    found_retry = False
+    while not found_retry:
+        location, shape = find_image_on_screen(template_path_retry)
+        if location:
+            # 计算中心坐标
+            center_x = (location[0] + shape[1] // 2) // 2
+            center_y = (location[1] + shape[0] // 2) // 2
 
-            if not found_success_image:
-                print("在5秒内未找到copy_success图片，退出程序。")
-                sys.exit()
-
-            # 设置TXT文件的保存路径
-            txt_file_path = '/Users/yanzhang/Documents/book.txt'
-
-            # 读取剪贴板内容
-            clipboard_content = pyperclip.paste()
-
-            # 检查clipboard_content是否为None或者是否是一个字符串
-            if clipboard_content:
-                # 使用splitlines()分割剪贴板内容为多行
-                lines = clipboard_content.splitlines()
-                # 移除空行
-                non_empty_lines = [line for line in lines if line.strip()]
-            else:
-                print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
-                non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
-
-            # 将非空行合并为一个字符串，用换行符分隔
-            modified_content = '\n'.join(non_empty_lines)
-
-            # 读取/tmp/segment.txt文件内容
-            segment_file_path = '/tmp/segment.txt'
-            with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-                segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
-
-            # 在segment_content后面添加一个换行符
-            segment_content += '\n'
+            # 调整坐标
+            # 假设你已经计算好了需要传递给AppleScript的坐标值
+            xCoord = center_x
+            yCoord = center_y - 130
             
-            # 将读取到的segment_content内容插入在剪贴板内容的最前面
-            final_content = segment_content + modified_content
+            found_retry = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            sleep(1)
 
-            # 追加处理后的内容到TXT文件
-            with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
-                txt_file.write(final_content)
-                txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
-            break  # 图片消失后退出循环
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+    try:
+        # 将坐标值作为参数传递给AppleScript
+        process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
+        # 输出AppleScript的返回结果
+        print(process.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        # 如果有错误发生，打印错误信息
+        print(f"Error running AppleScript: {e}")
+
+    # 设置寻找copy_success.png图片的超时时间为5秒
+    timeout_success = time.time() + 5
+    found_success_image = False
+    while not found_success_image and time.time() < timeout_success:
+        location, shape = find_image_on_screen(template_path_success)
+        if location:
+            print("找到copy_success图片，继续执行程序...")
+            found_success_image = True
+        time.sleep(1)  # 每次检测间隔1秒
+
+    if not found_success_image:
+        print("在5秒内未找到copy_success图片，退出程序。")
+        sys.exit()
+
+    # 设置TXT文件的保存路径
+    txt_file_path = '/Users/yanzhang/Documents/book.txt'
+
+    # 读取剪贴板内容
+    clipboard_content = pyperclip.paste()
+
+    # 检查clipboard_content是否为None或者是否是一个字符串
+    if clipboard_content:
+        # 使用splitlines()分割剪贴板内容为多行
+        lines = clipboard_content.splitlines()
+        # 移除空行
+        non_empty_lines = [line for line in lines if line.strip()]
+    else:
+        print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
+        non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
+
+    # 将非空行合并为一个字符串，用换行符分隔
+    modified_content = '\n'.join(non_empty_lines)
+
+    # 读取/tmp/segment.txt文件内容
+    segment_file_path = '/tmp/segment.txt'
+    with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
+        segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
+
+    # 在segment_content后面添加一个换行符
+    segment_content += '\n'
+    
+    # 将读取到的segment_content内容插入在剪贴板内容的最前面
+    final_content = segment_content + modified_content
+
+    # 追加处理后的内容到TXT文件
+    with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
+        txt_file.write(final_content)
+        txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
 
 if __name__ == '__main__':
     main()

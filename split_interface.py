@@ -63,6 +63,7 @@ def move_file_to_backup(file_path, destination_folder):
 url_pattern = re.compile(
     r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
+    r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
     r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css)[^ \n]*(?=\s|$))'
 )
 

@@ -7,6 +7,7 @@ from tkinter import filedialog
 url_pattern = re.compile(
     r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
+    r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
     r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk)[^ \n]*(?=\s|$))'
 )
 

@@ -32,74 +32,39 @@ def find_image_on_screen(template_path, threshold=0.9):
 
 # 主函数
 def main():
-    template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
-    template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
-    template_path_retry = '/Users/yanzhang/Documents/python_code/Resource/poe_retry.png'
+    template_stop = '/Users/yanzhang/Documents/python_code/Resource/Mistral_stop.png'
+    template_copy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
+
     found_stop = True
     while found_stop:
-        location, shape = find_image_on_screen(template_path_stop)
+        location, shape = find_image_on_screen(template_stop)
         if location:
-            print("找到poe_stop图片，继续监控...")
-            pyautogui.scroll(-120)
-            # 检测poe_stillwaiting.png图片
-            location, shape = find_image_on_screen(template_path_waiting)
-            if location:
-                print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-            sleep(3)  # 简短暂停再次监控
+            print("找到stop图了，准备下一步...")
+            pyautogui.scroll(-80)
+            sleep(1) # 继续监控
         else:
-            print("Stop图片没有了...")
+            print("没找到图片，继续执行...")
             found_stop = False
 
-    found_retry = False
-    timeout_retry = time.time() + 10
-    while not found_retry and time.time() < timeout_retry:
-        location, shape = find_image_on_screen(template_path_retry)
+    found_copy = False
+    timeout_copy = time.time() + 5
+    while not found_copy and time.time() < timeout_copy:
+        location, shape = find_image_on_screen(template_copy)
         if location:
-            sleep(3)
+            print("找到copy图了，准备点击copy...")
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
             center_y = (location[1] + shape[0] // 2) // 2
-
-            # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
-            xCoord = center_x
-            yCoord = center_y - 130
             
-            found_retry = True
-            print(f"找到图片位置: {location}")
+            # 鼠标点击中心坐标
+            pyautogui.click(center_x, center_y)
+            found_copy = True
         else:
-            print("未找到图片，继续监控...")
+            print("没找到图片，继续执行...")
             pyautogui.scroll(-120)
             sleep(1)
-    
-    if not found_retry:
-        print("在5秒内未找到copy_success图片，退出程序。")
-        sys.exit()
 
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
-    try:
-        # 将坐标值作为参数传递给AppleScript
-        process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
-        # 输出AppleScript的返回结果
-        print(process.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        # 如果有错误发生，打印错误信息
-        print(f"Error running AppleScript: {e}")
-
-    # 设置寻找copy_success.png图片的超时时间为5秒
-    timeout_success = time.time() + 5
-    found_success_image = False
-    while not found_success_image and time.time() < timeout_success:
-        location, shape = find_image_on_screen(template_path_success)
-        if location:
-            print("找到copy_success图片，继续执行程序...")
-            found_success_image = True
-        time.sleep(1)  # 每次检测间隔1秒
-
-    if not found_success_image:
+    if not found_copy:
         print("在5秒内未找到copy_success图片，退出程序。")
         sys.exit()
 

@@ -299,3 +299,38 @@ url_pattern = re.compile(
     r'[^ \n]*\.(com|gov|edu|cn|us)[^ \n]*(?=\s|$))'
 )
 #————————————————————————————————————————————————————————————————————————————————————————
+template_stop = '/Users/yanzhang/Documents/python_code/Resource/Mistral_stop.png'
+template_copy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
+
+found_stop = True
+while found_stop:
+    location, shape = find_image_on_screen(template_stop)
+    if location:
+        print("找到thumbup图了，准备下一步...")
+        pyautogui.scroll(-80)
+        sleep(1) # 继续监控
+    else:
+        print("没找到图片，继续执行...")
+        found_stop = False
+
+found_copy = False
+timeout_copy = time.time() + 5
+while not found_copy and time.time() < timeout_copy:
+    location, shape = find_image_on_screen(template_copy)
+    if location:
+        print("找到copy图了，准备点击copy...")
+        # 计算中心坐标
+        center_x = (location[0] + shape[1] // 2) // 2
+        center_y = (location[1] + shape[0] // 2) // 2
+        
+        # 鼠标点击中心坐标
+        pyautogui.click(center_x, center_y)
+        found_copy = True
+    else:
+        print("没找到图片，继续执行...")
+        sleep(1)
+
+if not found_copy:
+    print("在5秒内未找到copy_success图片，退出程序。")
+    sys.exit()
+#————————————————————————————————————————————————————————————————————————————————————————

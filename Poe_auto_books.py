@@ -36,6 +36,8 @@ def main():
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
     template_path_retry = '/Users/yanzhang/Documents/python_code/Resource/poe_retry.png'
+    template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
+
     found_stop = True
     while found_stop:
         location, shape = find_image_on_screen(template_path_stop)
@@ -54,8 +56,9 @@ def main():
             print("Stop图片没有了...")
             found_stop = False
 
+    sleep(3)
     found_retry = False
-    timeout_retry = time.time() + 10
+    timeout_retry = time.time() + 5
     while not found_retry and time.time() < timeout_retry:
         location, shape = find_image_on_screen(template_path_retry)
         if location:
@@ -67,18 +70,22 @@ def main():
             # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
             xCoord = center_x
             yCoord = center_y - 130
-            
+
             found_retry = True
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
             pyautogui.scroll(-120)
-            sleep(1)
+            location, shape = find_image_on_screen(template_path_failure)
+            if location:
+                print("找到poe_stillwaiting图片，执行页面刷新操作...")
+                sys.exit()
+            sleep(1)  # 简短暂停再次监控
     
-    if not found_retry:
-        print("在5秒内未找到copy_success图片，退出程序。")
+    if time.time() > timeout_retry:
+        print("在5秒内未找到retry图片，退出程序。")
         sys.exit()
-
+    
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
     try:
         # 将坐标值作为参数传递给AppleScript
@@ -88,6 +95,10 @@ def main():
     except subprocess.CalledProcessError as e:
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
+
+    if not found_retry:
+        print("在5秒内未找到copy_success图片，退出程序。")
+        sys.exit()
 
     # 设置寻找copy_success.png图片的超时时间为5秒
     timeout_success = time.time() + 5

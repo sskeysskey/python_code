@@ -64,7 +64,7 @@ url_pattern = re.compile(
     r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
     r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
-    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css)[^ \n]*(?=\s|$))'
+    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$))'
 )
 
 # 初始化Tkinter，不显示主窗口

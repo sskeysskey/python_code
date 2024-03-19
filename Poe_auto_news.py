@@ -128,6 +128,7 @@ def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
+    
     found_stop = True
     while found_stop:
         location, shape = find_image_on_screen(template_path_stop)

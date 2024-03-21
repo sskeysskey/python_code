@@ -44,7 +44,7 @@ else:
 
     # 计算当前日期35天前的日期
     current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=40)
+    seven_days_ago = current_date - timedelta(days=50)
     
     # 读取旧文件中的所有内容，并删除35天前的内容
     old_content = []

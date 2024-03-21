@@ -1,6 +1,8 @@
 import re
+import os
 import cv2
 import time
+import datetime
 import pyperclip
 import pyautogui
 import subprocess
@@ -59,7 +61,7 @@ def main():
 
     sleep(3)
     found_retry = False
-    timeout_retry = time.time() + 20
+    timeout_retry = time.time() + 10
     while not found_retry and time.time() < timeout_retry:
         location, shape = find_image_on_screen(template_path_retry)
         if location:
@@ -90,7 +92,7 @@ def main():
             sleep(1)  # 简短暂停再次监控
     
     if time.time() > timeout_retry:
-        print("在20秒内未找到retry图片，退出程序。")
+        print("在5秒内未找到retry图片，退出程序。")
         sys.exit()
     
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
@@ -104,7 +106,7 @@ def main():
         print(f"Error running AppleScript: {e}")
 
     if not found_retry:
-        print("在20秒内未找到copy_retry图片，退出程序。")
+        print("在5秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
     # 设置寻找copy_success.png图片的超时时间为5秒
@@ -121,40 +123,36 @@ def main():
         print("在5秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
-    # 设置TXT文件的保存路径
-    txt_file_path = '/Users/yanzhang/Documents/book.txt'
+    # 获取当前日期并格式化为指定的文件名形式
+    current_date = datetime.datetime.now().strftime('%m月%d日.srt')
+
+    # 拼接文件完整路径
+    file_path = os.path.join('/Users/yanzhang/Movies', current_date)
 
     # 读取剪贴板内容
     clipboard_content = pyperclip.paste()
 
-    # 检查clipboard_content是否为None或者是否是一个字符串
-    if clipboard_content:
-        # 使用splitlines()分割剪贴板内容为多行
-        lines = clipboard_content.splitlines()
-        # 移除空行
-        non_empty_lines = [line for line in lines if line.strip()]
+    # 使用正则表达式找到第一个以数字开头并且紧跟一个换行符的行
+    match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
+
+    if match:
+        start_index = match.start()  # 获取匹配行的起始索引
+        number_at_start = int(match.group(1))  # 获取行首的数字
+        remaining_content = clipboard_content[start_index:]  # 截取剩余内容
+
+        # 根据行首数字决定是创建新文件还是追加现有文件
+        if number_at_start == 1 or not os.path.exists(file_path):
+            mode = 'w'  # 创建新文件
+        else:
+            mode = 'a'  # 追加到现有文件
+
+        # 写入文件
+        with open(file_path, mode, encoding='utf-8') as file:
+            file.write(remaining_content)
+            file.write('\n\n')  # 添加两个换行符以创建一个空行
+        print('内容处理完成，已经写入到', file_path)
     else:
-        print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
-        non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
-
-    # 将非空行合并为一个字符串，用换行符分隔
-    modified_content = '\n'.join(non_empty_lines)
-
-    # 读取/tmp/segment.txt文件内容
-    segment_file_path = '/tmp/segment.txt'
-    with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-        segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
-
-    # 在segment_content后面添加一个换行符
-    segment_content += '\n'
-    
-    # 将读取到的segment_content内容插入在剪贴板内容的最前面
-    final_content = segment_content + modified_content
-
-    # 追加处理后的内容到TXT文件
-    with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
-        txt_file.write(final_content)
-        txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
+        print('剪贴板内容中没有找到符合条件的行。')
 
 if __name__ == '__main__':
     main()

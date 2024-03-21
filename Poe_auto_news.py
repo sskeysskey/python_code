@@ -128,6 +128,7 @@ def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
+    template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
     
     found_stop = True
     while found_stop:
@@ -140,6 +141,12 @@ def main():
                 print("找到poe_stillwaiting图片，执行页面刷新操作...")
                 pyautogui.click(x=635, y=525)
                 sleep(1)
+                pyautogui.hotkey('command', 'r')
+            location, shape = find_image_on_screen(template_path_no)
+            if location:
+                print("找到poe_no图片，执行页面刷新操作...")
+                pyautogui.click(x=617, y=574)
+                sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             sleep(3)  # 简短暂停再次监控
         else:

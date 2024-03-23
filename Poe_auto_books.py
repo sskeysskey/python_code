@@ -35,7 +35,7 @@ def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
-    template_path_retry = '/Users/yanzhang/Documents/python_code/Resource/poe_retry.png'
+    template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
     template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
     template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
 
@@ -52,16 +52,17 @@ def main():
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
-            sleep(3)  # 简短暂停再次监控
+            sleep(1)  # 简短暂停再次监控
         else:
             print("Stop图片没有了...")
             found_stop = False
 
-    sleep(3)
-    found_retry = False
-    timeout_retry = time.time() + 20
-    while not found_retry and time.time() < timeout_retry:
-        location, shape = find_image_on_screen(template_path_retry)
+    sleep(4)
+    pyautogui.scroll(-80)
+    found_thumb = False
+    timeout_thumb = time.time() + 20
+    while not found_thumb and time.time() < timeout_thumb:
+        location, shape = find_image_on_screen(template_path_thumb)
         if location:
             sleep(3)
             # 计算中心坐标
@@ -72,14 +73,14 @@ def main():
             xCoord = center_x
             yCoord = center_y - 130
 
-            found_retry = True
+            found_thumb = True
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
             pyautogui.scroll(-120)
             location, shape = find_image_on_screen(template_path_failure)
             if location:
-                print("找到poe_stillwaiting图片，执行页面刷新操作...")
+                print("找到poe_failure图片，执行页面刷新操作...")
                 sys.exit()
             location, shape = find_image_on_screen(template_path_no)
             if location:
@@ -87,10 +88,9 @@ def main():
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
-            sleep(1)  # 简短暂停再次监控
     
-    if time.time() > timeout_retry:
-        print("在20秒内未找到retry图片，退出程序。")
+    if time.time() > timeout_thumb:
+        print("在20秒内未找到thumb图片，退出程序。")
         sys.exit()
     
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
@@ -103,22 +103,18 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
 
-    if not found_retry:
-        print("在20秒内未找到copy_retry图片，退出程序。")
-        sys.exit()
-
-    # 设置寻找copy_success.png图片的超时时间为5秒
-    timeout_success = time.time() + 5
+    # 设置寻找copy_success.png图片的超时时间为15秒
+    timeout_success = time.time() + 15
     found_success_image = False
     while not found_success_image and time.time() < timeout_success:
         location, shape = find_image_on_screen(template_path_success)
         if location:
             print("找到copy_success图片，继续执行程序...")
             found_success_image = True
-        time.sleep(1)  # 每次检测间隔1秒
+        sleep(1)  # 每次检测间隔1秒
 
     if not found_success_image:
-        print("在5秒内未找到copy_success图片，退出程序。")
+        print("在15秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
     # 设置TXT文件的保存路径

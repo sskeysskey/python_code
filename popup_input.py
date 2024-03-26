@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QLabel
+import sys
+import argparse
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QClipboard, QFont
-import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QLineEdit, QVBoxLayout, QLabel
 
 def on_enter_key():
     text = line_edit.text()
@@ -25,6 +26,11 @@ class MyWindow(QWidget):
             on_enter_key()
         elif event.key() == Qt.Key_Escape:
             on_esc_key()
+
+# 解析命令行参数
+parser = argparse.ArgumentParser()
+parser.add_argument("--select_all", help="选择是否全选文本", action="store_true")
+args = parser.parse_args()
 
 app = QApplication(sys.argv)
 
@@ -58,8 +64,9 @@ window.move(500, 250)
 # 粘贴剪贴板内容
 line_edit.paste()
 
-# 全选文本
-line_edit.selectAll()
+# 根据参数决定是否全选文本
+if args.select_all:
+    line_edit.selectAll()
 
 window.setLayout(layout)
 

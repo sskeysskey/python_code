@@ -24,7 +24,8 @@ target_files = [
     "nikkei.html",
     "nytimes.html",
     "bloomberg.html",
-    "hbr.html"
+    "hbr.html",
+    "technologyreview.html"
 ]
 
 # 定义CSS样式
@@ -61,9 +62,9 @@ css_styles = """
 </style>
 """
 
-# 定义两天前的日期
-previous_day = datetime.now() - timedelta(days=3)
-print(f"Previous day is set to: {previous_day}")
+# # 定义两天前的日期
+# previous_day = datetime.now() - timedelta(days=3)
+# print(f"Previous day is set to: {previous_day}")
 
 # 处理特定的文件
 for file_name in target_files:
@@ -71,6 +72,13 @@ for file_name in target_files:
     source_file_path = os.path.join(source_dir_path, file_name)
     backup_file_path = os.path.join(backup_dir_path, file_name.replace('.html', '_backup.html'))
 
+    # 根据文件名设置日期阈值
+    if file_name == 'technologyreview.html':
+        previous_day = datetime.now() - timedelta(days=30)
+    else:
+        previous_day = datetime.now() - timedelta(days=3)
+    print(f"处理文件: {file_name}, 使用日期阈值: {previous_day}")
+    
     # 读取源文件内容
     with open(source_file_path, 'r', encoding='utf-8') as file:
         content = file.read()

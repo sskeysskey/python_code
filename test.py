@@ -1,51 +1,80 @@
-import re
+# Screenshot.py
+import cv2
 import sys
-import tkinter as tk
-from tkinter import filedialog
+import time
+import pyautogui
+import numpy as np
+from time import sleep
+from PIL import ImageGrab
 
-# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
-url_pattern = re.compile(
-    r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
-    r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
-    r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
-    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk)[^ \n]*(?=\s|$))'
-)
+class ScreenDetector:
+    def __init__(self, template_name, click=False, choise=False):
+        self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
+        self.click = click
+        self.choise = choise
 
-# 初始化Tkinter，不显示主窗口
-root = tk.Tk()
-root.withdraw()
+    def capture_screen(self):
+        # 使用PIL的ImageGrab直接截取屏幕
+        screenshot = ImageGrab.grab()
+        # 将截图对象转换为OpenCV格式
+        screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+        return screenshot
 
-# 弹出文件选择对话框，选择源文件
-source_file_path = filedialog.askopenfilename(
-    title='选择要处理的文件',
-    filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
-)
+    def find_image_on_screen(self, threshold=0.9):
+        template = cv2.imread(self.template_path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {self.template_path}")
+        screen = self.capture_screen()
+        result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        # 释放截图和模板图像以节省内存
+        del screen
+        if max_val >= threshold:
+            return max_loc, template.shape
+        else:
+            return None, None
 
-# 用户没有选择文件则退出
-if not source_file_path:
-    print('没有选择文件。')
-    sys.exit()
+    def run1(self):
+        found = False
+        timeout = time.time() + 5
+        while not found and time.time() < timeout:
+            location, shape = self.find_image_on_screen()
+            if location:
+                if self.click:
+                    # 计算中心坐标
+                    center_x = (location[0] + shape[1] // 2) // 2
+                    center_y = (location[1] + shape[0] // 2) // 2
+                    
+                    # 鼠标点击中心坐标
+                    pyautogui.click(center_x, center_y)
+                found = True
+                print(f"找到图片位置: {location}")
+            else:
+                print("未找到图片，继续监控...")
+                sleep(1)
+    
+    def run2(self):
+        found = True
+        while found:
+            location, shape = self.find_image_on_screen()
+            if location:
+                pyautogui.scroll(-120)
+                print(f"找到图片位置: {location}")
+                sleep(1)
+            else:
+                print("未找到图片，继续监控...")
+                found = False
 
-# 读取文件内容
-with open(source_file_path, 'r', encoding='utf-8') as file:
-    content = file.read()
-
-# 替换掉所有的URL链接
-clean_content = re.sub(url_pattern, '', content)
-
-# 弹出文件保存对话框，选择目标文件
-target_file_path = filedialog.asksaveasfilename(
-    title='保存处理后的文件',
-    filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
-)
-
-# 用户没有选择文件则退出
-if not target_file_path:
-    print('没有选择保存的文件。')
-    sys.exit()
-
-# 将处理后的内容写入到用户选定的目标文件
-with open(target_file_path, 'w', encoding='utf-8') as file:
-    file.write(clean_content)
-
-print('所有带有http://或https://前缀以及以www.开头的网址链接已从文件中删除。')
+if __name__ == '__main__':
+    if len(sys.argv) < 4:
+        print("Usage: python a.py <image_name> <click> <choise>")
+        sys.exit(1)
+    image_name = sys.argv[1]
+    click = sys.argv[2].lower() == 'true'
+    choise = sys.argv[3].lower() == 'true'
+    detector = ScreenDetector(image_name, click, choise)
+    if choise:
+        detector.run2()
+    else:
+        detector.run1()
+    

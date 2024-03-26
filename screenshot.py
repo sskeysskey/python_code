@@ -8,8 +8,10 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_name):
+    def __init__(self, template_name, click=False, choise=False):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
+        self.click = click
+        self.choise = choise
 
     def capture_screen(self):
         # 使用PIL的ImageGrab直接截取屏幕
@@ -32,22 +34,47 @@ class ScreenDetector:
         else:
             return None, None
 
-    def run(self):
+    def run1(self):
         found = False
         timeout = time.time() + 5
         while not found and time.time() < timeout:
             location, shape = self.find_image_on_screen()
             if location:
+                if self.click:
+                    # 计算中心坐标
+                    center_x = (location[0] + shape[1] // 2) // 2
+                    center_y = (location[1] + shape[0] // 2) // 2
+                    
+                    # 鼠标点击中心坐标
+                    pyautogui.click(center_x, center_y)
                 found = True
                 print(f"找到图片位置: {location}")
             else:
                 print("未找到图片，继续监控...")
                 sleep(1)
+    
+    def run2(self):
+        found = True
+        while found:
+            location, shape = self.find_image_on_screen()
+            if location:
+                pyautogui.scroll(-120)
+                print(f"找到图片位置: {location}")
+                sleep(1)
+            else:
+                print("未找到图片，继续监控...")
+                found = False
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python a.py <image_name>")
+    if len(sys.argv) < 4:
+        print("Usage: python a.py <image_name> <click> <choise>")
         sys.exit(1)
     image_name = sys.argv[1]
-    detector = ScreenDetector(image_name)
-    detector.run()
+    click = sys.argv[2].lower() == 'true'
+    choise = sys.argv[3].lower() == 'true'
+    detector = ScreenDetector(image_name, click, choise)
+    if choise:
+        detector.run2()
+    else:
+        detector.run1()
+    

@@ -112,12 +112,16 @@ def save_segments(n, save_path="/Users/yanzhang/Downloads/Travel_temp"):
                 file.write(segment)
             print(f"第{i + 1}部分已保存到: {file_path}")
 
+# 增加一个检查文件名是否包含特定字符串的函数
+def contains_segment(filename, segment):
+    return segment in filename
+
 # 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
 url_pattern = re.compile(
     r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
     r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
-    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$))'
+    r'[^ \n]*\.(com|gov|org|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$))'
 )
 
 # 初始化Tkinter，不显示主窗口
@@ -134,6 +138,31 @@ source_file_path = filedialog.askopenfilename(
 if not source_file_path:
     print('没有选择文件。')
     sys.exit()
+
+# 获取文件名和扩展名
+source_file_name = os.path.basename(source_file_path)
+
+if 'segment' not in source_file_name:
+    # 指定新建文件的路径
+    new_file_directory = "/Users/yanzhang/Documents/"
+    new_file_path = os.path.join(new_file_directory, source_file_name)
+
+    # 创建同名的空txt文件
+    try:
+        # 确保目录存在，如果不存在则创建
+        os.makedirs(new_file_directory, exist_ok=True)
+        # 使用 'x' 模式创建文件，若文件已存在则会抛出异常
+        with open(new_file_path, 'x', encoding='utf-8') as new_file:
+            pass  # 不需要写入任何内容，我们只创建空文件
+        print(f"在 {new_file_directory} 下创建了同名空txt文件：{source_file_name}")
+    except FileExistsError:
+        print(f"文件已存在：{new_file_path}")
+    except Exception as e:
+        print(f"创建文件时发生错误：{e}")
+
+else:
+    # 文件名中包含"segment"，不创建文件，直接继续执行后续代码
+    print('文件名中包含"segment"，不创建空文件。')
 
 # 读取文件内容
 with open(source_file_path, 'r', encoding='utf-8') as file:
@@ -185,9 +214,16 @@ root.mainloop()
 # 调用函数，移动文件
 backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"
 
-# 在程序的最后部分，仅在 file_moved 为 True 时移动文件
+# 在程序的最后部分，根据文件名是否包含'segment'来决定移动还是删除
 if file_moved:  # 检查标志位是否为True
-    move_file_to_backup(source_file_path, backup_folder)
+    # 假设你的source_file_path变量已经定义并且包含了要操作的文件的路径
+    if contains_segment(os.path.basename(source_file_path), 'segment'):
+        # 如果文件名包含'segment'，则删除文件
+        os.remove(source_file_path)
+        print(f"文件包含'segment'，已被删除：{source_file_path}")
+    else:
+        # 如果文件名不包含'segment'，则移动文件
+        move_file_to_backup(source_file_path, backup_folder)
 
 # 在Tkinter事件循环结束后添加退出程序的调用
 sys.exit()

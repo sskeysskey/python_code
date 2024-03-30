@@ -1,4 +1,5 @@
 import re
+import os
 import cv2
 import time
 import pyperclip
@@ -39,6 +40,21 @@ def main():
     template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
     template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
 
+    found = False
+    timeout_stop = time.time() + 15
+    while not found and time.time() < timeout_stop:
+        location, shape = find_image_on_screen(template_path_stop)
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            sleep(1)
+
+    if time.time() > timeout_stop:
+        print("在15秒内未找到thumb图片，退出程序。")
+        sys.exit()
+    
     found_stop = True
     while found_stop:
         location, shape = find_image_on_screen(template_path_stop)
@@ -117,8 +133,14 @@ def main():
         print("在15秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
-    # 设置TXT文件的保存路径
-    txt_file_path = '/Users/yanzhang/Documents/book.txt'
+    # 设置目录路径
+    directory_path = '/Users/yanzhang/Documents/'
+
+    # 寻找目录下的第一个txt文件
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.txt'):
+            txt_file_path = os.path.join(directory_path, filename)
+            break  # 找到第一个txt文件后停止循环
 
     # 读取剪贴板内容
     clipboard_content = pyperclip.paste()

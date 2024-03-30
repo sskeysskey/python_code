@@ -129,6 +129,21 @@ def main():
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
     template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
+
+    found = False
+    timeout_stop = time.time() + 15
+    while not found and time.time() < timeout_stop:
+        location, shape = find_image_on_screen(template_path_stop)
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            sleep(1)
+
+    if time.time() > timeout_stop:
+        print("在15秒内未找到thumb图片，退出程序。")
+        sys.exit()
     
     found_stop = True
     while found_stop:

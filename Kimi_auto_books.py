@@ -1,4 +1,5 @@
 import re
+import os
 import cv2
 import time
 import pyperclip
@@ -32,8 +33,28 @@ def find_image_on_screen(template_path, threshold=0.9):
 
 # 主函数
 def main():
-    template_stop = '/Users/yanzhang/Documents/python_code/Resource/Mistral_stop.png'
-    template_copy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
+    template_stop = '/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png'
+    template_copy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
+    template_outofline = '/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png'
+
+    found = False
+    timeout_stop = time.time() + 5
+    while not found and time.time() < timeout_stop:
+        location, shape = find_image_on_screen(template_stop)
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            location, shape = find_image_on_screen(template_outofline)
+            if location:
+                timeout_stop = time.time() - 5
+                break
+            sleep(1)
+
+    if time.time() > timeout_stop:
+        print("在15秒内未找到thumb图片，退出程序。")
+        sys.exit()
 
     found_stop = True
     while found_stop:
@@ -46,8 +67,10 @@ def main():
             print("没找到图片，继续执行...")
             found_stop = False
 
+    pyautogui.scroll(-80)
+    sleep(0.5)
     found_copy = False
-    timeout_copy = time.time() + 5
+    timeout_copy = time.time() + 10
     while not found_copy and time.time() < timeout_copy:
         location, shape = find_image_on_screen(template_copy)
         if location:
@@ -56,20 +79,29 @@ def main():
             center_x = (location[0] + shape[1] // 2) // 2
             center_y = (location[1] + shape[0] // 2) // 2
             
+            modify_x = center_x
+            modify_y = center_y - 2
+
             # 鼠标点击中心坐标
-            pyautogui.click(center_x, center_y)
+            pyautogui.click(modify_x, modify_y)
             found_copy = True
         else:
             print("没找到图片，继续执行...")
-            pyautogui.scroll(-120)
+            pyautogui.scroll(-80)
             sleep(1)
 
     if not found_copy:
         print("在5秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
-    # 设置TXT文件的保存路径
-    txt_file_path = '/Users/yanzhang/Documents/book.txt'
+    # 设置目录路径
+    directory_path = '/Users/yanzhang/Documents/'
+
+    # 寻找目录下的第一个txt文件
+    for filename in os.listdir(directory_path):
+        if filename.endswith('.txt'):
+            txt_file_path = os.path.join(directory_path, filename)
+            break  # 找到第一个txt文件后停止循环
 
     # 读取剪贴板内容
     clipboard_content = pyperclip.paste()
@@ -79,7 +111,7 @@ def main():
         # 使用splitlines()分割剪贴板内容为多行
         lines = clipboard_content.splitlines()
         # 移除空行
-        non_empty_lines = [line for line in lines if line.strip()]
+        non_empty_lines = [line.replace('#', '').replace('*', '').strip() for line in lines if line.strip()]
     else:
         print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
         non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空

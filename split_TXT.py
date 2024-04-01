@@ -101,7 +101,7 @@ def split_text(text, n):
 
     return segments
 
-def save_segments(n, save_path="/Users/yanzhang/Downloads/Travel_temp"):
+def save_segments(n, save_path="/Users/yanzhang/Movies/Windows 11/"):
     text = pyperclip.paste()
     segments = split_text(text, n)
 

@@ -1,10 +1,8 @@
-import re
 import os
 import cv2
 import time
 import pyperclip
 import pyautogui
-import subprocess
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
@@ -36,9 +34,10 @@ def main():
     template_stop = '/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png'
     template_copy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
     template_outofline = '/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png'
+    template_retry = '/Users/yanzhang/Documents/python_code/Resource/Kimi_retry.png'
 
     found = False
-    timeout_stop = time.time() + 5
+    timeout_stop = time.time() + 20
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(template_stop)
         if location:
@@ -48,12 +47,19 @@ def main():
             print("未找到图片，继续监控...")
             location, shape = find_image_on_screen(template_outofline)
             if location:
-                timeout_stop = time.time() - 5
-                break
+                pyperclip.copy("transit")
+                timeout_stop = time.time() - 20
+                exit()
+            else:
+                location, shape = find_image_on_screen(template_retry)
+                if location:
+                    pyperclip.copy("transit")
+                    timeout_stop = time.time() - 20
+                    exit()
             sleep(1)
 
     if time.time() > timeout_stop:
-        print("在15秒内未找到thumb图片，退出程序。")
+        print("在15秒内未找到图片，退出程序。")
         sys.exit()
 
     found_stop = True
@@ -88,6 +94,17 @@ def main():
         else:
             print("没找到图片，继续执行...")
             pyautogui.scroll(-80)
+            location, shape = find_image_on_screen(template_outofline)
+            if location:
+                pyperclip.copy("transit")
+                print(f"找到图片位置: {location}")
+                exit()
+            else:
+                location, shape = find_image_on_screen(template_retry)
+                if location:
+                    pyperclip.copy("transit")
+                    timeout_stop = time.time() - 20
+                    exit()
             sleep(1)
 
     if not found_copy:

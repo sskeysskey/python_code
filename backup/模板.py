@@ -334,3 +334,28 @@ if not found_copy:
     print("在5秒内未找到copy_success图片，退出程序。")
     sys.exit()
 #————————————————————————————————————————————————————————————————————————————————————————
+import pytesseract
+from PIL import ImageGrab
+import cv2
+import numpy as np
+
+def find_text_on_screen(text_to_find):
+    # 捕获全屏
+    screenshot = ImageGrab.grab()
+    screenshot_np = np.array(screenshot)
+    # 对图像进行灰度化，这通常有助于OCR识别
+    gray_screenshot = cv2.cvtColor(screenshot_np, cv2.COLOR_BGR2GRAY)
+
+    # 使用Tesseract进行OCR文本识别
+    detected_text = pytesseract.image_to_string(gray_screenshot, lang='chi_sim+eng')
+    
+    # 检查所需文本是否在OCR结果中
+    if text_to_find in detected_text:
+        print(f"Found text: '{text_to_find}' on the screen.")
+        # 这里可以进一步实现定位文本的位置
+        # ...
+    else:
+        print(f"Text: '{text_to_find}' not found on the screen.")
+
+find_text_on_screen("要查找的文本")
+#————————————————————————————————————————————————————————————————————————————————————————

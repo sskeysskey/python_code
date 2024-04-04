@@ -69,30 +69,35 @@ def get_clipboard_size():
     else:
         return f"{size_bytes / (1024 * 1024):.2f} MB"
 
-def find_nearest_sentence_end(text, start, end):
-    # 在指定范围内查找最近的句号位置
-    dot_positions = [text.rfind('.\n', start, end), text.rfind('。\n', start, end)]
+def find_nearest_sentence_end(text, start, ideal_end):
+    # 在理想结束位置的前后查找最近的句号位置
+    dot_positions = [
+        text.rfind('.\n', start, ideal_end),
+        text.rfind('。\n', start, ideal_end),
+        text.find('.\n', ideal_end),
+        text.find('。\n', ideal_end)
+    ]
     # 过滤掉找不到的情况
     valid_positions = [pos for pos in dot_positions if pos != -1]
 
     if valid_positions:
         # 返回最近的一个句号位置
-        return max(valid_positions)
+        return min(valid_positions, key=lambda pos: abs(pos - ideal_end))
     else:
-        # 如果没有句号，返回原分割点
-        return end
+        # 如果没有句号，返回原理想结束点
+        return ideal_end
 
 def split_text(text, n):
     segments = []
-    segment_length = len(text) // n
+    ideal_segment_length = len(text) // n
     start = 0
 
     for _ in range(n - 1):
-        end = start + segment_length
-        if end >= len(text):
-            end = len(text) - 1
+        ideal_end = start + ideal_segment_length
+        if ideal_end >= len(text):
+            ideal_end = len(text) - 1
 
-        nearest_end = find_nearest_sentence_end(text, start, end)
+        nearest_end = find_nearest_sentence_end(text, start, ideal_end)
         segments.append(text[start:nearest_end + 1])
         start = nearest_end + 1
 
@@ -118,10 +123,11 @@ def contains_segment(filename, segment):
 
 # 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
 url_pattern = re.compile(
-    r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
+    r'(?:\s|^)([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
     r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
-    r'[^ \n]*\.(com|gov|org|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$))'
+    r'[^ \n]*\.(com|gov|org|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$)|'
+    r'[^ \n]+\.[^ \n]+\.[^ \n]+)(?=\s|$)'
 )
 
 # 初始化Tkinter，不显示主窗口

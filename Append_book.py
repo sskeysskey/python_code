@@ -31,57 +31,13 @@ def find_image_on_screen(template_path, threshold=0.9):
 
 # 主函数
 def main():
-    template_stop = '/Users/yanzhang/Documents/python_code/Resource/Mistral_stop.png'
-    template_copy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
-
-    found = False
-    timeout_stop = time.time() + 15
-    while not found and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(template_stop)
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            sleep(1)
-
-    if time.time() > timeout_stop:
-        print("在15秒内未找到thumb图片，退出程序。")
-        exit()
-
-    found_stop = True
-    timeout_stop1 = time.time() + 120
-    while found_stop and time.time() < timeout_stop1:
-        location, shape = find_image_on_screen(template_stop)
-        if location:
-            print("找到stop图了，准备下一步...")
-            pyautogui.scroll(-80)
-            sleep(1) # 继续监控
-        else:
-            print("没找到图片，继续执行...")
-            found_stop = False
-    
-    if time.time() > timeout_stop1:
-        print("在15秒内未找到thumb图片，退出程序。")
-        pyautogui.click(x=754, y=800)
-        sleep(0.5)
-        pyautogui.hotkey('command', 'r')
-    
-    found_stop = True
-    while found_stop:
-        location, shape = find_image_on_screen(template_stop)
-        if location:
-            print("找到stop图了，准备下一步...")
-            pyautogui.scroll(-80)
-            sleep(1) # 继续监控
-        else:
-            print("没找到图片，继续执行...")
-            found_stop = False
+    template_Kcopy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
+    template_Mcopy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
 
     found_copy = False
-    timeout_copy = time.time() + 5
+    timeout_copy = time.time() + 10
     while not found_copy and time.time() < timeout_copy:
-        location, shape = find_image_on_screen(template_copy)
+        location, shape = find_image_on_screen(template_Mcopy)
         if location:
             print("找到copy图了，准备点击copy...")
             # 计算中心坐标
@@ -93,7 +49,19 @@ def main():
             found_copy = True
         else:
             print("没找到图片，继续执行...")
-            pyautogui.scroll(-120)
+            location, shape = find_image_on_screen(template_Kcopy)
+            if location:
+                print("找到copy图了，准备点击copy...")
+                # 计算中心坐标
+                center_x = (location[0] + shape[1] // 2) // 2
+                center_y = (location[1] + shape[0] // 2) // 2
+                
+                modify_x = center_x
+                modify_y = center_y - 2
+
+                # 鼠标点击中心坐标
+                pyautogui.click(modify_x, modify_y)
+                found_copy = True
             sleep(1)
 
     if not found_copy:
@@ -117,7 +85,7 @@ def main():
         # 使用splitlines()分割剪贴板内容为多行
         lines = clipboard_content.splitlines()
         # 移除空行
-        non_empty_lines = [line for line in lines if line.strip()]
+        non_empty_lines = [line.replace('#', '').replace('*', '').strip() for line in lines if line.strip()]
     else:
         print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
         non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
@@ -140,9 +108,6 @@ def main():
     with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
         txt_file.write(final_content)
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
-
-    # 未成功运行后的过渡传递参数
-    pyperclip.copy("transit")
 
 if __name__ == '__main__':
     main()

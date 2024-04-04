@@ -3,11 +3,12 @@ import sys
 import tkinter as tk
 from tkinter import filedialog
 
-# 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
 url_pattern = re.compile(
-    r'([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
+    r'(?:\s|^)([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
     r'[^ \n]*www\.[^ \n]*(?=\s|$)|'
-    r'[^ \n]*\.(com|gov|edu|cn|us|html|htm|shtm|uk|xml|js|css)[^ \n]*(?=\s|$))'
+    r'[^ \n]*E-mail[^ \n]*(?=\s|$)|'
+    r'[^ \n]*\.(com|gov|org|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$)|'
+    r'[^ \n]+\.[^ \n]+\.[^ \n]+)(?=\s|$)'
 )
 
 # 初始化Tkinter，不显示主窗口

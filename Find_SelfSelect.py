@@ -113,15 +113,19 @@ def show_results(results):
     result_window.title("搜索结果")
 
     # 将窗口居中放置
-    window_center(result_window, 800, 600)  # 假设您想让窗口大小为 800x600
+    window_center(result_window, 1000, 600)  # 假设您想让窗口大小为 800x600
     
     # 创建滚动条
     scrollbar = Scrollbar(result_window)
     scrollbar.pack(side="right", fill="y")
     
     # 创建文本框用于显示结果，设置宽度加倍
-    text = Text(result_window, width=100, height=25, yscrollcommand=scrollbar.set)
+    text = Text(result_window, width=150, height=25, yscrollcommand=scrollbar.set)
     text.pack(side="left", fill="both")
+
+    # 定义文本样式标签
+    text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))  # 用于目录的标签
+    text.tag_configure('file_tag', foreground='orange', font=('Helvetica', '20'))  # 用于文件的标签
     
     # 将滚动条关联到文本框
     scrollbar.config(command=text.yview)
@@ -134,7 +138,7 @@ def show_results(results):
     
     # 插入文本到文本框
     if results:
-        text.insert("end", "找到以下文件包含关键词:\n" + "\n".join(results))
+        text.insert("end", "\n".join(results), 'file_tag')
     else:
         text.insert("end", "没有找到包含关键词的文件。")
     

@@ -34,19 +34,36 @@ def main():
     template_stop = '/Users/yanzhang/Documents/python_code/Resource/Mistral_stop.png'
     template_copy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
 
-    found = False
-    timeout_stop = time.time() + 15
-    while not found and time.time() < timeout_stop:
+    found1 = False
+    timeout_stop1 = time.time() + 25
+    while not found1 and time.time() < timeout_stop1:
         location, shape = find_image_on_screen(template_stop)
         if location:
-            found = True
+            found1 = True
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
             sleep(1)
 
-    if time.time() > timeout_stop:
-        print("在15秒内未找到thumb图片，退出程序。")
+    if time.time() > timeout_stop1:
+        print("在25秒内仍未找到图片，刷新下页面。")
+        pyautogui.click(x=754, y=800)
+        sleep(0.5)
+        pyautogui.hotkey('command', 'r')
+
+    found2 = False
+    timeout_stop2 = time.time() + 5
+    while not found2 and time.time() < timeout_stop2:
+        location, shape = find_image_on_screen(template_stop)
+        if location:
+            found2 = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            sleep(1)
+
+    if time.time() > timeout_stop2:
+        print("在5秒内仍未找到图片，结束进程。")
         exit()
 
     found_stop = True
@@ -62,7 +79,7 @@ def main():
             found_stop = False
     
     if time.time() > timeout_stop1:
-        print("在15秒内未找到thumb图片，退出程序。")
+        print("在120秒内图片还未消失，刷新下页面")
         pyautogui.click(x=754, y=800)
         sleep(0.5)
         pyautogui.hotkey('command', 'r')

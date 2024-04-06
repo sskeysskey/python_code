@@ -1,3 +1,4 @@
+import re
 import os
 import cv2
 import time
@@ -86,7 +87,7 @@ def main():
 
             # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
             xCoord = center_x
-            yCoord = center_y - 130
+            yCoord = center_y - 100
 
             found_thumb = True
             print(f"找到图片位置: {location}")
@@ -105,7 +106,7 @@ def main():
                 pyautogui.hotkey('command', 'r')
     
     if time.time() > timeout_thumb:
-        print("在20秒内未找到thumb图片，退出程序。")
+        print("在20秒内未找到图片，退出程序。")
         sys.exit()
     
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
@@ -146,6 +147,16 @@ def main():
 
     # 检查clipboard_content是否为None或者是否是一个字符串
     if clipboard_content:
+        # 计算剪贴板内容中的中文字符数目
+        chinese_characters_count = len(re.findall(r'[\u4e00-\u9fff]+', clipboard_content))
+
+        # 检查是否同时包含"色情"和"露骨"关键字
+        if "露骨" in clipboard_content and chinese_characters_count < 250:
+            print("剪贴板内容不符合要求，程序终止执行。")
+            # 内容非法后的过渡传递参数
+            pyperclip.copy("illegal")
+            exit()
+
         # 使用splitlines()分割剪贴板内容为多行
         lines = clipboard_content.splitlines()
         # 移除空行

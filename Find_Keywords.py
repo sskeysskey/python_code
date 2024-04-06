@@ -7,13 +7,14 @@ from tkinter import Tk, filedialog, Text, Scrollbar, Button, Entry, Label, messa
 root = Tk()
 root.withdraw()
 
-# 固定的搜索目录列表
-searchFolders = [
-    "/Users/yanzhang/Documents/ScriptEditor/",
-    "/Users/yanzhang/Library/Services/",
-    "/Users/yanzhang/Movies/Windows 11/",
-    "/Users/yanzhang/Documents/python_code"
-]
+# 弹出选择文件夹对话框
+searchFolder = filedialog.askdirectory(
+    title="选择要检索的文件夹",
+    mustexist=True
+)
+if not searchFolder:
+    root.destroy()
+    sys.exit(0)
 
 def window_center(win, width, height):
     # 获取屏幕宽度和高度
@@ -61,49 +62,47 @@ def custom_input_window(prompt, callback):
     input_window.bind('<Escape>', on_esc)  # 绑定ESC键
 
 # 搜索包含特定关键词的文件
-def search_files(directories, keyword):
-    matched_files = {}  # 修改此处为字典
+def search_files(directory, keyword):
+    matched_files = []
     # 将关键字转换为小写，以实现大小写不敏感的搜索
     keyword_lower = keyword.lower()
 
-    for directory in directories:
-        matched_files[directory] = []
-        # 使用os.walk()遍历目录树
-        for root, dirs, files in os.walk(directory):
-            # 检查目录名是否以.workflow结尾
-            for dir_name in dirs:
-                if dir_name.endswith('.workflow'):
-                    workflow_path = os.path.join(root, dir_name)
-                    # 对于.workflow目录，特别处理
-                    try:
-                        wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
-                        with open(wflow_path, 'r') as file:
-                            content = file.read().lower()  # 将内容转换为小写
-                        if keyword_lower in content:
-                            matched_files[directory].append(os.path.relpath(workflow_path, directory))
-                    except Exception as e:
-                        print(f"Error reading {wflow_path}: {e}")
+    # 使用os.walk()遍历目录树
+    for root, dirs, files in os.walk(directory):
+        # 检查目录名是否以.workflow结尾
+        for dir_name in dirs:
+            if dir_name.endswith('.workflow'):
+                workflow_path = os.path.join(root, dir_name)
+                # 对于.workflow目录，特别处理
+                try:
+                    wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
+                    with open(wflow_path, 'r') as file:
+                        content = file.read().lower()  # 将内容转换为小写
+                    if keyword_lower in content:
+                        matched_files.append(workflow_path)
+                except Exception as e:
+                    print(f"Error reading {wflow_path}: {e}")
 
-            # 遍历文件
-            for name in files:
-                item_path = os.path.join(root, name)
-                if item_path.endswith('.scpt'):
-                    # 对于.scpt文件，使用osascript命令来获取脚本内容
-                    try:
-                        content = subprocess.check_output(['osadecompile', item_path], text=True).lower()  # 将内容转换为小写
-                        if keyword_lower in content:
-                            matched_files[directory].append(os.path.relpath(item_path, directory))
-                    except Exception as e:
-                        print(f"Error decompiling {item_path}: {e}")
-                elif item_path.endswith('.txt') or item_path.endswith('.py'):
-                    # 对于.txt文件和.py文件，直接读取内容
-                    try:
-                        with open(item_path, 'r') as file:
-                            content = file.read().lower()  # 将内容转换为小写
-                        if keyword_lower in content:
-                            matched_files[directory].append(os.path.relpath(item_path, directory))
-                    except Exception as e:
-                        print(f"Error reading {item_path}: {e}")
+        # 遍历文件
+        for name in files:
+            item_path = os.path.join(root, name)
+            if item_path.endswith('.scpt'):
+                # 对于.scpt文件，使用osascript命令来获取脚本内容
+                try:
+                    content = subprocess.check_output(['osadecompile', item_path], text=True).lower()  # 将内容转换为小写
+                    if keyword_lower in content:
+                        matched_files.append(item_path)
+                except Exception as e:
+                    print(f"Error decompiling {item_path}: {e}")
+            elif item_path.endswith('.txt') or item_path.endswith('.py'):
+                # 对于.txt文件和.py文件，直接读取内容
+                try:
+                    with open(item_path, 'r') as file:
+                        content = file.read().lower()  # 将内容转换为小写
+                    if keyword_lower in content:
+                        matched_files.append(item_path)
+                except Exception as e:
+                    print(f"Error reading {item_path}: {e}")
 
     return matched_files
 
@@ -135,14 +134,16 @@ def show_results(results):
     
     # 插入文本到文本框
     if results:
-        for directory, files in results.items():
-            if files:
-                text.insert("end", directory + "\n")
-                text.insert("end", "\n".join(files) + "\n\n")
+        text.insert("end", "找到以下文件包含关键词:\n" + "\n".join(results))
     else:
         text.insert("end", "没有找到包含关键词的文件。")
+    
+# 在这里执行搜索并显示结果
+def start_search(keyword):
+    resultList = search_files(searchFolder, keyword)  # 执行搜索
+    show_results(resultList)  # 显示结果
 
 # 等待用户输入关键词
-custom_input_window("请输入要检索的字符串内容：", lambda keyword: show_results(search_files(searchFolders, keyword)))
+custom_input_window("请输入要检索的字符串内容：", start_search)
 
 root.mainloop()  # 最后，启动主事件循环

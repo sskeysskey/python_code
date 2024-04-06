@@ -47,13 +47,13 @@ def main():
             print("未找到图片，继续监控...")
             location, shape = find_image_on_screen(template_outofline)
             if location:
-                pyperclip.copy("transit")
+                pyperclip.copy("illegal")
                 timeout_stop = time.time() - 20
                 exit()
             else:
                 location, shape = find_image_on_screen(template_retry)
                 if location:
-                    pyperclip.copy("transit")
+                    pyperclip.copy("illegal")
                     timeout_stop = time.time() - 20
                     exit()
             sleep(1)
@@ -96,13 +96,13 @@ def main():
             pyautogui.scroll(-80)
             location, shape = find_image_on_screen(template_outofline)
             if location:
-                pyperclip.copy("transit")
+                pyperclip.copy("illegal")
                 print(f"找到图片位置: {location}")
                 exit()
             else:
                 location, shape = find_image_on_screen(template_retry)
                 if location:
-                    pyperclip.copy("transit")
+                    pyperclip.copy("illegal")
                     timeout_stop = time.time() - 20
                     exit()
             sleep(1)

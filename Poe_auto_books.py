@@ -49,11 +49,8 @@ def main():
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
+            pyautogui.scroll(-80)
             sleep(1)
-
-    if time.time() > timeout_stop:
-        print("在15秒内未找到thumb图片，退出程序。")
-        sys.exit()
     
     found_stop = True
     while found_stop:
@@ -97,7 +94,9 @@ def main():
             location, shape = find_image_on_screen(template_path_failure)
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
-                sys.exit()
+                pyautogui.click(x=617, y=574)
+                sleep(0.5)
+                pyautogui.hotkey('command', 'r')
             location, shape = find_image_on_screen(template_path_no)
             if location:
                 print("找到poe_no图片，执行页面刷新操作...")

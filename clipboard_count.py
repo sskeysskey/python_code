@@ -26,6 +26,9 @@ num_chinese_characters = len(re.findall(r'[\u4e00-\u9fff]', clipboard_content))
 # 计算英文单词的数量
 num_english_words = len(re.findall(r'\b[A-Za-z]+\b', clipboard_content))
 
+# 计算数字的数量
+num_digits = len(re.findall(r'\d', clipboard_content))
+
 # 计算不是英文字母（a-z，A-Z）、数字（0-9）或空格的字符数量
 num_symbols = sum(not ch.isalnum() and not ch.isspace() for ch in clipboard_content)
 
@@ -39,20 +42,28 @@ root.title("剪贴板分析")
 # 设置字体喽
 font = Font(family="Helvetica", size=24)
 
-# 创建一个标签来显示信息，并设置字体和左对齐
-#info_label = tk.Label(root, text=f"总共字符： {total_characters}\n\n中文字符： {num_chinese_characters}\n\n英文单词： {num_english_words}\n\n符号数量： {num_symbols}", font=font, anchor='w', justify='left')
-#info_label.pack(pady=30, padx=60)
+# 创建 Text 控件来显示信息，并设置字体
+text_widget = tk.Text(root, font=font, height=12, width=15)
+text_widget.pack(pady=10, padx=10)
 
-# 创建一个标签来显示信息，并设置字体和左对齐
-info_label_text = (
-    f"总共字符： {total_characters}\n\n"
-    f"中文字符： {num_chinese_characters}\n\n"
-    f"英文单词： {num_english_words}\n\n"
-    f"符号数量： {num_symbols}\n\n"  # 增加了两个换行符以便更好的布局显示
-    f"行数： {num_lines}"  # 添加显示行数的标签
-)
-info_label = tk.Label(root, text=info_label_text, font=font, anchor='w', justify='left')
-info_label.pack(pady=30, padx=60)
+# 定义不同类型文本的颜色标签
+text_widget.tag_configure('total_color', foreground='red')
+text_widget.tag_configure('chinese_color', foreground='yellow')
+text_widget.tag_configure('english_color', foreground='orange')
+text_widget.tag_configure('symbol_color', foreground='green')  # 符号的颜色标签
+text_widget.tag_configure('line_color', foreground='orange')  # 行数的颜色标签
+text_widget.tag_configure('digit_color', foreground='white')  # 数字数量的颜色标签
+
+# 插入文本并设置样式
+text_widget.insert('end', f"总共字符： {total_characters}\n\n", 'total_color')
+text_widget.insert('end', f"中文字符： {num_chinese_characters}\n\n", 'chinese_color')
+text_widget.insert('end', f"英文单词： {num_english_words}\n\n", 'english_color')
+text_widget.insert('end', f"数字数量： {num_digits}\n\n", 'digit_color')  # 应用数字数量的颜色标签
+text_widget.insert('end', f"符号数量： {num_symbols}\n\n", 'symbol_color')  # 应用符号的颜色标签
+text_widget.insert('end', f"行数： {num_lines}\n\n", 'line_color')  # 应用行数的颜色标签
+
+# 禁止 Text 控件的编辑功能
+text_widget.config(state='disabled')
 
 # 绑定 Esc 键到 on_escape 函数
 root.bind('<Escape>', on_escape)

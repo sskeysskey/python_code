@@ -3,6 +3,7 @@ import cv2
 import time
 import pyperclip
 import pyautogui
+import subprocess
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
@@ -33,10 +34,10 @@ def find_image_on_screen(template_path, threshold=0.9):
 def main():
     template_Kcopy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
     template_Mcopy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
+    template_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
 
     found_copy = False
-    timeout_copy = time.time() + 10
-    while not found_copy and time.time() < timeout_copy:
+    while not found_copy:
         location, shape = find_image_on_screen(template_Mcopy)
         if location:
             print("找到copy图了，准备点击copy...")
@@ -62,7 +63,28 @@ def main():
                 # 鼠标点击中心坐标
                 pyautogui.click(modify_x, modify_y)
                 found_copy = True
-            sleep(1)
+            else:
+                location, shape = find_image_on_screen(template_thumb)
+                if location:
+                    print("找到copy图了，准备点击copy...")
+                    # 计算中心坐标
+                    center_x = (location[0] + shape[1] // 2) // 2
+                    center_y = (location[1] + shape[0] // 2) // 2
+                    
+                    xCoord = center_x
+                    yCoord = center_y - 100
+
+                    # 鼠标点击上方坐标
+                    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+                    try:
+                        # 将坐标值作为参数传递给AppleScript
+                        process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
+                        # 输出AppleScript的返回结果
+                        print(process.stdout.strip())
+                    except subprocess.CalledProcessError as e:
+                        # 如果有错误发生，打印错误信息
+                        print(f"Error running AppleScript: {e}")
+                    found_copy = True
 
     if not found_copy:
         print("在5秒内未找到copy_success图片，退出程序。")

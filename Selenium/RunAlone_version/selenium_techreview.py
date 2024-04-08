@@ -33,7 +33,7 @@ current_datetime = datetime.now()
 formatted_date = current_datetime.strftime("%Y_%m_%d")  # 用于检查日期匹配
 
 # 查找旧的 HTML 文件
-file_pattern = "/Users/yanzhang/Documents/News/technologyreview.html"
+file_pattern = "/Users/yanzhang/Documents/News/site/technologyreview.html"
 old_file_list = glob.glob(file_pattern)
 date_found = False
 
@@ -115,83 +115,114 @@ else:
                     link = title_column.find('a')['href'] if title_column.find('a') else None
                     old_content.append([date_str, title, link])
 
-    # 抓取新内容
-    new_rows = []
-    all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
-    
-    try:
-        css_selector = f"a[href*='technologyreview.com/{current_year}/']"
-        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+# 抓取新内容
+new_rows = []
+new_rows1 = []
+all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
-        for title_element in titles_elements:
-            href = title_element.get_attribute('href')
-            title_text = title_element.text.strip()
+try:
+    css_selector = f"a[href*='technologyreview.com/{current_year}/']"
+    titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
-            if href and title_text:
-                #print(f"标题: {title_text}, 链接: {href}")
+    for title_element in titles_elements:
+        href = title_element.get_attribute('href')
+        title_text = title_element.text.strip()
 
-                if 'podcasts' not in href:
-                    if not any(href == old_link for _, _, old_link in old_content):
-                        if not any(href == new_link for _, _, new_link in new_rows):
-                            new_rows.append([formatted_datetime, title_text, href])
-                            all_links.append(href)  # 添加到所有链接的列表中
+        if href and title_text:
+            #print(f"标题: {title_text}, 链接: {href}")
 
-    except Exception as e:
-        print("抓取过程中出现错误:", e)
+            if 'podcasts' not in href:
+                if not any(href == old_link for _, _, old_link in old_content):
+                    if not any(href == new_link for _, _, new_link in new_rows):
+                        new_rows.append([formatted_datetime, title_text, href])
+                        new_rows1.append(["TechReview", title_text, href])
+                        all_links.append(href)  # 添加到所有链接的列表中
 
-    # 关闭驱动
-    driver.quit()
+except Exception as e:
+    print("抓取过程中出现错误:", e)
 
-    try:
-        os.remove(old_file_path)
-        print(f"文件 {old_file_path} 已被删除。")
-    except OSError as e:
-        print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
+# 关闭驱动
+driver.quit()
 
-    # 创建 HTML 文件
-    new_html_path = f"/Users/yanzhang/Documents/News/technologyreview.html"
-    with open(new_html_path, 'w', encoding='utf-8') as html_file:
-        # 写入 HTML 基础结构和表格开始标签
+try:
+    os.remove(old_file_path)
+    print(f"文件 {old_file_path} 已被删除。")
+except OSError as e:
+    print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
+
+# 创建 HTML 文件
+new_html_path = f"/Users/yanzhang/Documents/News/site/technologyreview.html"
+
+with open(new_html_path, 'w', encoding='utf-8') as html_file:
+    # 写入 HTML 基础结构和表格开始标签
+    html_file.write("<html><body><table border='1'>\n")
+
+    # 写入标题行
+    html_file.write("<tr><th>Date</th><th>Title</th></tr>\n")
+
+    # 写入新抓取的内容
+    new_content_added = False
+    for row in new_rows:
+        clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+        html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+        new_content_added = True
+
+    # 写入旧内容
+    for row in old_content:
+        clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>" if row[2] else row[1]
+        html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+
+    # 结束表格和 HTML 结构
+    html_file.write("</table></body></html>")
+
+# 创建用于翻译的每日新闻总表html
+today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
+
+# 检查文件是否存在
+file_exists = os.path.isfile(today_html_path)
+
+# 如果文件不存在，创建文件并写入基础HTML结构
+if not file_exists:
+    with open(today_html_path, 'w', encoding='utf-8') as html_file:
         html_file.write("<html><body><table border='1'>\n")
+        html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
 
-        # 写入标题行
-        html_file.write("<tr><th>Date</th><th>Title</th></tr>\n")
+# 准备要追加的内容
+append_content = ""
+for row in new_rows1:
+    clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+    append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
 
-        # 写入新抓取的内容
-        new_content_added = False
-        for row in new_rows:
-            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
-            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
-            new_content_added = True
-    
-        # 写入旧内容
-        for row in old_content:
-            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>" if row[2] else row[1]
-            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
-
-        # 结束表格和 HTML 结构
+# 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
+if file_exists:
+    with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+        # 移动到文件末尾的"</table></body></html>"前
+        html_file.seek(0, os.SEEK_END)
+        html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
+        # 追加新内容
+        html_file.write(append_content)
+        # 重新添加HTML结束标签
         html_file.write("</table></body></html>")
 
-    # 显示提示窗口
-    if new_content_added:
-        messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+# 如果文件是新建的，添加新内容和HTML结束标签
+else:
+    with open(today_html_path, 'a', encoding='utf-8') as html_file:
+        html_file.write(append_content)
+        html_file.write("</table></body></html>")
+
+# 显示提示窗口
+if new_content_added:
+    messagebox.showinfo("更新通知", "有新内容哦ˆ_ˆ速看！！", parent=root)
+    open_new_html_file()
+else:
+    response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容 \n\n 【No】结束程序， 【Yes】打开文件", parent=root)
+    if response:
+        # 用户选择“是”，打开当前html文件
         open_new_html_file()
+        print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
     else:
-        response = messagebox.askyesno("内容检查", f"很遗憾，没有新内容 \n\n 【No】结束程序， 【Yes】打开文件", parent=root)
-        if response:
-            # 用户选择“是”，打开当前html文件
-            open_new_html_file()
-            print(f"找到匹配当天日期的内容，打开文件：{old_file_path}")
-        else:
-            # 用户选择“否”，结束程序
-            print("用户选择结束程序。")
+        # 用户选择“否”，结束程序
+        print("用户选择结束程序。")
 
 # 确保关闭所有 tkinter 窗口
 root.destroy()
-
-screenshot_path = '/Users/yanzhang/Documents/python_code/Resource/screenshot.png'
-try:
-    os.remove(screenshot_path)
-    print(f"截图文件 {screenshot_path} 已被删除。")
-except OSError as e:
-    print(f"错误: {e.strerror}. 文件 {screenshot_path} 无法删除。")

@@ -123,55 +123,14 @@ def close_html_skeleton(html_file_path):
 def main():
     html_skeleton_created = False
     html_file_path = ''  # 用空字符串初始化
-    
-    template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
-    template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
+
     template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
-    template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
+    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
 
-    found = False
-    timeout_stop = time.time() + 15
-    while not found and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(template_path_stop)
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            sleep(1)
-
-    if time.time() > timeout_stop:
-        print("在15秒内未找到图片，退出程序。")
-        sys.exit()
-    
-    found_stop = True
-    while found_stop:
-        location, shape = find_image_on_screen(template_path_stop)
-        if location:
-            print("找到poe_stop图片，继续监控...")
-            pyautogui.scroll(-120)
-            # 检测poe_stillwaiting.png图片
-            location, shape = find_image_on_screen(template_path_waiting)
-            if location:
-                print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-            sleep(1)  # 简短暂停再次监控
-        else:
-            print("Stop图片没有了...")
-            found_stop = False
-
-    sleep(4)
-    pyautogui.scroll(-80)
     found_thumb = False
-    timeout_thumb = time.time() + 20
-    while not found_thumb and time.time() < timeout_thumb:
+    while not found_thumb:
         location, shape = find_image_on_screen(template_path_thumb)
         if location:
-            sleep(3)
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
             center_y = (location[1] + shape[0] // 2) // 2
@@ -182,23 +141,7 @@ def main():
 
             found_thumb = True
             print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-120)
-            location, shape = find_image_on_screen(template_path_failure)
-            if location:
-                print("找到poe_failure图片，执行页面刷新操作...")
-                sys.exit()
-            location, shape = find_image_on_screen(template_path_no)
-            if location:
-                print("找到poe_no图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-    
-    if time.time() > timeout_thumb:
-        print("在20秒内未找到thumb图片，退出程序。")
-        sys.exit()
+        sleep(1)  # 每次检测间隔1秒
     
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
     try:
@@ -211,18 +154,13 @@ def main():
         print(f"Error running AppleScript: {e}")
 
     # 设置寻找copy_success.png图片的超时时间为15秒
-    timeout_success = time.time() + 15
     found_success_image = False
-    while not found_success_image and time.time() < timeout_success:
+    while not found_success_image:
         location, shape = find_image_on_screen(template_path_success)
         if location:
             print("找到copy_success图片，继续执行程序...")
             found_success_image = True
         sleep(1)  # 每次检测间隔1秒
-
-    if not found_success_image:
-        print("在15秒内未找到copy_success图片，退出程序。")
-        sys.exit()
 
     # 读取剪贴板内容
     clipboard_content = pyperclip.paste()

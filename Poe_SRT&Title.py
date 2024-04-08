@@ -1,14 +1,18 @@
+import re
 import os
 import cv2
 import time
+import codecs
 import datetime
 import pyperclip
 import pyautogui
 import subprocess
 import numpy as np
+import tkinter as tk
 from time import sleep
 from PIL import ImageGrab
 
+# 截取屏幕
 def capture_screen():
     # 使用PIL的ImageGrab直接截取屏幕
     screenshot = ImageGrab.grab()
@@ -31,6 +35,51 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
+def SRT_File(clipboard_content):
+    print("执行函数A")
+    # 使用正则表达式找到第一个以数字开头并且紧跟一个换行符的行
+    match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
+
+    # 获取当前日期并格式化为指定的文件名形式
+    current_date = datetime.datetime.now().strftime('%m月%d日.srt')
+
+    # 拼接文件完整路径
+    file_path = os.path.join('/Users/yanzhang/Movies', current_date)
+
+    if match:
+        start_index = match.start()  # 获取匹配行的起始索引
+        number_at_start = int(match.group(1))  # 获取行首的数字
+        remaining_content = clipboard_content[start_index:]  # 截取剩余内容
+
+        # 根据行首数字决定是创建新文件还是追加现有文件
+        if number_at_start == 1 or not os.path.exists(file_path):
+            mode = 'w'  # 创建新文件
+        else:
+            mode = 'a'  # 追加到现有文件
+
+        # 写入文件
+        with open(file_path, mode, encoding='utf-8') as file:
+            file.write(remaining_content)
+            file.write('\n\n')  # 添加两个换行符以创建一个空行
+        print('内容处理完成，已经写入到', file_path)
+    else:
+        print('剪贴板内容中没有找到符合条件的行。')
+
+def NewsTitle_File(clipboard_content):
+    print("执行函数B")
+    # 定义文件路径
+    file_path = '/Users/yanzhang/Documents/News/today_chn.txt'
+
+    # 检查文件是否存在，不存在则创建
+    if not os.path.exists(file_path):
+        # 使用'w'模式创建文件，如果文件已经存在，'w'模式会覆盖文件，所以前面要检查文件是否存在
+        with codecs.open(file_path, 'w', 'utf-8') as file:
+            file.write(clipboard_content + '\n')  # 写入剪贴板内容并在最后加入换行符
+    else:
+        # 如果文件存在，则追加内容
+        with codecs.open(file_path, 'a', 'utf-8') as file:
+            file.write(clipboard_content + '\n')  # 追加剪贴板内容并在最后加入换行符
+
 # 主函数
 def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
@@ -49,12 +98,9 @@ def main():
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
+            pyautogui.scroll(-80)
             sleep(1)
-
-    if time.time() > timeout_stop:
-        print("在15秒内未找到thumb图片，退出程序。")
-        sys.exit()
-
+    
     found_stop = True
     while found_stop:
         location, shape = find_image_on_screen(template_path_stop)
@@ -97,7 +143,9 @@ def main():
             location, shape = find_image_on_screen(template_path_failure)
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
-                sys.exit()
+                pyautogui.click(x=617, y=574)
+                sleep(0.5)
+                pyautogui.hotkey('command', 'r')
             location, shape = find_image_on_screen(template_path_no)
             if location:
                 print("找到poe_no图片，执行页面刷新操作...")
@@ -106,7 +154,7 @@ def main():
                 pyautogui.hotkey('command', 'r')
     
     if time.time() > timeout_thumb:
-        print("在20秒内未找到thumb图片，退出程序。")
+        print("在20秒内未找到图片，退出程序。")
         sys.exit()
     
     script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
@@ -133,36 +181,18 @@ def main():
         print("在15秒内未找到copy_success图片，退出程序。")
         sys.exit()
 
-    # 获取当前日期并格式化为指定的文件名形式
-    current_date = datetime.datetime.now().strftime('%m月%d日.srt')
-
-    # 拼接文件完整路径
-    file_path = os.path.join('/Users/yanzhang/Movies', current_date)
-
-    # 读取剪贴板内容
-    clipboard_content = pyperclip.paste()
-
-    # 使用正则表达式找到第一个以数字开头并且紧跟一个换行符的行
-    match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
-
-    if match:
-        start_index = match.start()  # 获取匹配行的起始索引
-        number_at_start = int(match.group(1))  # 获取行首的数字
-        remaining_content = clipboard_content[start_index:]  # 截取剩余内容
-
-        # 根据行首数字决定是创建新文件还是追加现有文件
-        if number_at_start == 1 or not os.path.exists(file_path):
-            mode = 'w'  # 创建新文件
+    try:
+        # 获取剪贴板内容
+        clipboard_content = pyperclip.paste()
+        # 计算数字字符的数量
+        digits_count = sum(c.isdigit() for c in clipboard_content)
+        # 根据数字字符数量执行相应的函数
+        if digits_count > 70:
+            SRT_File(clipboard_content)
         else:
-            mode = 'a'  # 追加到现有文件
-
-        # 写入文件
-        with open(file_path, mode, encoding='utf-8') as file:
-            file.write(remaining_content)
-            file.write('\n\n')  # 添加两个换行符以创建一个空行
-        print('内容处理完成，已经写入到', file_path)
-    else:
-        print('剪贴板内容中没有找到符合条件的行。')
+            NewsTitle_File(clipboard_content)
+    except pyperclip.PyperclipException as e:
+        print("无法访问剪贴板，请检查pyperclip是否支持当前系统。")
 
 if __name__ == '__main__':
     main()

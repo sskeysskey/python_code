@@ -93,7 +93,6 @@ def search_files(directories, keyword):
                             matched_files[directory].append(os.path.relpath(workflow_path, directory))
                     except Exception as e:
                         print(f"Error reading {wflow_path}: {e}")
-
             # 遍历文件
             for name in files:
                 item_path = os.path.join(root, name)
@@ -114,7 +113,6 @@ def search_files(directories, keyword):
                             matched_files[directory].append(os.path.relpath(item_path, directory))
                     except Exception as e:
                         print(f"Error reading {item_path}: {e}")
-
     return matched_files
 
 # 自定义消息框展示结果

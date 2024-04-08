@@ -93,7 +93,7 @@ input_font.setPointSize(22)  # 设置字体大小
 # 设置输入框QTextEdit的背景色为黑色，设置QTextEdit的光标颜色为白色，并调整宽度为2
 text_edit = MyTextEdit()
 set_line_height(text_edit, 35)
-text_edit.setStyleSheet("QTextEdit { color: white; background-color: black; caret-color: white; }")
+text_edit.setStyleSheet("QTextEdit { color: gold; background-color: black; caret-color: white; }")
 text_edit.setCursorWidth(2)
 text_edit.setFont(input_font)
 text_edit.setMinimumHeight(300)

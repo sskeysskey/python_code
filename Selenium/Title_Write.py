@@ -98,7 +98,7 @@ try:
         # 设置TXT文件的保存路径
         now = datetime.now()
         time_str = now.strftime("_%m_%d")
-        txt_file_name = f"TodayCNH{time_str}.txt"
+        txt_file_name = f"TodayCNH{time_str}.html"
         txt_directory = '/Users/yanzhang/Documents/News'
         txt_file_path = os.path.join(txt_directory, txt_file_name)
 

@@ -3,6 +3,7 @@ import cv2
 import sys
 import time
 import pyautogui
+import pyperclip
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
@@ -52,6 +53,11 @@ class ScreenDetector:
             else:
                 print("未找到图片，继续监控...")
                 sleep(1)
+        
+        if time.time() > timeout:
+            print("在55秒内未找到图片，退出程序。")
+            pyperclip.copy("no_image")
+            sys.exit()
     
     def run2(self):
         found = True
@@ -66,7 +72,7 @@ class ScreenDetector:
                 found = False
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         print("Usage: python a.py <image_name> <click> <choise>")
         sys.exit(1)
     image_name = sys.argv[1]

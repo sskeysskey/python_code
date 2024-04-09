@@ -1,7 +1,7 @@
 import os
 import sys
 import subprocess
-from tkinter import Tk, filedialog, Text, Scrollbar, Button, Entry, Label, messagebox, Toplevel
+from tkinter import Tk, Text, Scrollbar, Button, Entry, Label, Toplevel
 
 # 初始化Tkinter，隐藏主窗口
 root = Tk()
@@ -12,7 +12,9 @@ searchFolders = [
     "/Users/yanzhang/Documents/ScriptEditor/",
     "/Users/yanzhang/Library/Services/",
     "/Users/yanzhang/Movies/Windows 11/",
-    "/Users/yanzhang/Documents/python_code"
+    "/Users/yanzhang/Documents/python_code",
+    "/Users/yanzhang/Documents/News/",
+    "/Users/yanzhang/Documents/Books"
 ]
 
 def window_center1(win, width, height):

@@ -158,8 +158,11 @@ def main():
         txt_file.write(final_content)
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
 
-    # 未成功运行后的过渡传递参数
+    # 成功运行后的过渡传递参数
     pyperclip.copy("transit")
+
+    # 删除/tmp/segment.txt文件
+    os.remove(segment_file_path)
 
 if __name__ == '__main__':
     main()

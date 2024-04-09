@@ -130,6 +130,9 @@ def main():
     with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
         txt_file.write(final_content)
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
+    
+    # 删除/tmp/segment.txt文件
+    os.remove(segment_file_path)
 
 if __name__ == '__main__':
     main()

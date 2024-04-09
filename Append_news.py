@@ -242,6 +242,10 @@ def main():
     # 最后，关闭HTML框架
     if html_skeleton_created and not os.path.isfile(html_file_path):
         close_html_skeleton(html_file_path)
-
+    
+    # 删除/tmp/segment.txt和/tmp/site.txt文件
+    os.remove(segment_file_path)
+    os.remove(site_file_path)
+    
 if __name__ == '__main__':
     main()

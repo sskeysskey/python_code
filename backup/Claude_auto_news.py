@@ -253,6 +253,10 @@ def main():
                 # 追加内容到HTML文件
                 append_to_html(html_file_path, segment_content, modified_content)
 
+                # 删除/tmp/segment.txt文件
+                os.remove(segment_file_path)
+                os.remove(site_file_path)
+
                 sleep(1)
 
                 # 设置stop_signal文件的保存目录

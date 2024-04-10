@@ -116,8 +116,8 @@ except IndexError as e:
     root.destroy()  # 销毁窗口
 
 # 检查文件是否存在
-if os.path.exists(target_file_path):
+if os.path.exists(txt_file_path):
     # 如果文件存在，使用webbrowser打开它
-    webbrowser.open('file://' + os.path.realpath(target_file_path), new=2)
+    webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
 else:
     print("文件不存在，无法打开。")

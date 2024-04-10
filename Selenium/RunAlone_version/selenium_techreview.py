@@ -175,40 +175,41 @@ with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 结束表格和 HTML 结构
     html_file.write("</table></body></html>")
 
-# 创建用于翻译的每日新闻总表html
-today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
+if new_rows1:
+    # 创建用于翻译的每日新闻总表html
+    today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
 
-# 检查文件是否存在
-file_exists = os.path.isfile(today_html_path)
+    # 检查文件是否存在
+    file_exists = os.path.isfile(today_html_path)
 
-# 如果文件不存在，创建文件并写入基础HTML结构
-if not file_exists:
-    with open(today_html_path, 'w', encoding='utf-8') as html_file:
-        html_file.write("<html><body><table border='1'>\n")
-        html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
+    # 如果文件不存在，创建文件并写入基础HTML结构
+    if not file_exists:
+        with open(today_html_path, 'w', encoding='utf-8') as html_file:
+            html_file.write("<html><body><table border='1'>\n")
+            html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
 
-# 准备要追加的内容
-append_content = ""
-for row in new_rows1:
-    clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
-    append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
+    # 准备要追加的内容
+    append_content = ""
+    for row in new_rows1:
+        clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+        append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
 
-# 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
-if file_exists:
-    with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-        # 移动到文件末尾的"</table></body></html>"前
-        html_file.seek(0, os.SEEK_END)
-        html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
-        # 追加新内容
-        html_file.write(append_content)
-        # 重新添加HTML结束标签
-        html_file.write("</table></body></html>")
+    # 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
+    if file_exists:
+        with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+            # 移动到文件末尾的"</table></body></html>"前
+            html_file.seek(0, os.SEEK_END)
+            html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
+            # 追加新内容
+            html_file.write(append_content)
+            # 重新添加HTML结束标签
+            html_file.write("</table></body></html>")
 
-# 如果文件是新建的，添加新内容和HTML结束标签
-else:
-    with open(today_html_path, 'a', encoding='utf-8') as html_file:
-        html_file.write(append_content)
-        html_file.write("</table></body></html>")
+    # 如果文件是新建的，添加新内容和HTML结束标签
+    else:
+        with open(today_html_path, 'a', encoding='utf-8') as html_file:
+            html_file.write(append_content)
+            html_file.write("</table></body></html>")
 
 # 显示提示窗口
 if new_content_added:

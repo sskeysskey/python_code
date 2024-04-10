@@ -402,4 +402,35 @@ def search_files(directories, keyword):
                     except Exception as e:
                         print(f"Error reading {item_path}: {e}")
     return matched_files
-    #————————————————————————————————————————————————————————————————————————————————————————
+#————————————————————————————————————————————————————————————————————————————————————————
+# 原来backup_news.py里面的代码，暂时备份在这里，不知道还会不会用上
+# 确保CSS样式被包含在备份文件中的函数
+def ensure_css_in_backup(file_path, css_styles):
+    with open(file_path, 'r+', encoding='utf-8') as file:
+        content = file.read()
+        # 检查是否已经包含CSS样式
+        if '<style>' not in content:
+            # 如果没有，则在<body>标签之前插入CSS样式
+            content = content.replace('<body>', f'<head><title>Backup</title>\n{css_styles}</head>\n<body>')
+            file.seek(0)
+            file.write(content)
+            file.truncate()  # 删除旧内容后面的部分
+            
+if backup_content:
+    # 如果备份文件不存在，或者为新文件，则添加头部
+    if not os.path.isfile(backup_file_path) or os.path.getsize(backup_file_path) == 0:
+        with open(backup_file_path, 'w', encoding='utf-8') as file:
+            file.write('<!DOCTYPE html>\n<html>\n')
+            file.write('<head>\n<title>Backup</title>\n')
+            file.write(css_styles)  # 确保CSS样式被添加到<head>标签内
+            file.write('</head>\n<body>\n<table>\n')
+            file.write('<tr><th>时间</th><th>摘要</th></tr>\n')
+            file.write(backup_content)
+            file.write('</table>\n</body>\n</html>')
+    else:
+        # 如果备份文件已存在，确保CSS样式存在
+        ensure_css_in_backup(backup_file_path, css_styles)
+        # 追加新的备份内容
+        with open(backup_file_path, 'a', encoding='utf-8') as file:
+            file.write(backup_content)
+#————————————————————————————————————————————————————————————————————————————————————————

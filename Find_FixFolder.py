@@ -37,6 +37,13 @@ def window_center2(win, width, height):
     # 设置窗口大小和位置
     win.geometry(f'{width}x{height}+{x}+{y}')
 
+def open_file(file_path):
+    try:
+        # 在Unix-like系统中，使用默认程序打开文件
+        subprocess.call(["open", file_path])
+    except Exception as e:
+        print(f"无法打开文件 {file_path}: {e}")
+
 # 自定义输入窗口
 def custom_input_window(prompt, callback):
     input_window = Toplevel(root)  # 使用 Toplevel 而不是新的 Tk 实例
@@ -66,20 +73,21 @@ def custom_input_window(prompt, callback):
     entry = Entry(input_window)
     entry.pack()
     entry.focus_set()  # 激活输入框
-    Button(input_window, text="确定", command=on_ok).pack(side="left")
+    Button(input_window, text="确定", command=on_ok).pack(side="right")
     Button(input_window, text="取消", command=on_cancel).pack(side="right")
 
     entry.bind('<Return>', on_enter)  # 绑定回车键
     input_window.bind('<Escape>', on_esc)  # 绑定ESC键
 
-# 搜索包含特定关键词的文件
-def search_files(directories, keyword):
-    matched_files = {}  # 修改此处为字典
-    # 将关键字转换为小写，以实现大小写不敏感的搜索
-    keyword_lower = keyword.lower()
+# 搜索包含所有特定关键词的文件
+def search_files(directories, keywords):
+    matched_files = {}  # 使用字典来存储每个目录的匹配文件
+    # 将关键字字符串拆分为列表，并转换为小写
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
     for directory in directories:
         matched_files[directory] = []
+
         # 使用os.walk()遍历目录树
         for root, dirs, files in os.walk(directory):
             # 检查目录名是否以.workflow结尾
@@ -91,30 +99,34 @@ def search_files(directories, keyword):
                         wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
                         with open(wflow_path, 'r') as file:
                             content = file.read().lower()  # 将内容转换为小写
-                        if keyword_lower in content:
+                        # 确保内容包含所有关键词
+                        if all(keyword_lower in content for keyword_lower in keywords_lower):
                             matched_files[directory].append(os.path.relpath(workflow_path, directory))
                     except Exception as e:
                         print(f"Error reading {wflow_path}: {e}")
             # 遍历文件
             for name in files:
                 item_path = os.path.join(root, name)
+                # 对.scpt文件特别处理
                 if item_path.endswith('.scpt'):
-                    # 对于.scpt文件，使用osascript命令来获取脚本内容
                     try:
                         content = subprocess.check_output(['osadecompile', item_path], text=True).lower()  # 将内容转换为小写
-                        if keyword_lower in content:
+                        # 确保内容包含所有关键词
+                        if all(keyword_lower in content for keyword_lower in keywords_lower):
                             matched_files[directory].append(os.path.relpath(item_path, directory))
                     except Exception as e:
                         print(f"Error decompiling {item_path}: {e}")
+                # 对.txt和.py文件直接读取内容
                 elif item_path.endswith('.txt') or item_path.endswith('.py'):
-                    # 对于.txt文件和.py文件，直接读取内容
                     try:
                         with open(item_path, 'r') as file:
                             content = file.read().lower()  # 将内容转换为小写
-                        if keyword_lower in content:
+                        # 确保内容包含所有关键词
+                        if all(keyword_lower in content for keyword_lower in keywords_lower):
                             matched_files[directory].append(os.path.relpath(item_path, directory))
                     except Exception as e:
                         print(f"Error reading {item_path}: {e}")
+
     return matched_files
 
 # 自定义消息框展示结果
@@ -136,7 +148,7 @@ def show_results(results):
 
     # 定义文本样式标签
     text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))  # 用于目录的标签
-    text.tag_configure('file_tag', foreground='orange', font=('Helvetica', '20'))  # 用于文件的标签
+    text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))  # 用于文件的标签
     
     # 将滚动条关联到文本框
     scrollbar.config(command=text.yview)
@@ -146,13 +158,22 @@ def show_results(results):
 
     # 绑定 ESC 键到关闭窗口和结束程序的函数
     result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
-    
-    # 插入文本到文本框
+
+    def open_file_and_change_tag_color(path, tag_name):
+        open_file(path)  # 调用原有的打开文件函数
+        text.tag_configure(tag_name, foreground='grey', underline=False)  # 更改标签颜色为灰色，并去除下划线
+
+    # 插入文本到文本框，并为每个文件名添加tag和点击事件
     if results:
         for directory, files in results.items():
             if files:
                 text.insert("end", directory + "\n", 'directory_tag')
-                text.insert("end", "\n".join(files) + "\n\n", 'file_tag')
+                for file in files:
+                    file_path = os.path.join(directory, file)
+                    tag_name = "link_" + file.replace(".", "_")
+                    text.tag_bind(tag_name, "<Button-1>", lambda event, path=file_path, tag=tag_name: open_file_and_change_tag_color(path, tag))  # 为标签绑定点击事件
+                    text.insert("end", file + "\n", (tag_name, 'file_tag'))
+                text.insert("end", "\n")
     else:
         text.insert("end", "没有找到包含关键词的文件。")
 

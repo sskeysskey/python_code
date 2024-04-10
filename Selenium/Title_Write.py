@@ -1,5 +1,7 @@
 import re
 import os
+import time
+import pyautogui
 import pyperclip
 import webbrowser
 import subprocess
@@ -119,5 +121,10 @@ except IndexError as e:
 if os.path.exists(txt_file_path):
     # 如果文件存在，使用webbrowser打开它
     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+    time.sleep(0.5)
+    # 循环7次模拟按下Command + '='快捷键
+    for _ in range(7):
+        pyautogui.hotkey('command', '=')
+        time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
 else:
     print("文件不存在，无法打开。")

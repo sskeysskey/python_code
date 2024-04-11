@@ -13,7 +13,6 @@ searchFolders = [
     "/Users/yanzhang/Library/Services/",
     "/Users/yanzhang/Movies/Windows 11/",
     "/Users/yanzhang/Documents/python_code",
-    "/Users/yanzhang/Documents/News/",
     "/Users/yanzhang/Documents/Books"
 ]
 
@@ -73,8 +72,8 @@ def custom_input_window(prompt, callback):
     entry = Entry(input_window)
     entry.pack()
     entry.focus_set()  # 激活输入框
-    Button(input_window, text="确定", command=on_ok).pack(side="right")
     Button(input_window, text="取消", command=on_cancel).pack(side="right")
+    Button(input_window, text="确定", command=on_ok).pack(side="right")
 
     entry.bind('<Return>', on_enter)  # 绑定回车键
     input_window.bind('<Escape>', on_esc)  # 绑定ESC键

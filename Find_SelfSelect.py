@@ -62,8 +62,8 @@ def custom_input_window(prompt, callback):
     entry = Entry(input_window)
     entry.pack()
     entry.focus_set()  # 激活输入框
-    Button(input_window, text="确定", command=on_ok).pack(side="left")
     Button(input_window, text="取消", command=on_cancel).pack(side="right")
+    Button(input_window, text="确定", command=on_ok).pack(side="right")
 
     entry.bind('<Return>', on_enter)  # 绑定回车键
     input_window.bind('<Escape>', on_esc)  # 绑定ESC键
@@ -123,7 +123,7 @@ def show_results(results):
     result_window.title("搜索结果")
 
     # 将窗口居中放置
-    window_center(result_window, 1000, 600)  # 假设您想让窗口大小为 800x600
+    window_center(result_window, 700, 600)  # 假设您想让窗口大小为 700x600
     
     # 创建滚动条
     scrollbar = Scrollbar(result_window)

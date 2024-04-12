@@ -125,7 +125,7 @@ def main():
     html_file_path = ''  # 用空字符串初始化
 
     template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
+    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
 
     found_thumb = False
     while not found_thumb:
@@ -153,12 +153,12 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
 
-    # 设置寻找copy_success.png图片的超时时间为15秒
+    # 设置寻找poe_copy_success.png图片的超时时间为15秒
     found_success_image = False
     while not found_success_image:
         location, shape = find_image_on_screen(template_path_success)
         if location:
-            print("找到copy_success图片，继续执行程序...")
+            print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True
         sleep(1)  # 每次检测间隔1秒
 

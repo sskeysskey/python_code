@@ -71,50 +71,46 @@ def custom_input_window(prompt, callback):
 # 搜索包含所有特定关键词的文件
 def search_files(directory, keywords):
     matched_files = []
-    # 将关键字列表中的每个关键字都转换为小写，并去除两端的空白
-    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]  # 将关键字转化为小写
 
-    # 使用os.walk()遍历目录树
     for root, dirs, files in os.walk(directory):
-        # 检查目录名是否以.workflow结尾
         for dir_name in dirs:
             if dir_name.endswith('.workflow'):
-                workflow_path = os.path.join(root, dir_name)
-                # 对于.workflow目录，特别处理
-                try:
-                    wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
-                    with open(wflow_path, 'r') as file:
-                        content = file.read().lower()  # 将内容转换为小写
-                    # 确保内容包含所有关键词
-                    if all(keyword_lower in content for keyword_lower in keywords_lower):
-                        matched_files.append(workflow_path)
-                except Exception as e:
-                    print(f"Error reading {wflow_path}: {e}")
+                handle_workflow_dir(root, dir_name, keywords_lower, matched_files)
 
-        # 遍历文件
         for name in files:
-            item_path = os.path.join(root, name)
-            if item_path.endswith('.scpt'):
-                # 对于.scpt文件，使用osascript命令来获取脚本内容
-                try:
-                    content = subprocess.check_output(['osadecompile', item_path], text=True).lower()  # 将内容转换为小写
-                    # 确保内容包含所有关键词
-                    if all(keyword_lower in content for keyword_lower in keywords_lower):
-                        matched_files.append(item_path)
-                except Exception as e:
-                    print(f"Error decompiling {item_path}: {e}")
-            elif item_path.endswith('.txt') or item_path.endswith('.py'):
-                # 对于.txt文件和.py文件，直接读取内容
-                try:
-                    with open(item_path, 'r') as file:
-                        content = file.read().lower()  # 将内容转换为小写
-                    # 确保内容包含所有关键词
-                    if all(keyword_lower in content for keyword_lower in keywords_lower):
-                        matched_files.append(item_path)
-                except Exception as e:
-                    print(f"Error reading {item_path}: {e}")
+            handle_file(root, name, keywords_lower, matched_files)
 
     return matched_files
+
+def handle_workflow_dir(root, dir_name, keywords_lower, matched_files):
+    workflow_path = os.path.join(root, dir_name)
+    try:
+        wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
+        with open(wflow_path, 'r') as file:
+            content = file.read().lower()
+        if all(keyword_lower in content for keyword_lower in keywords_lower):
+            matched_files.append(workflow_path)
+    except Exception as e:
+        print(f"Error reading {wflow_path}: {e}")
+
+def handle_file(root, name, keywords_lower, matched_files):
+    item_path = os.path.join(root, name)
+    if item_path.endswith('.scpt'):
+        try:
+            content = subprocess.check_output(['osadecompile', item_path], text=True).lower()
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
+                matched_files.append(item_path)
+        except Exception as e:
+            print(f"Error decompiling {item_path}: {e}")
+    elif item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv')):
+        try:
+            with open(item_path, 'r') as file:
+                content = file.read().lower()
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
+                matched_files.append(item_path)
+        except Exception as e:
+            print(f"Error reading {item_path}: {e}")
 
 # 自定义消息框展示结果
 def show_results(results):

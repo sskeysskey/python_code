@@ -1,4 +1,5 @@
 # Screenshot.py
+import os
 import cv2
 import sys
 import time
@@ -37,7 +38,7 @@ class ScreenDetector:
 
     def run1(self):
         found = False
-        timeout = time.time() + 5
+        timeout = time.time() + 15
         while not found and time.time() < timeout:
             location, shape = self.find_image_on_screen()
             if location:
@@ -55,9 +56,8 @@ class ScreenDetector:
                 sleep(1)
         
         if time.time() > timeout:
-            print("在55秒内未找到图片，退出程序。")
-            pyperclip.copy("no_image")
-            sys.exit()
+            print("在5秒内未找到图片，退出程序。")
+            webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     
     def run2(self):
         found = True

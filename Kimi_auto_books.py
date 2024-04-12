@@ -1,6 +1,8 @@
 import os
+import re
 import cv2
 import time
+import glob
 import pyperclip
 import pyautogui
 import numpy as np
@@ -29,6 +31,35 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
+def rename_first_segment_file(directory):
+    # 构造搜索路径
+    search_pattern = os.path.join(directory, 'segment_*.txt')
+    
+    # 使用glob找到所有符合条件的文件
+    files = glob.glob(search_pattern)
+    
+    # 定义一个函数用于从文件名中提取数字，并确保正确处理文件名数字
+    def extract_number(filename):
+        # 从完整路径中提取文件名部分
+        basename = os.path.basename(filename)
+        # 使用正则表达式匹配数字
+        match = re.search(r'segment_(\d+)\.txt', basename)
+        return int(match.group(1)) if match else float('inf')
+    
+    # 检查是否找到了文件
+    if files:
+        # 按文件名中数字排序
+        files.sort(key=extract_number)
+        # 获取数值最小的文件（列表中的第一个文件）
+        min_file = files[0]
+        # 构造新文件名
+        new_name = re.sub(r'segment_(\d+)\.txt', r'done_\1.txt', min_file)
+        # 改名操作
+        os.rename(min_file, new_name)
+        print(f"已将文件 {min_file} 改名为 {new_name}")
+    else:
+        print("没有找到以 'segment_' 开头的txt文件")
+
 # 主函数
 def main():
     template_stop = '/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png'
@@ -56,6 +87,7 @@ def main():
                     pyperclip.copy("illegal")
                     timeout_stop = time.time() - 20
                     exit()
+            pyautogui.scroll(-80)
             sleep(1)
 
     if time.time() > timeout_stop:
@@ -71,7 +103,10 @@ def main():
             sleep(1) # 继续监控
         else:
             print("没找到图片，继续执行...")
-            found_stop = False
+            pyautogui.scroll(-80)
+            location, shape = find_image_on_screen(template_stop)
+            if not location:
+                found_stop = False
 
     pyautogui.scroll(-80)
     sleep(0.5)
@@ -152,8 +187,17 @@ def main():
         txt_file.write(final_content)
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
 
+    # 使用函数
+    directory = "/Users/yanzhang/Movies/Windows 11/"
+    rename_first_segment_file(directory)
+    
     # 删除/tmp/segment.txt文件
     os.remove(segment_file_path)
+
+    book_auto_signal_path = "/private/tmp/book_auto_signal.txt"
+    # 检查并删除/private/tmp/book_auto_signal.txt文件
+    if os.path.exists(book_auto_signal_path):
+        os.remove(book_auto_signal_path)
 
 if __name__ == '__main__':
     main()

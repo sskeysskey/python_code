@@ -59,18 +59,6 @@ class MyHTMLParser(HTMLParser):
 
 # 文件路径
 file_path = "/Users/yanzhang/Documents/News/today_chn.txt"
-# 获取剪贴板内容
-clipboard_content = pyperclip.paste()
-
-# 检查文件是否存在，不存在则创建
-if not os.path.exists(file_path):
-    # 使用'w'模式创建文件，如果文件已经存在，'w'模式会覆盖文件，所以前面要检查文件是否存在
-    with codecs.open(file_path, 'w', 'utf-8') as file:
-        file.write(clipboard_content + '\n')  # 写入剪贴板内容并在最后加入换行符
-else:
-    # 如果文件存在，则追加内容
-    with codecs.open(file_path, 'a', 'utf-8') as file:
-        file.write(clipboard_content + '\n')  # 追加剪贴板内容并在最后加入换行符
 
 # 读取文件内容，并去除空行
 with open(file_path, 'r', encoding='utf-8') as file:
@@ -86,8 +74,8 @@ pyperclip.copy(content_to_copy)
 # 读取剪贴板中翻译后的内容
 translated_texts = get_clipboard_data()
 
-# 过滤掉空行
-translated_texts = [line for line in translated_texts if line.strip() != '']
+# # 过滤掉空行
+# translated_texts = [line for line in translated_texts if line.strip() != '']
 
 # 读取HTML文件内容
 with open('/Users/yanzhang/Documents/News/today_eng.html', 'r', encoding='utf-8') as file:
@@ -121,19 +109,7 @@ try:
         os.rename(original_file_path, txt_file_path)
         print(f"文件已重命名为：{txt_file_path}")
     else:
-        clip_content = pyperclip.paste()
-        if clip_content == "stop":
-            raise IndexError("翻译完的内容行数与原英文链接的数量不匹配，请检查。")
-        else:
-            script_path = '/Users/yanzhang/Documents/ScriptEditor/Trans_News_Title.scpt'
-            try:
-                # 执行指定路径的AppleScript
-                process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
-                # 输出AppleScript的返回结果
-                print(process.stdout.strip())
-            except subprocess.CalledProcessError as e:
-                # 如果有错误发生，打印错误信息
-                print(f"执行AppleScript时出错: {e}")
+        raise IndexError("翻译完的内容行数与原英文链接的数量不匹配，请检查。")
         
 except IndexError as e:
     # 初始化Tkinter窗口

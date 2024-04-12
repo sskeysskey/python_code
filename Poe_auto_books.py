@@ -35,7 +35,7 @@ def find_image_on_screen(template_path, threshold=0.9):
 def main():
     template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
     template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/copy_success.png'
+    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
     template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
     template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
     template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
@@ -118,18 +118,18 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
 
-    # 设置寻找copy_success.png图片的超时时间为15秒
+    # 设置寻找poe_copy_success.png图片的超时时间为15秒
     timeout_success = time.time() + 15
     found_success_image = False
     while not found_success_image and time.time() < timeout_success:
         location, shape = find_image_on_screen(template_path_success)
         if location:
-            print("找到copy_success图片，继续执行程序...")
+            print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True
         sleep(1)  # 每次检测间隔1秒
 
     if not found_success_image:
-        print("在15秒内未找到copy_success图片，退出程序。")
+        print("在15秒内未找到poe_copy_success图片，退出程序。")
         sys.exit()
 
     # 设置目录路径

@@ -106,7 +106,7 @@ def main():
                     yCoord = center_y - 100
 
                     # 鼠标点击上方坐标
-                    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+                    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
                     try:
                         # 将坐标值作为参数传递给AppleScript
                         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)

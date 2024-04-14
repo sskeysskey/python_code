@@ -143,7 +143,7 @@ def main():
             print(f"找到图片位置: {location}")
         sleep(1)  # 每次检测间隔1秒
     
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
     try:
         # 将坐标值作为参数传递给AppleScript
         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)

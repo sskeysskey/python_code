@@ -157,7 +157,7 @@ def main():
         print("在20秒内未找到图片，退出程序。")
         sys.exit()
     
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
     try:
         # 将坐标值作为参数传递给AppleScript
         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)

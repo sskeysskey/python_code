@@ -56,7 +56,7 @@ class ScreenDetector:
                 sleep(1)
         
         if time.time() > timeout:
-            print("在5秒内未找到图片，退出程序。")
+            print("在15秒内未找到图片，退出程序。")
             webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     
     def run2(self):

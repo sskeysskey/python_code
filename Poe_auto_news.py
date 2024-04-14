@@ -200,7 +200,7 @@ def main():
         print("在20秒内未找到thumb图片，退出程序。")
         sys.exit()
     
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/click_copy_book.scpt'
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
     try:
         # 将坐标值作为参数传递给AppleScript
         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
@@ -304,6 +304,16 @@ def main():
     # 最后，关闭HTML框架
     if html_skeleton_created and not os.path.isfile(html_file_path):
         close_html_skeleton(html_file_path)
+    
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/Close_Tab_News.scpt'
+    try:
+        # 将坐标值作为参数传递给AppleScript
+        process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
+        # 输出AppleScript的返回结果
+        print(process.stdout.strip())
+    except subprocess.CalledProcessError as e:
+        # 如果有错误发生，打印错误信息
+        print(f"Error running AppleScript: {e}")
     
     # 删除/tmp/segment.txt文件
     os.remove(segment_file_path)

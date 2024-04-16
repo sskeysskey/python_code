@@ -188,7 +188,7 @@ def main():
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
 
     # 使用函数
-    directory = "/Users/yanzhang/Movies/Windows 11/"
+    directory = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
     rename_first_segment_file(directory)
     
     # 删除/tmp/segment.txt文件

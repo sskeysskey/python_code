@@ -172,7 +172,7 @@ def main():
         os.remove(book_auto_signal_path)
 
     # 使用函数
-    directory = "/Users/yanzhang/Movies/Windows 11/"
+    directory = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
     rename_first_segment_file(directory)
 
 if __name__ == '__main__':

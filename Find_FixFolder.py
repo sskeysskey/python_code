@@ -11,7 +11,7 @@ root.withdraw()
 searchFolders = [
     "/Users/yanzhang/Documents/ScriptEditor/",
     "/Users/yanzhang/Library/Services/",
-    "/Users/yanzhang/Movies/Windows 11/",
+    "/Users/yanzhang/Downloads/backup/TXT/Segments/",
     "/Users/yanzhang/Documents/python_code",
     "/Users/yanzhang/Documents/Books",
     "/Users/yanzhang/Documents/LuxuryBox",

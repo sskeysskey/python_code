@@ -193,8 +193,13 @@ def main():
     # pyperclip.copy("transit")
 
     # 使用函数
-    directory = "/Users/yanzhang/Movies/Windows 11/"
+    directory = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
     rename_first_segment_file(directory)
+
+    book_auto_signal_path = "/private/tmp/book_auto_signal.txt"
+    # 检查并删除/private/tmp/book_auto_signal.txt文件
+    if os.path.exists(book_auto_signal_path):
+        os.remove(book_auto_signal_path)
 
     # 删除/tmp/segment.txt文件
     os.remove(segment_file_path)

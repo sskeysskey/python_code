@@ -130,6 +130,7 @@ def main():
     template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
     template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
     template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
+    template_path_compare = '/Users/yanzhang/Documents/python_code/Resource/poe_compare.png'
 
     found = False
     timeout_stop = time.time() + 15
@@ -164,14 +165,30 @@ def main():
             print("Stop图片没有了...")
             found_stop = False
 
-    sleep(4)
+    found = False
+    timeout_compare = time.time() + 15
+    while not found and time.time() < timeout_compare:
+        location, shape = find_image_on_screen(template_path_compare)
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            pyautogui.scroll(-80)
+            sleep(1)
+
+    if time.time() > timeout_compare:
+        print("在15秒内未找到图片，退出程序。")
+        sys.exit()
+
+    sleep(1)
     pyautogui.scroll(-80)
     found_thumb = False
     timeout_thumb = time.time() + 20
     while not found_thumb and time.time() < timeout_thumb:
         location, shape = find_image_on_screen(template_path_thumb)
         if location:
-            sleep(3)
+            sleep(1)
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
             center_y = (location[1] + shape[0] // 2) // 2

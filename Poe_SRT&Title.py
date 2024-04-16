@@ -184,13 +184,8 @@ def main():
     try:
         # 获取剪贴板内容
         clipboard_content = pyperclip.paste()
-        # 计算数字字符的数量
-        digits_count = sum(c.isdigit() for c in clipboard_content)
-        # 根据数字字符数量执行相应的函数
-        if digits_count > 70:
-            SRT_File(clipboard_content)
-        else:
-            NewsTitle_File(clipboard_content)
+        SRT_File(clipboard_content)
+        NewsTitle_File(clipboard_content)
     except pyperclip.PyperclipException as e:
         print("无法访问剪贴板，请检查pyperclip是否支持当前系统。")
 

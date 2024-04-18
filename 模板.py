@@ -631,3 +631,7 @@ def search_files(directory, keywords):
 # 计算数字字符的数量
 digits_count = sum(c.isdigit() for c in clipboard_content)
 #————————————————————————————————————————————————————————————————————————————————————————
+import sys
+sys.path.append('/path/to/your/module')
+import mymodule
+#————————————————————————————————————————————————————————————————————————————————————————

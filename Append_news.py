@@ -127,6 +127,9 @@ def main():
     template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
     template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
 
+    pyautogui.click(x=560, y=571)
+    sleep(0.5)
+    pyautogui.scroll(-80)
     found_thumb = False
     while not found_thumb:
         location, shape = find_image_on_screen(template_path_thumb)
@@ -137,13 +140,14 @@ def main():
 
             # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
             xCoord = center_x
-            yCoord = center_y - 130
+            xFix = center_x -50
+            yCoord = center_y - 100
 
             found_thumb = True
             print(f"找到图片位置: {location}")
         sleep(1)  # 每次检测间隔1秒
     
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
+    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
     try:
         # 将坐标值作为参数传递给AppleScript
         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
@@ -153,14 +157,33 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
 
+    sleep(1)
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
     found_success_image = False
-    while not found_success_image:
+    timeout_success = time.time() + 15
+    while not found_success_image and time.time() < timeout_success:
         location, shape = find_image_on_screen(template_path_success)
         if location:
             print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True
-        sleep(1)  # 每次检测间隔1秒
+        else:
+            # 移动到指定坐标
+            pyautogui.moveTo(xFix, yCoord)
+            # 点击左键
+            pyautogui.click()
+            try:
+                # 将坐标值作为参数传递给AppleScript
+                process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
+                # 输出AppleScript的返回结果
+                print(process.stdout.strip())
+            except subprocess.CalledProcessError as e:
+                # 如果有错误发生，打印错误信息
+                print(f"Error running AppleScript: {e}")
+            sleep(1)  # 每次检测间隔1秒
+    
+    if not found_success_image:
+        print("在15秒内未找到poe_copy_success图片，退出程序。")
+        sys.exit()
 
     # 读取剪贴板内容
     clipboard_content = pyperclip.paste()
@@ -180,14 +203,18 @@ def main():
 
     # 读取/tmp/segment.txt文件内容
     segment_file_path = '/tmp/segment.txt'
-    with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-        segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
+    segment_content = ""
+    if os.path.exists(segment_file_path):
+        with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
+            segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
     # 读取/tmp/site.txt文件内容
     site_file_path = '/tmp/site.txt'
-    with open(site_file_path, 'r', encoding='utf-8-sig') as site_file:
-        site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
-    
+    site_content = ""
+    if os.path.exists(site_file_path):
+        with open(site_file_path, 'r', encoding='utf-8-sig') as site_file:
+            site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
+        
     # 在site_content的前后分别加入</document>
     site_content_with_tags = '<document>' + site_content + '</document>'
 
@@ -253,9 +280,18 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
     
-    # 删除/tmp/segment.txt和/tmp/site.txt文件
-    os.remove(segment_file_path)
-    os.remove(site_file_path)
+    # 检查并删除/tmp/segment.txt和site.txt文件
+    try:
+        if os.path.exists(segment_file_path):
+            os.remove(segment_file_path)
+    except Exception as e:
+        print(f"无法删除文件：{e}")
+    
+    try:
+        if os.path.exists(site_file_path):
+            os.remove(site_file_path)
+    except Exception as e:
+        print(f"无法删除文件：{e}")
     
 if __name__ == '__main__':
     main()

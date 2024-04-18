@@ -66,7 +66,11 @@ def main():
     template_Kcopy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
     template_Mcopy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
     template_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
+    template_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
 
+    pyautogui.click(x=560, y=571)
+    sleep(0.5)
+    pyautogui.scroll(-80)
     found_copy = False
     while not found_copy:
         location, shape = find_image_on_screen(template_Mcopy)
@@ -103,10 +107,11 @@ def main():
                     center_y = (location[1] + shape[0] // 2) // 2
                     
                     xCoord = center_x
+                    xFix = center_x - 50
                     yCoord = center_y - 100
 
                     # 鼠标点击上方坐标
-                    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy_book.scpt'
+                    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
                     try:
                         # 将坐标值作为参数传递给AppleScript
                         process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
@@ -117,8 +122,32 @@ def main():
                         print(f"Error running AppleScript: {e}")
                     found_copy = True
 
-    if not found_copy:
-        print("在5秒内未找到copy_success图片，退出程序。")
+                # 设置寻找poe_copy_success.png图片的超时时间为15秒
+                sleep(1)
+                found_success_image = False
+                timeout_success = time.time() + 15
+                while not found_success_image and time.time() < timeout_success:
+                    location, shape = find_image_on_screen(template_success)
+                    if location:
+                        print("找到poe_copy_success图片，继续执行程序...")
+                        found_success_image = True
+                    else:
+                        # 移动到指定坐标
+                        pyautogui.moveTo(xFix, yCoord)
+                        # 点击左键
+                        pyautogui.click()
+                        try:
+                            # 将坐标值作为参数传递给AppleScript
+                            process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
+                            # 输出AppleScript的返回结果
+                            print(process.stdout.strip())
+                        except subprocess.CalledProcessError as e:
+                            # 如果有错误发生，打印错误信息
+                            print(f"Error running AppleScript: {e}")
+                        sleep(1)  # 每次检测间隔1秒
+
+    if not found_success_image:
+        print("在15秒内未找到poe_copy_success图片，退出程序。")
         sys.exit()
 
     # 设置目录路径
@@ -148,8 +177,10 @@ def main():
 
     # 读取/tmp/segment.txt文件内容
     segment_file_path = '/tmp/segment.txt'
-    with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-        segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
+    segment_content = ""
+    if os.path.exists(segment_file_path):
+        with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
+            segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
 
     # 在segment_content后面添加一个换行符
     segment_content += '\n'
@@ -161,19 +192,22 @@ def main():
     with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
         txt_file.write(final_content)
         txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
-    
+
+    # 使用函数
+    directory = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
+    rename_first_segment_file(directory)
+
     # 检查并删除/tmp/segment.txt文件
-    if os.path.exists(segment_file_path):
-        os.remove(segment_file_path)
+    try:
+        if os.path.exists(segment_file_path):
+            os.remove(segment_file_path)
+    except Exception as e:
+        print(f"无法删除文件：{e}")
 
     book_auto_signal_path = "/private/tmp/book_auto_signal.txt"
     # 检查并删除/private/tmp/book_auto_signal.txt文件
     if os.path.exists(book_auto_signal_path):
         os.remove(book_auto_signal_path)
-
-    # 使用函数
-    directory = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
-    rename_first_segment_file(directory)
 
 if __name__ == '__main__':
     main()

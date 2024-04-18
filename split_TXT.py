@@ -148,28 +148,6 @@ if not source_file_path:
 # 获取文件名和扩展名
 source_file_name = os.path.basename(source_file_path)
 
-if 'segment' not in source_file_name:
-    # 指定新建文件的路径
-    new_file_directory = "/Users/yanzhang/Documents/"
-    new_file_path = os.path.join(new_file_directory, source_file_name)
-
-    # 创建同名的空txt文件
-    try:
-        # 确保目录存在，如果不存在则创建
-        os.makedirs(new_file_directory, exist_ok=True)
-        # 使用 'x' 模式创建文件，若文件已存在则会抛出异常
-        with open(new_file_path, 'x', encoding='utf-8') as new_file:
-            pass  # 不需要写入任何内容，我们只创建空文件
-        print(f"在 {new_file_directory} 下创建了同名空txt文件：{source_file_name}")
-    except FileExistsError:
-        print(f"文件已存在：{new_file_path}")
-    except Exception as e:
-        print(f"创建文件时发生错误：{e}")
-
-else:
-    # 文件名中包含"segment"，不创建文件，直接继续执行后续代码
-    print('文件名中包含"segment"，不创建空文件。')
-
 # 读取文件内容
 with open(source_file_path, 'r', encoding='utf-8') as file:
     content = file.read()
@@ -216,6 +194,28 @@ entry.focus_set()
 
 # 运行 Tkinter 事件循环
 root.mainloop()
+
+if 'segment' not in source_file_name:
+    # 指定新建文件的路径
+    new_file_directory = "/Users/yanzhang/Documents/"
+    new_file_path = os.path.join(new_file_directory, source_file_name)
+
+    # 创建同名的空txt文件
+    try:
+        # 确保目录存在，如果不存在则创建
+        os.makedirs(new_file_directory, exist_ok=True)
+        # 使用 'x' 模式创建文件，若文件已存在则会抛出异常
+        with open(new_file_path, 'x', encoding='utf-8') as new_file:
+            pass  # 不需要写入任何内容，我们只创建空文件
+        print(f"在 {new_file_directory} 下创建了同名空txt文件：{source_file_name}")
+    except FileExistsError:
+        print(f"文件已存在：{new_file_path}")
+    except Exception as e:
+        print(f"创建文件时发生错误：{e}")
+
+else:
+    # 文件名中包含"segment"，不创建文件，直接继续执行后续代码
+    print('文件名中包含"segment"，不创建空文件。')
 
 # 调用函数，移动文件
 backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"

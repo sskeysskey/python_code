@@ -43,10 +43,7 @@ def capture_screen():
         return screenshot
 
 # 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -123,7 +120,11 @@ driver = webdriver.Chrome(service=service)
 # 打开 Economist 网站
 driver.get("https://www.economist.com/")
 
-template_path = '/Users/yanzhang/Documents/python_code/Resource/economist_accept.png'
+template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/economist_accept.png'  # 替换为你PNG图片的实际路径
+template_accept = cv2.imread(template_path_accept, cv2.IMREAD_COLOR)
+
+if template_accept is None:
+    raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
 
 found = False
 start_time = time.time()
@@ -132,7 +133,7 @@ time.sleep(1)
 
 # 开始循环，直到找到图片或者超时
 while not found and time.time() - start_time < timeout:
-    location, shape = find_image_on_screen(template_path)
+    location, shape = find_image_on_screen(template_accept)
     if location:
         found = True  # 找到图片，设置found为True以退出循环
         print("找到图片，继续执行后续程序。")

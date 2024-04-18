@@ -1,14 +1,15 @@
 import os
-import re
 import cv2
 import time
-import glob
 import pyperclip
 import pyautogui
 import subprocess
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
+import sys
+sys.path.append('/Users/yanzhang/Documents/python_code/Modules')
+from Rename_segment import rename_first_segment_file
 
 def capture_screen():
     # 使用PIL的ImageGrab直接截取屏幕
@@ -18,10 +19,7 @@ def capture_screen():
     return screenshot
 
 # 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -32,48 +30,30 @@ def find_image_on_screen(template_path, threshold=0.9):
     else:
         return None, None
 
-def rename_first_segment_file(directory):
-    # 构造搜索路径
-    search_pattern = os.path.join(directory, 'segment_*.txt')
-    
-    # 使用glob找到所有符合条件的文件
-    files = glob.glob(search_pattern)
-    
-    # 定义一个函数用于从文件名中提取数字，并确保正确处理文件名数字
-    def extract_number(filename):
-        # 从完整路径中提取文件名部分
-        basename = os.path.basename(filename)
-        # 使用正则表达式匹配数字
-        match = re.search(r'segment_(\d+)\.txt', basename)
-        return int(match.group(1)) if match else float('inf')
-    
-    # 检查是否找到了文件
-    if files:
-        # 按文件名中数字排序
-        files.sort(key=extract_number)
-        # 获取数值最小的文件（列表中的第一个文件）
-        min_file = files[0]
-        # 构造新文件名
-        new_name = re.sub(r'segment_(\d+)\.txt', r'done_\1.txt', min_file)
-        # 改名操作
-        os.rename(min_file, new_name)
-        print(f"已将文件 {min_file} 改名为 {new_name}")
-    else:
-        print("没有找到以 'segment_' 开头的txt文件")
-
 # 主函数
 def main():
-    template_Kcopy = '/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png'
-    template_Mcopy = '/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png'
-    template_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
+    # 定义模板路径字典
+    template_paths = {
+        "kimi": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
+        "mistral": "/Users/yanzhang/Documents/python_code/Resource/Mistral_copy.png",
+        "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
+        "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
+    }
+
+    # 读取所有模板图片，并存储在字典中
+    templates = {}
+    for key, path in template_paths.items():
+        template = cv2.imread(path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+        templates[key] = template
 
     pyautogui.click(x=560, y=571)
     sleep(0.5)
     pyautogui.scroll(-80)
     found_copy = False
     while not found_copy:
-        location, shape = find_image_on_screen(template_Mcopy)
+        location, shape = find_image_on_screen(templates["mistral"])
         if location:
             print("找到copy图了，准备点击copy...")
             # 计算中心坐标
@@ -85,7 +65,7 @@ def main():
             found_copy = True
         else:
             print("没找到图片，继续执行...")
-            location, shape = find_image_on_screen(template_Kcopy)
+            location, shape = find_image_on_screen(templates["kimi"])
             if location:
                 print("找到copy图了，准备点击copy...")
                 # 计算中心坐标
@@ -99,7 +79,7 @@ def main():
                 pyautogui.click(modify_x, modify_y)
                 found_copy = True
             else:
-                location, shape = find_image_on_screen(template_thumb)
+                location, shape = find_image_on_screen(templates["thumb"])
                 if location:
                     print("找到copy图了，准备点击copy...")
                     # 计算中心坐标
@@ -127,7 +107,7 @@ def main():
                 found_success_image = False
                 timeout_success = time.time() + 15
                 while not found_success_image and time.time() < timeout_success:
-                    location, shape = find_image_on_screen(template_success)
+                    location, shape = find_image_on_screen(templates["success"])
                     if location:
                         print("找到poe_copy_success图片，继续执行程序...")
                         found_success_image = True
@@ -148,7 +128,7 @@ def main():
 
     if not found_success_image:
         print("在15秒内未找到poe_copy_success图片，退出程序。")
-        sys.exit()
+        webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
 
     # 设置目录路径
     directory_path = '/Users/yanzhang/Documents/'

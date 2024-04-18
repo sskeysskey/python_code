@@ -18,10 +18,7 @@ def capture_screen():
     return screenshot
 
 # 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -124,15 +121,25 @@ def main():
     html_skeleton_created = False
     html_file_path = ''  # 用空字符串初始化
 
-    template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
+    template_paths = {
+        "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
+        "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
+    }
+
+    # 读取所有模板图片，并存储在字典中
+    templates = {}
+    for key, path in template_paths.items():
+        template = cv2.imread(path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+        templates[key] = template
 
     pyautogui.click(x=560, y=571)
     sleep(0.5)
     pyautogui.scroll(-80)
     found_thumb = False
     while not found_thumb:
-        location, shape = find_image_on_screen(template_path_thumb)
+        location, shape = find_image_on_screen(templates["thumb"])
         if location:
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
@@ -162,7 +169,7 @@ def main():
     found_success_image = False
     timeout_success = time.time() + 15
     while not found_success_image and time.time() < timeout_success:
-        location, shape = find_image_on_screen(template_path_success)
+        location, shape = find_image_on_screen(templates["success"])
         if location:
             print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True

@@ -1,10 +1,8 @@
-# Screenshot.py
 import os
 import cv2
 import sys
 import time
 import pyautogui
-import pyperclip
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
@@ -12,8 +10,16 @@ from PIL import ImageGrab
 class ScreenDetector:
     def __init__(self, template_name, click=False, choise=False):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
+        self.template = self.load_template()
         self.click = click
         self.choise = choise
+
+    def load_template(self):
+        # 在初始化时加载模板图片
+        template = cv2.imread(self.template_path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {self.template_path}")
+        return template
 
     def capture_screen(self):
         # 使用PIL的ImageGrab直接截取屏幕
@@ -23,16 +29,13 @@ class ScreenDetector:
         return screenshot
 
     def find_image_on_screen(self, threshold=0.9):
-        template = cv2.imread(self.template_path, cv2.IMREAD_COLOR)
-        if template is None:
-            raise FileNotFoundError(f"模板图片未能正确读取于路径 {self.template_path}")
         screen = self.capture_screen()
-        result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+        result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         # 释放截图和模板图像以节省内存
         del screen
         if max_val >= threshold:
-            return max_loc, template.shape
+            return max_loc, self.template.shape
         else:
             return None, None
 

@@ -15,10 +15,7 @@ def capture_screen():
     return screenshot
 
 # 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
@@ -31,31 +28,42 @@ def find_image_on_screen(template_path, threshold=0.9):
 
 # 主函数
 def main():
-    template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
-    template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
-    template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
-    template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
-    template_path_compare = '/Users/yanzhang/Documents/python_code/Resource/poe_compare.png'
+    # 定义模板路径字典
+    template_paths = {
+        "stop": "/Users/yanzhang/Documents/python_code/Resource/poe_stop.png",
+        "waiting": "/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png",
+        "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
+        "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
+        "failure": "/Users/yanzhang/Documents/python_code/Resource/poe_failure.png",
+        "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
+        "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png"
+    }
+
+    # 读取所有模板图片，并存储在字典中
+    templates = {}
+    for key, path in template_paths.items():
+        template = cv2.imread(path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+        templates[key] = template
 
     found = False
     timeout_stop = time.time() + 15
     while not found and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(template_path_stop)
+        location, shape = find_image_on_screen(templates["stop"])
         if location:
             found = True
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
             pyautogui.scroll(-80)
-            location, shape = find_image_on_screen(template_path_failure)
+            location, shape = find_image_on_screen(templates["failure"])
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
-            location, shape = find_image_on_screen(template_path_no)
+            location, shape = find_image_on_screen(templates["no"])
             if location:
                 print("找到poe_no图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
@@ -65,12 +73,12 @@ def main():
 
     found_stop = True
     while found_stop:
-        location, shape = find_image_on_screen(template_path_stop)
+        location, shape = find_image_on_screen(templates["stop"])
         if location:
             print("找到poe_stop图片，继续监控...")
             pyautogui.scroll(-120)
             # 检测poe_stillwaiting.png图片
-            location, shape = find_image_on_screen(template_path_waiting)
+            location, shape = find_image_on_screen(templates["waiting"])
             if location:
                 print("找到poe_stillwaiting图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
@@ -81,38 +89,11 @@ def main():
             print("Stop图片没有了...")
             found_stop = False
 
-    found = False
-    timeout_compare = time.time() + 25
-    while not found and time.time() < timeout_compare:
-        location, shape = find_image_on_screen(template_path_compare)
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
-            sleep(1)
-
-    if time.time() > timeout_compare:
-        print("在15秒内未找到图片，退出程序。")
-        sys.exit()
-
-    pyautogui.scroll(-80)
     found_thumb = False
     timeout_thumb = time.time() + 10
     while not found_thumb and time.time() < timeout_thumb:
-        location, shape = find_image_on_screen(template_path_thumb)
+        location, shape = find_image_on_screen(templates["thumb"])
         if location:
-            sleep(1)
-            # 计算中心坐标
-            center_x = (location[0] + shape[1] // 2) // 2
-            center_y = (location[1] + shape[0] // 2) // 2
-
-            # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
-            xCoord = center_x
-            xFix = center_x - 50
-            yCoord = center_y - 100
-
             found_thumb = True
             print(f"找到图片位置: {location}")
         else:
@@ -122,6 +103,36 @@ def main():
 
     if time.time() > timeout_thumb:
         print("在20秒内未找到图片，退出程序。")
+        sys.exit()
+    
+    found = False
+    timeout_compare = time.time() + 10
+    while not found and time.time() < timeout_compare:
+        location, shape = find_image_on_screen(templates["compare"])
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            pyautogui.scroll(-80)
+            sleep(1)
+
+    location, shape = find_image_on_screen(templates["thumb"])
+    if location:
+        sleep(1)
+        # 计算中心坐标
+        center_x = (location[0] + shape[1] // 2) // 2
+        center_y = (location[1] + shape[0] // 2) // 2
+
+        # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
+        xCoord = center_x
+        xFix = center_x - 50
+        yCoord = center_y - 250
+
+        found_thumb = True
+        print(f"找到图片位置: {location}")
+    else:
+        print("未找到图片，继续监控...")
         sys.exit()
 
     script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
@@ -139,7 +150,7 @@ def main():
     found_success_image = False
     timeout_success = time.time() + 15
     while not found_success_image and time.time() < timeout_success:
-        location, shape = find_image_on_screen(template_path_success)
+        location, shape = find_image_on_screen(templates["success"])
         if location:
             print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True

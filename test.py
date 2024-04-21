@@ -1,166 +1,118 @@
-import cv2
-import time
-import pyautogui
-import subprocess
-import numpy as np
-from time import sleep
-from PIL import ImageGrab
+import sqlite3
+import tkinter as tk
+from datetime import datetime
+import tkinter.font as tkFont
+from tkinter import scrolledtext
+# from tkinter import simpledialog
 
-# 截取屏幕
-def capture_screen():
-    # 使用PIL的ImageGrab直接截取屏幕
-    screenshot = ImageGrab.grab()
-    # 将截图对象转换为OpenCV格式
-    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-    return screenshot
+def get_user_input_custom(root, prompt):
+    # 创建一个新的顶层窗口
+    input_dialog = tk.Toplevel(root)
+    input_dialog.title(prompt)
+    # 设置窗口大小和位置
+    window_width = 280
+    window_height = 90
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    center_x = int(screen_width / 2 - window_width / 2)
+    center_y = int(screen_height / 3 - window_height / 2)  # 将窗口位置提升到屏幕1/3高度处
+    input_dialog.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
 
-# 查找图片
-def find_image_on_screen(template_path, threshold=0.9):
-    template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-    if template is None:
-        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
-    screen = capture_screen()
-    result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    # 释放截图和模板图像以节省内存
-    del screen
-    if max_val >= threshold:
-        return max_loc, template.shape
-    else:
-        return None, None
+    # 添加输入框，设置较大的字体和垂直填充
+    entry = tk.Entry(input_dialog, width=20, font=('Helvetica', 18))
+    entry.pack(pady=20, ipady=10)  # 增加内部垂直填充
+    entry.focus_set()
 
-# 主函数
-def main():
-    template_path_stop = '/Users/yanzhang/Documents/python_code/Resource/poe_stop.png'
-    template_path_waiting = '/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png'
-    template_path_success = '/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png'
-    template_path_thumb = '/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png'
-    template_path_failure = '/Users/yanzhang/Documents/python_code/Resource/poe_failure.png'
-    template_path_no = '/Users/yanzhang/Documents/python_code/Resource/poe_no.png'
-    template_path_compare = '/Users/yanzhang/Documents/python_code/Resource/poe_compare.png'
+    # 设置确认按钮，点击后销毁窗口并返回输入内容
+    def on_submit():
+        nonlocal user_input
+        user_input = entry.get()
+        input_dialog.destroy()
 
-    found = False
-    timeout_stop = time.time() + 15
-    while not found and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(template_path_stop)
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
-            location, shape = find_image_on_screen(template_path_failure)
-            if location:
-                print("找到poe_failure图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-            location, shape = find_image_on_screen(template_path_no)
-            if location:
-                print("找到poe_no图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-            sleep(1)
+    # 绑定回车键和ESC键
+    entry.bind('<Return>', lambda event: on_submit())
+    input_dialog.bind('<Escape>', lambda event: input_dialog.destroy())
 
-    found_stop = True
-    while found_stop:
-        location, shape = find_image_on_screen(template_path_stop)
-        if location:
-            print("找到poe_stop图片，继续监控...")
-            pyautogui.scroll(-120)
-            # 检测poe_stillwaiting.png图片
-            location, shape = find_image_on_screen(template_path_waiting)
-            if location:
-                print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
-            sleep(1)  # 简短暂停再次监控
-        else:
-            print("Stop图片没有了...")
-            found_stop = False
+    # 运行窗口，等待用户输入
+    user_input = None
+    input_dialog.wait_window(input_dialog)
+    return user_input
 
-    found = False
-    timeout_compare = time.time() + 20
-    while not found and time.time() < timeout_compare:
-        location, shape = find_image_on_screen(template_path_compare)
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
-            sleep(1)
+def query_database(db_file, table_name, condition):
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    query = f"SELECT * FROM {table_name} WHERE {condition} ORDER BY date;"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    if not rows:
+        return "今天没有数据可显示。\n"
+    columns = [description[0] for description in cursor.description]
+    col_widths = [max(len(str(row[i])) for row in rows + [columns]) for i in range(len(columns))]
+    output_text = ' | '.join([col.ljust(col_widths[idx]) for idx, col in enumerate(columns)]) + '\n'
+    output_text += '-' * len(output_text) + '\n'
+    for row in rows:
+        output_text += ' | '.join([str(item).ljust(col_widths[idx]) for idx, item in enumerate(row)]) + '\n'
+    conn.close()
+    return output_text
 
-    if time.time() > timeout_compare:
-        print("在15秒内未找到图片，退出程序。")
-        sys.exit()
+def create_window(parent, content):
+    # 创建Toplevel窗口
+    top = tk.Toplevel(parent)
+    top.title("数据库查询结果")
+    window_width = 900
+    window_height = 600
+    screen_width = top.winfo_screenwidth()
+    screen_height = top.winfo_screenheight()
+    center_x = int(screen_width / 2 - window_width / 2)
+    center_y = int(screen_height / 2 - window_height / 2)
+    top.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+    top.bind('<Escape>', close_app)  # 绑定ESC到关闭程序的函数
+    text_font = tkFont.Font(family="Courier", size=20)
+    text_area = scrolledtext.ScrolledText(top, wrap=tk.WORD, width=100, height=30, font=text_font)
+    text_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+    text_area.insert(tk.INSERT, content)
+    text_area.configure(state='disabled')
 
-    pyautogui.scroll(-80)
-    found_thumb = False
-    timeout_thumb = time.time() + 10
-    while not found_thumb and time.time() < timeout_thumb:
-        location, shape = find_image_on_screen(template_path_thumb)
-        if location:
-            sleep(1)
-            # 计算中心坐标
-            center_x = (location[0] + shape[1] // 2) // 2
-            center_y = (location[1] + shape[0] // 2) // 2
-
-            # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
-            xCoord = center_x
-            xFix = center_x - 50
-            yCoord = center_y - 100
-
-            found_thumb = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
-            sleep(1)
-
-    if time.time() > timeout_thumb:
-        print("在20秒内未找到图片，退出程序。")
-        sys.exit()
-
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
-    try:
-        # 将坐标值作为参数传递给AppleScript
-        process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
-        # 输出AppleScript的返回结果
-        print(process.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        # 如果有错误发生，打印错误信息
-        print(f"Error running AppleScript: {e}")
-
-    # 设置寻找poe_copy_success.png图片的超时时间为15秒
-    sleep(1)
-    found_success_image = False
-    timeout_success = time.time() + 15
-    while not found_success_image and time.time() < timeout_success:
-        location, shape = find_image_on_screen(template_path_success)
-        if location:
-            print("找到poe_copy_success图片，继续执行程序...")
-            found_success_image = True
-        else:
-            # 移动到指定坐标
-            pyautogui.moveTo(xFix, yCoord)
-            # 点击左键
-            pyautogui.click()
-            try:
-                # 将坐标值作为参数传递给AppleScript
-                process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
-                # 输出AppleScript的返回结果
-                print(process.stdout.strip())
-            except subprocess.CalledProcessError as e:
-                # 如果有错误发生，打印错误信息
-                print(f"Error running AppleScript: {e}")
-            sleep(1)  # 每次检测间隔1秒
-
-    if not found_success_image:
-        print("在15秒内未找到poe_copy_success图片，退出程序。")
-        sys.exit()
+def close_app(event=None):
+    root.destroy()  # 使用destroy来确保彻底关闭所有窗口和退出
 
 if __name__ == '__main__':
-    main()
+    root = tk.Tk()
+    root.withdraw()  # 隐藏根窗口
+    root.bind('<Escape>', close_app)  # 同样绑定ESC到关闭程序的函数
+
+    # 定义数据库信息的字典
+    database_info = {
+        'StocksDB': {'path': '/Users/yanzhang/Stocks.db', 'table': 'Stocks'},
+        'CryptoDB': {'path': '/Users/yanzhang/Crypto.db', 'table': 'Crypto'}
+    }
+
+    # 将数据库信息键映射到一组关键字
+    database_mapping = {
+        'StocksDB': {"NASDAQ", "S&P 500", "SEA", "ALL", "apps", "shenzhen", "hengsheng", "nikkei"},
+        'CryptoDB': {"Solana", "bitcoin", "ether", "litecoin", "bit cash", "dogcoin"}
+    }
+
+    # 反向映射，从关键字到数据库信息键
+    reverse_mapping = {}
+    for db_key, keywords in database_mapping.items():
+        for keyword in keywords:
+            reverse_mapping[keyword] = db_key
+
+    # 获取用户输入
+    prompt = "请输入关键字查询数据库:"
+    value = get_user_input_custom(root, prompt)
+
+    # 使用反向映射表查询数据库信息
+    if value and value in reverse_mapping:
+        db_key = reverse_mapping[value]
+        db_info = database_info[db_key]
+        condition = f"name = '{value}'"
+        result = query_database(db_info['path'], db_info['table'], condition)
+        create_window(root, result)
+    else:
+        print("输入值无效或未配置数据库信息。程序退出。")
+        close_app()
+
+    root.mainloop()  # 主事件循环

@@ -77,14 +77,13 @@ if template_accept is None:
 
 found = False
 start_time = time.time()
-timeout = 20  # 设置1分钟超时时间
+timeout = 10  # 设置超时时间
 time.sleep(1)
 
 # 开始循环，直到找到图片或者超时
 while not found and time.time() - start_time < timeout:
     location, shape = find_image_on_screen(template_accept)
     if location:
-        found = True  # 找到图片，设置found为True以退出循环
         print("找到图片，继续执行后续程序。")
         # 计算中心坐标
         center_x = (location[0] + shape[1] // 2) // 2
@@ -92,12 +91,13 @@ while not found and time.time() - start_time < timeout:
             
         # 鼠标点击中心坐标
         pyautogui.click(center_x, center_y)
+        found = True  # 找到图片，设置found为True以退出循环
     else:
         print("未找到图片，等待后再次尝试。")
-        time.sleep(1)  # 等待5秒后再次尝试
+        time.sleep(1)  # 等待1秒后再次尝试
 
 if not found:
-    print("1分钟内未找到图片，继续执行后续程序。")
+    print("未找到图片，继续执行后续程序。")
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/site/economist.html"

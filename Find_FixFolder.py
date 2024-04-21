@@ -11,11 +11,12 @@ root.withdraw()
 searchFolders = [
     "/Users/yanzhang/Documents/ScriptEditor/",
     "/Users/yanzhang/Library/Services/",
-    "/Users/yanzhang/Downloads/backup/TXT/Segments/",
+    "/Users/yanzhang/Documents/Financial_System",
     "/Users/yanzhang/Documents/python_code",
-    "/Users/yanzhang/Documents/Books",
     "/Users/yanzhang/Documents/LuxuryBox",
-    "/Users/yanzhang/Documents/sskeysskey.github.io"
+    "/Users/yanzhang/Documents/sskeysskey.github.io",
+    "/Users/yanzhang/Downloads/backup/TXT/Segments/",
+    "/Users/yanzhang/Documents/Books"
 ]
 
 def window_center1(win, width, height):

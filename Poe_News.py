@@ -2,6 +2,7 @@ import os
 import html
 import pyperclip
 import subprocess
+from time import sleep
 from datetime import datetime
 
 def append_to_html(html_file_path, segment_content, modified_content):
@@ -187,6 +188,7 @@ def main():
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
     
+    sleep(1)
     # 删除/tmp/segment.txt文件
     os.remove(segment_file_path)
     os.remove(site_file_path)

@@ -36,7 +36,8 @@ def main():
         "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
         "failure": "/Users/yanzhang/Documents/python_code/Resource/poe_failure.png",
         "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
-        "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png"
+        "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png",
+        "copy": "/Users/yanzhang/Documents/python_code/Resource/poe_copy.png",
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -52,11 +53,10 @@ def main():
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
-            found = True
             print(f"找到图片位置: {location}")
+            found = True
         else:
             print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
             location, shape = find_image_on_screen(templates["failure"])
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
@@ -70,6 +70,10 @@ def main():
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             sleep(1)
+    
+    if time.time() > timeout_stop:
+        print("在20秒内未找到图片，退出程序。")
+        sys.exit()
 
     found_stop = True
     while found_stop:
@@ -90,7 +94,7 @@ def main():
             found_stop = False
 
     found_thumb = False
-    timeout_thumb = time.time() + 10
+    timeout_thumb = time.time() + 15
     while not found_thumb and time.time() < timeout_thumb:
         location, shape = find_image_on_screen(templates["thumb"])
         if location:
@@ -105,45 +109,53 @@ def main():
         print("在20秒内未找到图片，退出程序。")
         sys.exit()
     
-    found = False
+    found_compare = False
     timeout_compare = time.time() + 10
-    while not found and time.time() < timeout_compare:
+    while not found_compare and time.time() < timeout_compare:
         location, shape = find_image_on_screen(templates["compare"])
         if location:
-            found = True
-            print(f"找到图片位置: {location}")
+            found_compare = True
         else:
-            print("未找到图片，继续监控...")
             pyautogui.scroll(-80)
-            sleep(1)
-
+            print("未找到图片，继续监控...")
+    
+    sleep(1)
     location, shape = find_image_on_screen(templates["thumb"])
     if location:
-        sleep(1)
-        # 计算中心坐标
         center_x = (location[0] + shape[1] // 2) // 2
         center_y = (location[1] + shape[0] // 2) // 2
 
         # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
         xCoord = center_x
-        xFix = center_x - 50
-        yCoord = center_y - 250
+        yCoord = center_y - 50
 
-        found_thumb = True
-        print(f"找到图片位置: {location}")
+        # 使用pyautogui移动鼠标并进行右键点击
+        pyautogui.moveTo(xCoord, yCoord)
+        pyautogui.click(button='right')
     else:
-        print("未找到图片，继续监控...")
-        sys.exit()
+        print(f"找到图片位置: {location}")
 
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
-    try:
-        # 将坐标值作为参数传递给AppleScript
-        process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
-        # 输出AppleScript的返回结果
-        print(process.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        # 如果有错误发生，打印错误信息
-        print(f"Error running AppleScript: {e}")
+    sleep(1)
+    found_copy = False
+    timeout_copy = time.time() + 5
+    while not found_copy and time.time() < timeout_copy:
+        location, shape = find_image_on_screen(templates["copy"])
+        if location:
+            # 计算中心坐标
+            center_x = (location[0] + shape[1] // 2) // 2
+            center_y = (location[1] + shape[0] // 2) // 2
+            
+            # 鼠标点击中心坐标
+            pyautogui.click(center_x, center_y)
+            found_copy = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            sleep(1)
+    
+    if time.time() > timeout_copy:
+        print("在20秒内未找到图片，退出程序。")
+        sys.exit()
 
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
     sleep(1)
@@ -155,18 +167,6 @@ def main():
             print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True
         else:
-            # 移动到指定坐标
-            pyautogui.moveTo(xFix, yCoord)
-            # 点击左键
-            pyautogui.click()
-            try:
-                # 将坐标值作为参数传递给AppleScript
-                process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
-                # 输出AppleScript的返回结果
-                print(process.stdout.strip())
-            except subprocess.CalledProcessError as e:
-                # 如果有错误发生，打印错误信息
-                print(f"Error running AppleScript: {e}")
             sleep(1)  # 每次检测间隔1秒
 
     if not found_success_image:

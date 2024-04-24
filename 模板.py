@@ -635,3 +635,13 @@ import sys
 sys.path.append('/path/to/your/module')
 import mymodule
 #————————————————————————————————————————————————————————————————————————————————————————
+script_path = '/Users/yanzhang/Documents/ScriptEditor/Click_copy.scpt'
+try:
+    # 将坐标值作为参数传递给AppleScript
+    process = subprocess.run(['osascript', script_path, str(xCoord), str(yCoord)], check=True, text=True, stdout=subprocess.PIPE)
+    # 输出AppleScript的返回结果
+    print(process.stdout.strip())
+except subprocess.CalledProcessError as e:
+    # 如果有错误发生，打印错误信息
+    print(f"Error running AppleScript: {e}")
+#————————————————————————————————————————————————————————————————————————————————————————

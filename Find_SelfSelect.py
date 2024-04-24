@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 import subprocess
 from tkinter import Tk, filedialog, Text, Scrollbar, Button, Entry, Label, messagebox, Toplevel
 
@@ -161,13 +162,12 @@ def show_results(results):
             text.tag_configure(tag_name, foreground='orange', underline=True)  # 设置标签样式为可点击链接的样式
     else:
         text.insert("end", "没有找到包含关键词的文件。", 'file_tag')
-    
-# 在这里执行搜索并显示结果
-def start_search(keyword):
-    resultList = search_files(searchFolder, keyword)  # 执行搜索
-    show_results(resultList)  # 显示结果
 
-# 等待用户输入关键词
-custom_input_window("请输入要检索的字符串内容：", start_search)
+def threaded_search_files(directories, keywords, callback):
+    results = search_files(directories, keywords)
+    root.after(0, callback, results)
+
+custom_input_window("请输入要检索的字符串内容：", 
+                    lambda keyword: threading.Thread(target=threaded_search_files, args=(searchFolder, keyword, show_results)).start())
 
 root.mainloop()  # 最后，启动主事件循环

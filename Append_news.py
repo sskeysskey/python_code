@@ -135,7 +135,6 @@ def main():
             raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
         templates[key] = template
 
-    pyautogui.click(x=560, y=571)
     sleep(0.5)
     pyautogui.scroll(-80)
     found_thumb = False

@@ -49,7 +49,7 @@ def main():
         templates[key] = template
 
     found = False
-    timeout_stop = time.time() + 15
+    timeout_stop = time.time() + 5
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
@@ -71,9 +71,9 @@ def main():
                 pyautogui.hotkey('command', 'r')
             sleep(1)
     
-    if time.time() > timeout_stop:
-        print("在20秒内未找到图片，退出程序。")
-        sys.exit()
+    # if time.time() > timeout_stop:
+    #     print("在20秒内未找到图片，退出程序。")
+    #     sys.exit()
 
     found_stop = True
     while found_stop:
@@ -105,9 +105,9 @@ def main():
             pyautogui.scroll(-80)
             sleep(1)
 
-    if time.time() > timeout_thumb:
-        print("在20秒内未找到图片，退出程序。")
-        sys.exit()
+    # if time.time() > timeout_thumb:
+    #     print("在20秒内未找到图片，退出程序。")
+    #     sys.exit()
     
     found_compare = False
     timeout_compare = time.time() + 10
@@ -153,14 +153,14 @@ def main():
             print("未找到图片，继续监控...")
             sleep(1)
     
-    if time.time() > timeout_copy:
-        print("在20秒内未找到图片，退出程序。")
-        sys.exit()
+    # if time.time() > timeout_copy:
+    #     print("在5秒内未找到图片，退出程序。")
+    #     sys.exit()
 
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
     sleep(1)
     found_success_image = False
-    timeout_success = time.time() + 15
+    timeout_success = time.time() + 10
     while not found_success_image and time.time() < timeout_success:
         location, shape = find_image_on_screen(templates["success"])
         if location:
@@ -169,9 +169,9 @@ def main():
         else:
             sleep(1)  # 每次检测间隔1秒
 
-    if not found_success_image:
-        print("在15秒内未找到poe_copy_success图片，退出程序。")
-        sys.exit()
+    # if not found_success_image:
+    #     print("在10秒内未找到poe_copy_success图片，退出程序。")
+    #     sys.exit()
 
 if __name__ == '__main__':
     main()

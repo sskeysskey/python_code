@@ -49,7 +49,7 @@ def main():
         templates[key] = template
 
     found = False
-    timeout_stop = time.time() + 5
+    timeout_stop = time.time() + 10
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
@@ -105,9 +105,9 @@ def main():
             pyautogui.scroll(-80)
             sleep(1)
 
-    # if time.time() > timeout_thumb:
-    #     print("在20秒内未找到图片，退出程序。")
-    #     sys.exit()
+    if time.time() > timeout_thumb:
+        print("在20秒内未找到图片，退出程序。")
+        sys.exit()
     
     found_compare = False
     timeout_compare = time.time() + 10

@@ -1,6 +1,7 @@
 import re
 import os
 import datetime
+import pyperclip
 
 def SRT_File(clipboard_content):
     print("执行函数A")

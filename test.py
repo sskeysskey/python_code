@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime, timedelta
 
 def fetch_data(name):
-    conn = sqlite3.connect('/Users/yanzhang/Finance.db')
+    conn = sqlite3.connect('/Users/yanzhang/Documents/Database/Finance.db')
     cursor = conn.cursor()
     three_months_ago = datetime.now() - timedelta(days=90)
     query = "SELECT date, price FROM Stocks WHERE name = ? AND date >= ? ORDER BY date;"

@@ -9,7 +9,7 @@ def SRT_File(clipboard_content):
     match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
 
     # 获取当前日期并格式化为指定的文件名形式
-    current_date = datetime.datetime.now().strftime('%m月%d日.srt')
+    current_date = datetime.datetime.now().strftime('%m月%d日%H%M.srt')
 
     # 拼接文件完整路径
     file_path = os.path.join('/Users/yanzhang/Movies', current_date)

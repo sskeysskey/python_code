@@ -24,7 +24,39 @@ def set_clipboard_data(data):
     p.stdin.close()
     p.wait()
 
-# 解析HTML并替换链接文本
+# # 解析HTML并替换链接文本
+# class MyHTMLParser(HTMLParser):
+#     def __init__(self, new_texts):
+#         super().__init__()
+#         self.new_texts = new_texts
+#         self.current_index = 0
+#         self.result_html = ""
+#         self.inside_a = False
+
+#     def handle_starttag(self, tag, attrs):
+#         if tag == "a":
+#             self.inside_a = True
+#             for attr in attrs:
+#                 if attr[0] == "target" and attr[1] == "_blank":
+#                     self.capture = True
+#         self.result_html += self.get_starttag_text()
+
+#     def handle_endtag(self, tag):
+#         if tag == "a":
+#             self.inside_a = False
+#             self.current_index += 1
+#         self.result_html += f"</{tag}>"
+
+#     def handle_data(self, data):
+#         if self.inside_a and getattr(self, 'capture', False):
+#             if self.current_index < len(self.new_texts):
+#                 self.result_html += self.new_texts[self.current_index]
+#             else:
+#                 # 如果新文本行数不够，则抛出错误
+#                 raise IndexError("剪贴板内容行数与原文链接数量不匹配。")
+#         else:
+#             self.result_html += data
+
 class MyHTMLParser(HTMLParser):
     def __init__(self, new_texts):
         super().__init__()
@@ -32,10 +64,12 @@ class MyHTMLParser(HTMLParser):
         self.current_index = 0
         self.result_html = ""
         self.inside_a = False
+        self.capture = False
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             self.inside_a = True
+            self.capture = False  # 每次进入<a>标签时重置capture
             for attr in attrs:
                 if attr[0] == "target" and attr[1] == "_blank":
                     self.capture = True
@@ -44,16 +78,18 @@ class MyHTMLParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "a":
             self.inside_a = False
-            self.current_index += 1
+            self.capture = False  # 确保在离开<a>标签后不会错误地捕获文本
+            self.current_index += 1  # 只有成功处理完一个<a>标签后，才增加索引
         self.result_html += f"</{tag}>"
 
     def handle_data(self, data):
-        if self.inside_a and getattr(self, 'capture', False):
+        if self.inside_a and self.capture:
             if self.current_index < len(self.new_texts):
                 self.result_html += self.new_texts[self.current_index]
             else:
-                # 如果新文本行数不够，则抛出错误
-                raise IndexError("剪贴板内容行数与原文链接数量不匹配。")
+                # 抛出错误，并指明是哪一行有问题
+                error_message = f"错误：超出新文本行的数量。当前处理到第 {self.current_index + 1} 个链接，但是新文本只有 {len(self.new_texts)} 行。"
+                raise IndexError(error_message)
         else:
             self.result_html += data
 

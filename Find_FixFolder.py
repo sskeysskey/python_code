@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import subprocess
 import threading
 from tkinter import Tk, Text, Scrollbar, Button, Entry, Label, Toplevel
@@ -107,7 +108,23 @@ def handle_file(root, name, directory, keywords_lower, matched_files):
         except Exception as e:
             print(f"Error reading {item_path}: {e}")
 
-def show_results(results):
+def search_json_for_keywords(json_path, keywords):
+    with open(json_path, 'r') as file:
+        data = json.load(file)
+    matched_names = []
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+    for stock in data['stocks']:
+        descriptions = [stock['description1'], stock['description2']]
+        # if any(all(keyword in description.lower() for keyword in keywords_lower) for description in descriptions):
+        #     matched_names.append(stock['name'])
+        matched_descriptions = [description for description in descriptions if all(keyword in description.lower() for keyword in keywords_lower)]
+        if matched_descriptions:
+            matched_names.append(stock['name'])
+    return matched_names
+
+def show_results_with_json(results, json_path, keywords):
+    matched_names = search_json_for_keywords(json_path, keywords)
+
     result_window = Toplevel(root)
     result_window.title("搜索结果")
     window_center(result_window, 800, 600)
@@ -117,12 +134,16 @@ def show_results(results):
     text.pack(side="left", fill="both")
     text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
     text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('stock_tag', foreground='blue', underline=True, font=('Helvetica', '20'))
     scrollbar.config(command=text.yview)
-    text.delete(1.0, "end")
     result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
 
     def open_file_and_change_tag_color(path, tag_name):
         open_file(path)
+        text.tag_configure(tag_name, foreground='grey', underline=False)
+
+    def open_json_file(tag_name):
+        open_file(json_path)
         text.tag_configure(tag_name, foreground='grey', underline=False)
 
     if results:
@@ -136,13 +157,21 @@ def show_results(results):
                     text.insert("end", file + "\n", (tag_name, 'file_tag'))
                 text.insert("end", "\n")
     else:
-        text.insert("end", "没有找到包含关键词的文件。")
+        text.insert("end", "没有找到包含关键词的文件。\n")
 
-def threaded_search_files(directories, keywords, callback):
+    if matched_names:
+        text.insert("end", "匹配的股票名称:\n", 'directory_tag')
+        for name in matched_names:
+            tag_name = "stock_" + name.replace(" ", "_")
+            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
+            text.insert("end", name + "\n", (tag_name, 'stock_tag'))
+
+def threaded_search_files_with_json(directories, keywords, json_path, callback):
     results = search_files(directories, keywords)
-    root.after(0, callback, results)
+    root.after(0, callback, results, json_path, keywords)
 
+json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
 custom_input_window("请输入要检索的字符串内容：", 
-                    lambda keyword: threading.Thread(target=threaded_search_files, args=(searchFolders, keyword, show_results)).start())
+                    lambda keyword: threading.Thread(target=threaded_search_files_with_json, args=(searchFolders, keyword, json_path, show_results_with_json)).start())
 
 root.mainloop()

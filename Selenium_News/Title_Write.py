@@ -11,6 +11,28 @@ from datetime import datetime
 from tkinter import messagebox
 from html.parser import HTMLParser
 
+def delete_done_txt_files(directory):
+    # 确保提供的目录路径是存在的
+    if not os.path.exists(directory):
+        print("提供的目录不存在")
+        return
+    
+    try:
+        # 遍历目录下的所有文件
+        for filename in os.listdir(directory):
+            # 构建完整的文件路径
+            filepath = os.path.join(directory, filename)
+            # 检查文件名是否符合条件
+            if filename.startswith("done_") and filename.endswith(".txt"):
+                # 删除文件
+                os.remove(filepath)
+                print(f"已删除文件：{filename}")
+    except Exception as e:
+        print(f"在删除文件时发生错误：{e}")
+
+# 调用函数，传入路径
+delete_done_txt_files("/tmp/")
+
 # 从剪贴板读取翻译后的内容
 def get_clipboard_data():
     p = subprocess.Popen(['pbpaste'], stdout=subprocess.PIPE)
@@ -163,5 +185,6 @@ if os.path.exists(txt_file_path):
     for _ in range(6):
         pyautogui.hotkey('command', '=')
         time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
+    delete_done_txt_files("/tmp/")
 else:
     print("文件不存在，无法打开。")

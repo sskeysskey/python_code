@@ -1,6 +1,9 @@
 import os
+import sys
 import codecs
 import pyperclip
+sys.path.append('/Users/yanzhang/Documents/python_code/Modules')
+from Rename_segment import rename_first_segment_file
 
 def NewsTitle_File(clipboard_content):
     print("执行函数B")
@@ -28,3 +31,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # 使用函数
+    directory = "/tmp/"
+    rename_first_segment_file(directory)

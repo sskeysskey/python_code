@@ -117,16 +117,20 @@ def search_json_for_keywords(json_path, keywords):
 
     # 搜索 stocks 分类
     for stock in data.get('stocks', []):
-        descriptions = [stock['description1'], stock['description2']]
-        matched_descriptions = [description for description in descriptions if all(keyword in description.lower() for keyword in keywords_lower)]
-        if matched_descriptions:
+        # 合并描述和标签为一个大的搜索文本
+        combined_text = ' '.join([stock['description1'], stock['description2']] + stock.get('tag', []))
+        combined_text = combined_text.lower()
+        # 检查是否所有关键词都在合并后的文本中
+        if all(keyword in combined_text for keyword in keywords_lower):
             matched_names_stocks.append(stock['name'])
 
     # 搜索 etfs 分类
     for etf in data.get('etfs', []):
-        descriptions = [etf['description1'], etf['description2']]
-        matched_descriptions = [description for description in descriptions if all(keyword in description.lower() for keyword in keywords_lower)]
-        if matched_descriptions:
+        # 同样合并描述和标签
+        combined_text = ' '.join([etf['description1'], etf['description2']] + etf.get('tag', []))
+        combined_text = combined_text.lower()
+        # 检查是否所有关键词都在合并后的文本中
+        if all(keyword in combined_text for keyword in keywords_lower):
             matched_names_etfs.append(etf['name'])
 
     return matched_names_stocks, matched_names_etfs
@@ -143,7 +147,7 @@ def show_results_with_json(results, json_path, keywords):
     text.pack(side="left", fill="both")
     text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
     text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('stock_tag', foreground='blue', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('stock_tag', foreground='purple', underline=True, font=('Helvetica', '20'))
     text.tag_configure('etf_tag', foreground='green', underline=True, font=('Helvetica', '20'))
     scrollbar.config(command=text.yview)
     result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))

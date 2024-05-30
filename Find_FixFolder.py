@@ -15,10 +15,11 @@ searchFolders = [
     "/Users/yanzhang/Library/Services/",
     "/Users/yanzhang/Documents/Financial_System",
     "/Users/yanzhang/Documents/python_code",
-    "/Users/yanzhang/Documents/LuxuryBox",
-    "/Users/yanzhang/Documents/sskeysskey.github.io",
-    "/Users/yanzhang/Downloads/backup/TXT/Segments/",
-    "/Users/yanzhang/Documents/Books"
+    "/Users/yanzhang/Documents/News/backup"
+    # "/Users/yanzhang/Documents/LuxuryBox",
+    # "/Users/yanzhang/Documents/sskeysskey.github.io",
+    # "/Users/yanzhang/Downloads/backup/TXT",
+    # "/Users/yanzhang/Documents/Books",
 ]
 
 def window_center(win, width, height, offset_y=0):

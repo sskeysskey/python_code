@@ -25,7 +25,7 @@ class MyHTMLParser(HTMLParser):
 
 # 定义文件路径和备份路径
 file_path = '/Users/yanzhang/Documents/News/today_eng.html'
-backup_path = '/Users/yanzhang/Documents/News/backup/today_eng.html'
+backup_path = '/Users/yanzhang/Documents/News/site/today_eng.html'
 
 # 读取HTML文件内容
 with open(file_path, 'r', encoding='utf-8') as file:

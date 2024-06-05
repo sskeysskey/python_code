@@ -21,7 +21,8 @@ class MyHTMLParser(HTMLParser):
 
     def handle_data(self, data):
         if self.capture and data.strip():  # 添加检查条件以确保data不只包含空白字符
-            self.titles.append(data.strip())
+            cleaned_data = data.strip().strip('"').strip("'")  # 去除首尾的单引号和双引号
+            self.titles.append(cleaned_data)
 
 # 定义文件路径和备份路径
 file_path = '/Users/yanzhang/Documents/News/today_eng.html'

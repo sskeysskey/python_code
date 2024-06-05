@@ -56,7 +56,7 @@ text_widget.tag_configure('digit_color', foreground='white')  # 数字数量的�
 
 # 插入文本并设置样式
 text_widget.insert('end', f"总共字符： {total_characters}\n\n", 'total_color')
-text_widget.insert('end', f"中文字符： {num_chinese_characters}\n\n", 'chinese_color')
+text_widget.insert('end', f"中文字： {num_chinese_characters}\n\n", 'chinese_color')
 text_widget.insert('end', f"英文单词： {num_english_words}\n\n", 'english_color')
 text_widget.insert('end', f"数字数量： {num_digits}\n\n", 'digit_color')  # 应用数字数量的颜色标签
 text_widget.insert('end', f"符号数量： {num_symbols}\n\n", 'symbol_color')  # 应用符号的颜色标签

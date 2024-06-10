@@ -137,8 +137,22 @@ def search_json_for_keywords(json_path, keywords):
 
     return matched_names_stocks, matched_names_etfs
 
+def search_txt_for_keywords(txt_path, keywords):
+    matched_names_txt = []
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+
+    with open(txt_path, 'r') as file:
+        for line in file:
+            if ':' in line:
+                name, description = line.split(':', 1)
+                if any(keyword in description.lower() for keyword in keywords_lower):
+                    matched_names_txt.append(name.strip())
+
+    return matched_names_txt
+
 def show_results_with_json(results, json_path, keywords):
     matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
+    matched_names_txt = search_txt_for_keywords(txt_path, keywords)
 
     result_window = Toplevel(root)
     result_window.title("搜索结果")
@@ -149,8 +163,9 @@ def show_results_with_json(results, json_path, keywords):
     text.pack(side="left", fill="both")
     text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
     text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('stock_tag', foreground='purple', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('stock_tag', foreground='white', underline=True, font=('Helvetica', '20'))
     text.tag_configure('etf_tag', foreground='green', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('txt_tag', foreground='red', underline=True, font=('Helvetica', '20'))
     scrollbar.config(command=text.yview)
     result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
 
@@ -176,18 +191,28 @@ def show_results_with_json(results, json_path, keywords):
         text.insert("end", "没有找到包含关键词的文件。\n")
 
     if matched_names_stocks:
-        text.insert("end", "匹配的股票名称:\n", 'directory_tag')
+        text.insert("end", "匹配的Descreption里股票名称:\n", 'directory_tag')
         for name in matched_names_stocks:
             tag_name = "stock_" + name.replace(" ", "_")
             text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
             text.insert("end", name + "\n", (tag_name, 'stock_tag'))
+        text.insert("end", "\n") 
 
     if matched_names_etfs:
-        text.insert("end", "匹配的ETFs名称:\n", 'directory_tag')
+        text.insert("end", "匹配的Descreption里ETFs名称:\n", 'directory_tag')
         for name in matched_names_etfs:
             tag_name = "etf_" + name.replace(" ", "_")
             text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
             text.insert("end", name + "\n", (tag_name, 'etf_tag'))
+        text.insert("end", "\n") 
+
+    if matched_names_txt:
+        text.insert("end", "匹配的symbol_name里的股票名称:\n", 'directory_tag')
+        for name in matched_names_txt:
+            tag_name = "txt_" + name.replace(" ", "_")
+            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
+            text.insert("end", name + "\n", (tag_name, 'txt_tag'))
+        text.insert("end", "\n") 
 
 def threaded_search_files_with_json(directories, keywords, json_path, callback):
     results = search_files(directories, keywords)
@@ -202,6 +227,7 @@ def search_with_clipboard_content():
         print("剪贴板为空，请复制一些文本后再试。")
 
 json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
+txt_path = "/Users/yanzhang/Documents/News/backup/symbol_names.txt"
 search_with_clipboard_content()  # 使用剪贴板内容进行搜索
 
 root.mainloop()

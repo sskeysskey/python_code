@@ -645,3 +645,8 @@ except subprocess.CalledProcessError as e:
     # 如果有错误发生，打印错误信息
     print(f"Error running AppleScript: {e}")
 #————————————————————————————————————————————————————————————————————————————————————————
+"/Users/yanzhang/Documents/LuxuryBox",
+"/Users/yanzhang/Documents/sskeysskey.github.io",
+"/Users/yanzhang/Downloads/backup/TXT",
+"/Users/yanzhang/Documents/Books",
+#————————————————————————————————————————————————————————————————————————————————————————

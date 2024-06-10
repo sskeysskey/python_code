@@ -193,9 +193,10 @@ def show_results_with_json(results, json_path, keywords):
     if matched_names_stocks:
         text.insert("end", "匹配的Descreption里股票名称:\n", 'directory_tag')
         for name in matched_names_stocks:
-            tag_name = "stock_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
-            text.insert("end", name + "\n", (tag_name, 'stock_tag'))
+            # tag_name = "stock_" + name.replace(" ", "_")
+            # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
+            # text.insert("end", name + "\n", (tag_name, 'stock_tag'))
+            text.insert("end", name + "\n", 'stock_tag')
         text.insert("end", "\n") 
 
     if matched_names_etfs:
@@ -209,9 +210,10 @@ def show_results_with_json(results, json_path, keywords):
     if matched_names_txt:
         text.insert("end", "匹配的symbol_name里的股票名称:\n", 'directory_tag')
         for name in matched_names_txt:
-            tag_name = "txt_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
-            text.insert("end", name + "\n", (tag_name, 'txt_tag'))
+            # tag_name = "txt_" + name.replace(" ", "_")
+            # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
+            # text.insert("end", name + "\n", (tag_name, 'txt_tag'))
+            text.insert("end", name + "\n", 'txt_tag')
         text.insert("end", "\n") 
 
 def threaded_search_files_with_json(directories, keywords, json_path, callback):

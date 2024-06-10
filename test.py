@@ -1,30 +1,63 @@
-import subprocess
-import pyperclip
-import time
-import tkinter as tk
-from tkinter import messagebox
+def show_results_with_json(results, json_path, keywords):
+    matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
+    matched_names_txt = search_txt_for_keywords(txt_path, keywords)
 
-# 初始化 Tkinter 主窗口
-root = tk.Tk()
-root.withdraw()  # 这行代码可以隐藏主窗口，只显示弹出的消息框
+    result_window = Toplevel(root)
+    result_window.title("搜索结果")
+    window_center(result_window, 800, 600)
+    scrollbar = Scrollbar(result_window)
+    scrollbar.pack(side="right", fill="y")
+    text = Text(result_window, width=120, height=25, yscrollcommand=scrollbar.set)
+    text.pack(side="left", fill="both")
+    text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
+    text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('stock_tag', foreground='white', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('etf_tag', foreground='green', underline=True, font=('Helvetica', '20'))
+    text.tag_configure('txt_tag', foreground='red', underline=True, font=('Helvetica', '20'))
+    scrollbar.config(command=text.yview)
+    result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
 
-originalClipboard = pyperclip.paste()
-messagebox.showerror("剪贴板内容", f"original是{originalClipboard}")
+    def open_file_and_change_tag_color(path, tag_name):
+        open_file(path)
+        text.tag_configure(tag_name, foreground='grey', underline=False)
 
-script_path = '/Users/yanzhang/Documents/ScriptEditor/Copy_Clipboard.scpt'
-try:
-    # 将坐标值作为参数传递给AppleScript
-    process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
-    # 输出AppleScript的返回结果
-    print(process.stdout.strip())
-except subprocess.CalledProcessError as e:
-    # 如果有错误发生，打印错误信息
-    print(f"Error running AppleScript: {e}")
+    def open_json_file(tag_name):
+        open_file(json_path)
+        text.tag_configure(tag_name, foreground='grey', underline=False)
 
-newClipboard = pyperclip.paste()
+    if results:
+        for directory, files in results.items():
+            if files:
+                text.insert("end", directory + "\n", 'directory_tag')
+                for file in files:
+                    file_path = os.path.join(directory, file)
+                    tag_name = "link_" + file.replace(".", "_")
+                    text.tag_bind(tag_name, "<Button-1>", lambda event, path=file_path, tag=tag_name: open_file_and_change_tag_color(path, tag))
+                    text.insert("end", file + "\n", (tag_name, 'file_tag'))
+                text.insert("end", "\n")
+    else:
+        text.insert("end", "没有找到包含关键词的文件。\n")
 
-# 使用 messagebox 显示新的剪贴板内容
-messagebox.showerror("剪贴板内容", f"newclipboard是{newClipboard}")
+    if matched_names_stocks:
+        text.insert("end", "匹配的Descreption里股票名称:\n", 'directory_tag')
+        for name in matched_names_stocks:
+            tag_name = "stock_" + name.replace(" ", "_")
+            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
+            text.insert("end", name + "\n", (tag_name, 'stock_tag'))
+        text.insert("end", "\n") 
 
-# 运行 Tkinter 事件循环，直到所有窗口都关闭
-root.mainloop()
+    if matched_names_etfs:
+        text.insert("end", "匹配的Descreption里ETFs名称:\n", 'directory_tag')
+        for name in matched_names_etfs:
+            tag_name = "etf_" + name.replace(" ", "_")
+            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
+            text.insert("end", name + "\n", (tag_name, 'etf_tag'))
+        text.insert("end", "\n") 
+
+    if matched_names_txt:
+        text.insert("end", "匹配的symbol_name里的股票名称:\n", 'directory_tag')
+        for name in matched_names_txt:
+            tag_name = "txt_" + name.replace(" ", "_")
+            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
+            text.insert("end", name + "\n", (tag_name, 'txt_tag'))
+        text.insert("end", "\n") 

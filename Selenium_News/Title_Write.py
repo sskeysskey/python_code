@@ -132,8 +132,8 @@ pyperclip.copy(content_to_copy)
 # 读取剪贴板中翻译后的内容
 translated_texts = get_clipboard_data()
 
-# # 过滤掉空行
-# translated_texts = [line for line in translated_texts if line.strip() != '']
+# 过滤掉空行
+translated_texts = [line for line in translated_texts if line.strip() != '']
 
 # 读取HTML文件内容
 with open('/Users/yanzhang/Documents/News/today_eng.html', 'r', encoding='utf-8') as file:
@@ -167,7 +167,7 @@ try:
         os.rename(original_file_path, txt_file_path)
         print(f"文件已重命名为：{txt_file_path}")
     else:
-        raise IndexError("翻译完的内容行数与原英文链接的数量不匹配，请检查。")
+        raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
         
 except IndexError as e:
     # 初始化Tkinter窗口

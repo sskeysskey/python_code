@@ -1,63 +1,204 @@
-def show_results_with_json(results, json_path, keywords):
-    matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
-    matched_names_txt = search_txt_for_keywords(txt_path, keywords)
+def remove_empty_lines(text):
+    return '\n'.join(line for line in text.split('\n') if line.strip())
 
-    result_window = Toplevel(root)
-    result_window.title("搜索结果")
-    window_center(result_window, 800, 600)
-    scrollbar = Scrollbar(result_window)
-    scrollbar.pack(side="right", fill="y")
-    text = Text(result_window, width=120, height=25, yscrollcommand=scrollbar.set)
-    text.pack(side="left", fill="both")
-    text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
-    text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('stock_tag', foreground='white', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('etf_tag', foreground='green', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('txt_tag', foreground='red', underline=True, font=('Helvetica', '20'))
-    scrollbar.config(command=text.yview)
-    result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
+# 示例文本
+text = """苹果公司推出人工智能工具,包括ChatGPT合作
 
-    def open_file_and_change_tag_color(path, tag_name):
-        open_file(path)
-        text.tag_configure(tag_name, foreground='grey', underline=False)
+确保客户数据安全是此次发布会的主要主题。
 
-    def open_json_file(tag_name):
-        open_file(json_path)
-        text.tag_configure(tag_name, foreground='grey', underline=False)
+马斯克威胁如果OpenAI被整合到系统,将禁止苹果设备
 
-    if results:
-        for directory, files in results.items():
-            if files:
-                text.insert("end", directory + "\n", 'directory_tag')
-                for file in files:
-                    file_path = os.path.join(directory, file)
-                    tag_name = "link_" + file.replace(".", "_")
-                    text.tag_bind(tag_name, "<Button-1>", lambda event, path=file_path, tag=tag_name: open_file_and_change_tag_color(path, tag))
-                    text.insert("end", file + "\n", (tag_name, 'file_tag'))
-                text.insert("end", "\n")
-    else:
-        text.insert("end", "没有找到包含关键词的文件。\n")
+他表示前来他公司的访客必须在门口存放他们的设备。  
 
-    if matched_names_stocks:
-        text.insert("end", "匹配的Descreption里股票名称:\n", 'directory_tag')
-        for name in matched_names_stocks:
-            tag_name = "stock_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
-            text.insert("end", name + "\n", (tag_name, 'stock_tag'))
-        text.insert("end", "\n") 
+OpenAI在苹果人工智能发布会中扮演次要角色
 
-    if matched_names_etfs:
-        text.insert("end", "匹配的Descreption里ETFs名称:\n", 'directory_tag')
-        for name in matched_names_etfs:
-            tag_name = "etf_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
-            text.insert("end", name + "\n", (tag_name, 'etf_tag'))
-        text.insert("end", "\n") 
+纽约房东将以约67%的折价出售办公楼
 
-    if matched_names_txt:
-        text.insert("end", "匹配的symbol_name里的股票名称:\n", 'directory_tag')
-        for name in matched_names_txt:
-            tag_name = "txt_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
-            text.insert("end", name + "\n", (tag_name, 'txt_tag'))
-        text.insert("end", "\n") 
+由Related公司附属公司拥有的一栋办公楼将以大打折扣的价格出售。
+
+漫画:克里斯·哈南(Chris Harnan)
+
+大新闻:CVS药品召回与受污染工厂有关
+
+特朗普根本不关心The Cheesecake Factory的员工
+
+这位前总统通过减税来拉拢选民,但这更像是虚张声势,而不是合理的经济政策。
+
+杰西卡·卡尔(Jessica Karl),专栏作家
+
+私募股权正在打折出售
+
+马特·莱文(Matt Levine),专栏作家  
+
+待售房源积压,只是不在买家所在地
+
+康纳·森(Conor Sen),专栏作家
+
+劳伦·贾斯蒂斯(Lauren Justice)/彭博社
+
+吉娜·文(Jeenah Moon)/彭博社
+
+Elliott公司扰乱CEO们的夏季计划,新目标总值4000亿美元
+
+自4月以来,这家激进基金已披露对全球七家公司的新股权。
+
+西南航空的激进抗争暴露了整个美国航空业的压力
+
+托马斯·布莱克(Thomas Black)
+
+激进分子针对西南航空恐将遭遇阻力  
+
+这种治疗阿尔茨海默氏症的药物
+
+市场综述
+
+亚洲股市在关键美国指标前谨慎观望
+
+大和证券拟向激进基金购买澳洲银行Aozora Bank股份
+
+贝恩对澳大利亚汽车零件商Bapcor提出12亿美元收购要约
+
+墨西哥比索因候选人谢因鲍姆(Sheinbaum)拥护司法改革而下跌
+
+油价在OPEC报告前延续自2月以来最大涨幅
+
+日本央行或权衡削减债券购买,临近加息时间窗口  
+
+全球最大疫苗制造商预计五年内需求将增加一倍
+
+辉瑞在430亿美元收购后将"喘口气"放缓并购步伐
+
+纽约6.34万美元年费学校校长因"严重问题"辞职  
+
+联合国安理会通过美国决议支持加沙停火
+
+合作对象称曾给参议员梅嫩德斯(Menendez)妻子1.5万美元
+
+大卫·萨克斯(David Sacks)尝试了2024年的替代选择,现在全力支持特朗普
+
+这位为前总统举办30万美元/人筹款活动的风险投资家,在硅谷政治右翼中扮演着一定角色。
+
+亚洲投资者必知的五件事
+
+奇异博客:食品制造商适应"奥曲"(Ozempic)后的世界 
+
+在你的医药柜里发现危险的小实验室
+
+林译飞(Lam Yik Fei)/彭博社
+
+对冲基金转投软件股,芯片股黯然失色
+
+人工智能初创公司iGenius寻求17亿欧元估值融资
+
+科技日报:专题报道
+
+乌克兰的机器人杀手愿景显示亟需约束人工智能规则
+
+香港身份认同危机导致2700亿美元房地产资产缩水
+
+为巴菲特所启发的加拿大投资者在创始人出售后陷入低谷 
+
+特朗普将在CEO活动前与参议院共和党人会面
+
+墨西哥官员表示,海外投票可能需要更大预算
+
+工党将禁止向青少年销售含高咖啡因的能量饮料
+
+华盛顿消息专刊
+
+共和党人瞄准加兰德,拜登调查陷入困境
+
+伊朗将如何选举总统,为何总统很重要
+
+Venture Global公司必须分享有关液化天然气争议的机密报告
+卡莱尔瞄准300家日本企业开展私募股权并购交易
+温德姆/彭博社
+气候活动人士在花旗银行纽约总部被捕
+英国最佳餐厅在壁橱中种植蘑菇
+拉加德称欧洲央行利率下调不会进入"线性下降通道"
+波兰预计将因违规赤字面临欧盟违法程序
+时事通讯:经济日报
+强劲的美国就业增长再次引发对美联储加息的质疑
+单一最佳主意:乔治·帕特森和马克·格曼
+纽约地铁运输署将缩减基建项目规模,因拥堵收费被搁置
+你的小镇能否解决住房危机?
+纽约州交通机构因拥堵收费被推翻而被迫搁置升级项目
+投资银行Moelis调查一起员工被指殴打女子的事件
+数字孪生体正在帮助科学家运行世界上最复杂的实验
+美国简讯
+埃马纽埃尔·马克龙希望提前大选以摆脱困境
+中国试图支撑股市,导致扭曲
+谁是伊朗下任总统的主要候选人?
+自由交换:为什么全球GDP可能比大家想象的要大约7万亿美元?
+数字金融是洗钱者的梦想
+就像人类一样,大象也会互相叫对方的名字
+罗兴亚人被迫参与缅甸内战
+芝加哥的左翼市长布兰登·约翰逊面临挣扎
+欧洲银行在俄罗斯赚取可观利润
+左右派对帝国主义有什么看法?
+国家篮球协会(NBA)在非洲下重注
+联合国通过加沙停火决议
+在以色列,美国国务卿布林肯敦促中东领导人就停火向哈马斯施加压力
+法国选民希望极右翼执政吗?马克龙冒了一个赌注
+一个右翼政党在德国欧洲联盟选举中获得创纪录的选票,这是对总理奥拉夫·文尔茨联盟的批评
+亨特·拜登枪支案陪审团评议,检方总结最后陈词
+17岁时她爱上了47岁男人。现在她质疑这个故事
+法官在特朗普涉及案文件案中撤销一项指控
+针对年长无家可归者,一种新型医疗保健
+苹果跃入人工智能领域推出Apple Intelligence(苹果智能)
+苹果和谷歌计划如何通过人工智能升级智能手机
+企业家说他直接要求参议员梅嫩德斯帮助
+共和党赢得黑人男性支持的努力背后
+特朗普在拉斯维加斯的策略:赌运不佳
+一名民主党人加入共和党一起投票,推翻限制政客和超级政治行动委员会筹资和支出的规定
+选举最新情况:唐纳德·特朗普承诺支持一个组织,该组织希望彻底"消除堕胎"
+乌克兰重建官员辞职,突显内部矛盾
+俄罗斯于5月下旬释放了一批妇女从监狱,让她们加入乌克兰战事
+读者问:邻居的烟雾让我透不过气来,但她是租金被控制的房客。我该怎么办?
+Wordle游戏的编辑和狂热粉丝分享了一些小技巧。
+自由只是一个不用交税的借口而已。
+每个人都忽视了亨特·拜登案件的一个重点。
+科罗拉多州被川普化的共和党呼吁焚毁彩虹旗。
+我是内华达州州长。这就是特朗普在我们选民中表现如此出色的原因。
+我们能惩治#MeToo的男人,但能宽恕他们吗?
+自由主义的成功故事几乎没有生育孩子的空间。
+以色列的经济并非不可战胜。
+共和党人的下一个目标是节育。
+以色列人质营救行动及其代价。
+特朗普上诉的机会并不高。
+苹果(Apple)加入人工智能竞争。
+办公楼损失不断增加,而且预计还会更糟。
+备受非议的苹果广告可能比看起来更令人不安。
+纽约地铁公司目前的目标是:确保"系统不会崩溃"。
+美国食品药品监督管理局(FDA)警告不要服用"微剂量"蘑菇巧克力棒。
+巴尔的摩市议会将就药物过量服用问题举行听证会。
+巴尔的摩一条重要的航运渠道在桥梁倒塌后11周重新开放。
+泰坦号潜水器致命航行的令人恐惧的记录被判为假冒的。
+据说康涅狄克大学(UConn)的丹·赫利(Dan Hurley)拒绝执教湖人队。
+贝拉克·奥巴马为总统中心的建设工程达到一个里程碑。
+法官驳回了今年对一对夫妇的指控,这对夫妇涉嫌在1989年杀害一名男童。
+纽约最负盛名的一所精英学校校长为何辞职?
+一头公牛在俄勒冈州一场牧马表演中跃出围栏,造成3人受伤。
+现在美国开始擅长板球,向棒球专家解释一下板球运动。
+美国最统治力强大的田径明星也是最神秘的。
+3人因种族辱骂一名足球明星被判入狱8个月。
+韦恩·鲁尼(Wayne Rooney),英格兰的愤怒公牛。
+加拿大大奖赛为何被混乱统治?
+你的姐姐为什么会嫉妒你?
+25年前,《汉尼拔》标志着一种新型大片的诞生。
+"啮齿动物人"是什么?
+《没有伊桑》是一个令人震惊的数字欺骗故事。
+"伪善式关爱"是如何疏远员工的?
+如何领导:执行策略 
+如何让团队真正开口? 
+领导者需要重新审视返回办公室的对话。
+安全性生成式人工智能:利用亚马逊Bedrock为客户创造影响力。
+权力、影响力和CEO继任。
+当员工感到愤怒、悲伤或沮丧时该怎么办?
+不要剥夺任何人的特权。
+披露下游排放。
+"""
+
+# 移除空行后的文本
+cleaned_text = remove_empty_lines(text)
+print(cleaned_text)

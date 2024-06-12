@@ -102,6 +102,7 @@ def main():
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
+            # pyautogui.click(x=618, y=458)
             pyautogui.scroll(-80)
             sleep(1)
 
@@ -116,6 +117,7 @@ def main():
         if location:
             found_compare = True
         else:
+            pyautogui.click(x=618, y=458)
             pyautogui.scroll(-80)
             print("未找到图片，继续监控...")
     

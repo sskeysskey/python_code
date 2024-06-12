@@ -8,21 +8,24 @@ class MyHTMLParser(HTMLParser):
         super().__init__()
         self.titles = []
         self.capture = False
+        self.current_data = ""
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             for attr in attrs:
                 if attr[0] == "target" and attr[1] == "_blank":
                     self.capture = True
+                    self.current_data = ""
 
     def handle_endtag(self, tag):
-        if tag == "a":
+        if tag == "a" and self.capture:
+            cleaned_data = self.current_data.strip().strip('"').strip("'")
+            self.titles.append(cleaned_data)
             self.capture = False
 
     def handle_data(self, data):
-        if self.capture and data.strip():  # 添加检查条件以确保data不只包含空白字符
-            cleaned_data = data.strip().strip('"').strip("'")  # 去除首尾的单引号和双引号
-            self.titles.append(cleaned_data)
+        if self.capture:
+            self.current_data += data.replace("\n", " ").replace("\r", " ").strip()
 
 # 定义文件路径和备份路径
 file_path = '/Users/yanzhang/Documents/News/today_eng.html'
@@ -41,20 +44,36 @@ parser.feed(html_content)
 # 获取提取到的标题
 titles = parser.titles
 
-# 将标题列表分成两部分
-middle_index = len(titles) // 2
-titles_part1 = titles[:middle_index]
-titles_part2 = titles[middle_index:]
+# 将标题写入a.txt文件中
+with open('/Users/yanzhang/Documents/News/today_eng.txt', 'w', encoding='utf-8') as a_file:
+    for title in titles:
+        a_file.write(title + "\n")
 
-# 将两部分标题拼接成字符串，以换行符隔开
+# 将标题列表分成三部分
+total_titles = len(titles)
+part_size = total_titles // 3
+remainder = total_titles % 3
+
+titles_part1 = titles[:part_size]
+titles_part2 = titles[part_size:2*part_size]
+titles_part3 = titles[2*part_size:]
+
+# 如果有余数，将其分配到最后一部分
+if remainder:
+    titles_part3.extend(titles[2*part_size:])
+
+# 将三部分标题拼接成字符串，以换行符隔开
 titles_text1 = "\n".join(titles_part1)
 titles_text2 = "\n".join(titles_part2)
+titles_text3 = "\n".join(titles_part3)
 
-# 将两部分标题写入到不同的文件中
+# 将三部分标题写入到不同的文件中
 with open('/tmp/segment_1.txt', 'w', encoding='utf-8') as file1:
     file1.write(titles_text1)
 with open('/tmp/segment_2.txt', 'w', encoding='utf-8') as file2:
     file2.write(titles_text2)
+with open('/tmp/segment_3.txt', 'w', encoding='utf-8') as file3:
+    file3.write(titles_text3)
 
 # 备份HTML源文件到指定目录，如果文件已存在则覆盖
 shutil.copyfile(file_path, backup_path)
@@ -64,3 +83,5 @@ print("Titles Part 1:")
 print(titles_text1)
 print("\nTitles Part 2:")
 print(titles_text2)
+print("\nTitles Part 3:")
+print(titles_text3)

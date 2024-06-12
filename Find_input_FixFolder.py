@@ -207,9 +207,10 @@ def show_results_with_json(results, json_path, keywords):
     if matched_names_etfs:
         text.insert("end", "匹配的Descreption里ETFs名称:\n", 'directory_tag')
         for name in matched_names_etfs:
-            tag_name = "etf_" + name.replace(" ", "_")
-            text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
-            text.insert("end", name + "\n", (tag_name, 'etf_tag'))
+            # tag_name = "etf_" + name.replace(" ", "_")
+            # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
+            # text.insert("end", name + "\n", (tag_name, 'etf_tag'))
+            text.insert("end", name + "\n", 'etf_tag')
         text.insert("end", "\n") 
 
     if matched_names_txt:

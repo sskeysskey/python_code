@@ -30,9 +30,6 @@ def delete_done_txt_files(directory):
     except Exception as e:
         print(f"在删除文件时发生错误：{e}")
 
-# 调用函数，传入路径
-delete_done_txt_files("/tmp/")
-
 # 从剪贴板读取翻译后的内容
 def get_clipboard_data():
     p = subprocess.Popen(['pbpaste'], stdout=subprocess.PIPE)
@@ -45,39 +42,6 @@ def set_clipboard_data(data):
     p.stdin.write(data.encode('utf-8'))
     p.stdin.close()
     p.wait()
-
-# # 解析HTML并替换链接文本
-# class MyHTMLParser(HTMLParser):
-#     def __init__(self, new_texts):
-#         super().__init__()
-#         self.new_texts = new_texts
-#         self.current_index = 0
-#         self.result_html = ""
-#         self.inside_a = False
-
-#     def handle_starttag(self, tag, attrs):
-#         if tag == "a":
-#             self.inside_a = True
-#             for attr in attrs:
-#                 if attr[0] == "target" and attr[1] == "_blank":
-#                     self.capture = True
-#         self.result_html += self.get_starttag_text()
-
-#     def handle_endtag(self, tag):
-#         if tag == "a":
-#             self.inside_a = False
-#             self.current_index += 1
-#         self.result_html += f"</{tag}>"
-
-#     def handle_data(self, data):
-#         if self.inside_a and getattr(self, 'capture', False):
-#             if self.current_index < len(self.new_texts):
-#                 self.result_html += self.new_texts[self.current_index]
-#             else:
-#                 # 如果新文本行数不够，则抛出错误
-#                 raise IndexError("剪贴板内容行数与原文链接数量不匹配。")
-#         else:
-#             self.result_html += data
 
 class MyHTMLParser(HTMLParser):
     def __init__(self, new_texts):
@@ -166,6 +130,9 @@ try:
         # 重命名文件
         os.rename(original_file_path, txt_file_path)
         print(f"文件已重命名为：{txt_file_path}")
+
+        # 调用函数，传入路径
+        delete_done_txt_files("/tmp/")
     else:
         raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
         

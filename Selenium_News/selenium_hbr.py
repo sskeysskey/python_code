@@ -94,6 +94,9 @@ try:
         href = title_element.get_attribute('href')
         title_text = title_element.text.strip()
 
+        if "Audio" in title_text:
+            continue
+
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
 

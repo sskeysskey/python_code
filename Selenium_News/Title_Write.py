@@ -133,6 +133,7 @@ try:
 
         # 调用函数，传入路径
         delete_done_txt_files("/tmp/")
+        os.remove('/Users/yanzhang/Documents/News/today_eng.txt')
     else:
         raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
         

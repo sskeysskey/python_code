@@ -1,19 +1,23 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 def merge_videos(video_files, output_file):
-    # 创建一个临时文件列表
-    with open("file_list.txt", "w") as file_list:
+    # 在临时目录中创建一个文件列表
+    with tempfile.NamedTemporaryFile(delete=False, mode='w', dir=tempfile.gettempdir(), suffix='.txt') as file_list:
         for video_file in video_files:
             file_list.write(f"file '{video_file}'\n")
+        temp_file_list_path = file_list.name
     
-    # 使用FFmpeg合并视频文件
-    command = ["ffmpeg", "-f", "concat", "-safe", "0", "-i", "file_list.txt", "-c", "copy", output_file]
-    subprocess.run(command)
-    
-    # 删除临时文件列表
-    os.remove("file_list.txt")
+    try:
+        # 使用 FFmpeg 合并视频文件
+        ffmpeg_path = "/opt/homebrew/bin/ffmpeg"  # 请将此路径替换为你系统中的实际路径
+        command = [ffmpeg_path, "-f", "concat", "-safe", "0", "-i", temp_file_list_path, "-c", "copy", output_file]
+        subprocess.run(command, check=True)
+    finally:
+        # 删除临时文件列表
+        os.remove(temp_file_list_path)
 
 def get_video_files(directory):
     # 获取指定目录下所有的MP4文件并按数字顺序排序

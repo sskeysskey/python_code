@@ -41,7 +41,7 @@ class ScreenDetector:
 
     def run1(self):
         found = False
-        timeout = time.time() + 15
+        timeout = time.time() + 60
         while not found and time.time() < timeout:
             location, shape = self.find_image_on_screen()
             if location:
@@ -59,7 +59,7 @@ class ScreenDetector:
                 sleep(1)
         
         if time.time() > timeout:
-            print("在15秒内未找到图片，退出程序。")
+            print("在60秒内未找到图片，退出程序。")
             webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     
     def run2(self):

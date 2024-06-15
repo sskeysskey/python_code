@@ -118,10 +118,10 @@ try:
             continue
         
         # 跳过包含 'Illustration:' 或 '/Bloomberg' 的标题文本
-        if "Illustration:" in title_text or "Bloomberg" in title_text or "Getty Images" in title_text:
+        if "Illustration:" in title_text or "/Bloomberg" in title_text or "Getty Images" in title_text or "/AP Photo" in title_text:
             continue
 
-        if "Photos:" in title_text or "Photo illustration" in title_text or "Source:" in title_text:
+        if "Photos:" in title_text or "Photo illustration" in title_text or "Source:" in title_text or "/AFP" in title_text:
             continue
         
         # 判断标题文本是否包含 'Listen' 或 'Watch'，并且包含括号

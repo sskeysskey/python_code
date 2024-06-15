@@ -124,7 +124,7 @@ def main():
         site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
     
     # 在site_content的前后分别加入</document>
-    site_content_with_tags = '<document>' + site_content + '</document>'
+    site_content_with_tags = '<document>' + site_content + '</document>请详细总结这篇文章'
 
     # 将读取到的segment_content内容插入在剪贴板内容的最前面
     final_content = segment_content + '\n' + site_content_with_tags + '\n\n' + modified_content

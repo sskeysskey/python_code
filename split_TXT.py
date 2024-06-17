@@ -4,6 +4,7 @@ import sys
 import shutil
 import pyperclip
 import tkinter as tk
+from tkinter import messagebox
 from tkinter.font import Font
 from tkinter import filedialog
 
@@ -121,6 +122,13 @@ def save_segments(n, save_path="/Users/yanzhang/Downloads/backup/TXT/Segments/")
 def contains_segment(filename, segment):
     return segment in filename
 
+# 检查指定目录下是否存在包含'segment'字符的txt文件
+def check_for_existing_segments(directory, segment):
+    for file in os.listdir(directory):
+        if file.endswith('.txt') and contains_segment(file, segment):
+            return True
+    return False
+
 # 正则表达式，匹配http://, https://或www.开头，直到空格或换行符的字符串
 url_pattern = re.compile(
     r'(?:\s|^)([^ \n]*http[s]?://[^ \n]*(?=\s|$)|'
@@ -129,6 +137,16 @@ url_pattern = re.compile(
     r'[^ \n]*\.(com|gov|org|edu|cn|us|html|htm|shtm|uk|xml|js|css|it)[^ \n]*(?=\s|$)|'
     r'[^ \n]+\.[^ \n]+\.[^ \n]+)(?=\s|$)'
 )
+
+# 需要检查的路径
+save_path = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
+
+# 检查是否存在包含'segment'字符的txt文件
+if check_for_existing_segments(save_path, 'segment'):
+    root = tk.Tk()
+    root.withdraw()  # 隐藏主窗口
+    messagebox.showwarning("警告", f"目录segments中存在包含'segment'的txt文件，请先处理好现有文件。")
+    sys.exit()
 
 # 初始化Tkinter，不显示主窗口
 root = tk.Tk()

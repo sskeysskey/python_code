@@ -116,9 +116,9 @@ def main():
                         found_success_image = True
                     sleep(1)  # 每次检测间隔1秒
 
-    if not found_success_image:
-        print("在15秒内未找到poe_copy_success图片，退出程序。")
-        webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+                if not found_success_image:
+                    print("在15秒内未找到poe_copy_success图片，退出程序。")
+                    webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
 
     # 设置目录路径
     directory_path = '/Users/yanzhang/Documents/'

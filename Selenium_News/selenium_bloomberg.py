@@ -121,7 +121,7 @@ try:
         if "Illustration:" in title_text or "/Bloomberg" in title_text or "Getty Images" in title_text or "/AP Photo" in title_text:
             continue
 
-        if "Photos:" in title_text or "Photo illustration" in title_text or "Source:" in title_text or "/AFP" in title_text:
+        if "Photos:" in title_text or "Photo illustration" in title_text or "Source:" in title_text or "/AFP" in title_text or "NurPhoto" in title_text:
             continue
         
         # 判断标题文本是否包含 'Listen' 或 'Watch'，并且包含括号
@@ -131,9 +131,6 @@ try:
                 title_text = text_parts[1].strip()
 
         if href and title_text:
-            #print(f"标题: {title_text}, 链接: {href}")
-            # if not any(href == old_link for _, _, old_link in old_content):
-            # if not any(href == new_link for _, _, new_link in new_rows):
             if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                 if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                     new_rows.append([formatted_datetime, title_text, href])

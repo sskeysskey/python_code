@@ -135,7 +135,7 @@ def search_json_for_keywords(json_path, keywords):
         combined_text = combined_text.lower()
         # 检查是否所有关键词都在合并后的文本中
         if all(keyword in combined_text for keyword in keywords_lower):
-            matched_names_stocks.append(stock['name'])
+            matched_names_stocks.append(stock['symbol'])
 
     # 搜索 etfs 分类
     for etf in data.get('etfs', []):
@@ -145,7 +145,7 @@ def search_json_for_keywords(json_path, keywords):
         combined_text = combined_text.lower()
         # 检查是否所有关键词都在合并后的文本中
         if all(keyword in combined_text for keyword in keywords_lower):
-            matched_names_etfs.append(etf['name'])
+            matched_names_etfs.append(etf['symbol'])
 
     return matched_names_stocks, matched_names_etfs
 
@@ -154,6 +154,8 @@ def search_tag_for_keywords(json_path, keywords):
         data = json.load(file)
     matched_names_stocks_tag = []
     matched_names_etfs_tag = []
+    matched_names_stocks_name = []
+    matched_names_etfs_name = []
     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
     # 搜索 stocks 分类
@@ -163,40 +165,49 @@ def search_tag_for_keywords(json_path, keywords):
         combined_text = combined_text.lower()
         # 检查是否所有关键词都在合并后的文本中
         if all(keyword in combined_text for keyword in keywords_lower):
-            matched_names_stocks_tag.append(stock['name'])
+            matched_names_stocks_tag.append(stock['symbol'])
+    
+    for stock in data.get('stocks', []):
+        combined_text = stock['name'].lower()
+        if all(keyword in combined_text for keyword in keywords_lower):
+            matched_names_stocks_name.append(stock['symbol'])
 
     # 搜索 etfs 分类
     for etf in data.get('etfs', []):
-        # 同样合并描述和标签
         combined_text = ' '.join(etf.get('tag', []))
         combined_text = combined_text.lower()
-        # 检查是否所有关键词都在合并后的文本中
         if all(keyword in combined_text for keyword in keywords_lower):
-            matched_names_etfs_tag.append(etf['name'])
+            matched_names_etfs_tag.append(etf['symbol'])
+    
+    for etf in data.get('etfs', []):
+        combined_text = etf['name'].lower()
+        if all(keyword in combined_text for keyword in keywords_lower):
+            matched_names_etfs_name.append(etf['symbol'])
 
-    return matched_names_stocks_tag, matched_names_etfs_tag
+    return matched_names_stocks_tag, matched_names_etfs_tag, matched_names_stocks_name, matched_names_etfs_name
 
-def search_txt_for_keywords(txt_path, keywords):
-    matched_names_txt = []
-    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+# def search_txt_for_keywords(txt_path, keywords):
+#     matched_names_txt = []
+#     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
-    with open(txt_path, 'r') as file:
-        for line in file:
-            if ':' in line:
-                name, description = line.split(':', 1)
-                description_lower = description.lower()
-                if all(keyword in description_lower for keyword in keywords_lower):
-                    matched_names_txt.append(name.strip())
-    return matched_names_txt
+#     with open(txt_path, 'r') as file:
+#         for line in file:
+#             if ':' in line:
+#                 name, description = line.split(':', 1)
+#                 description_lower = description.lower()
+#                 if all(keyword in description_lower for keyword in keywords_lower):
+#                     matched_names_txt.append(name.strip())
+#     return matched_names_txt
 
 def show_results_with_json(results, json_path, keywords):
     matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
-    matched_names_stocks_tag, matched_names_etfs_tag = search_tag_for_keywords(json_path, keywords)
-    matched_names_txt = search_txt_for_keywords(txt_path, keywords)
+    matched_names_stocks_tag, matched_names_etfs_tag, matched_names_stocks_name, matched_names_etfs_name = search_tag_for_keywords(json_path, keywords)
+    # matched_names_txt = search_txt_for_keywords(txt_path, keywords)
 
     result_window = Toplevel(root)
-    result_window.title("搜索结果")
+    result_window.title(f"搜索关键字:    {keywords}")
     window_center(result_window, 800, 600)
+
     scrollbar = Scrollbar(result_window)
     scrollbar.pack(side="right", fill="y")
     text = Text(result_window, width=120, height=25, yscrollcommand=scrollbar.set)
@@ -230,7 +241,7 @@ def show_results_with_json(results, json_path, keywords):
         text.insert("end", "没有找到包含关键词的文件。\n")
 
     if matched_names_stocks_tag:
-        text.insert("end", "Stock tag:\n", 'directory_tag')
+        text.insert("end", "Stock_tag:\n", 'directory_tag')
         for name in matched_names_stocks_tag:
             # tag_name = "stock_" + name.replace(" ", "_")
             # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
@@ -239,7 +250,7 @@ def show_results_with_json(results, json_path, keywords):
         text.insert("end", "\n") 
 
     if matched_names_etfs_tag:
-        text.insert("end", "ETFs tag:\n", 'directory_tag')
+        text.insert("end", "ETF_tag:\n", 'directory_tag')
         for name in matched_names_etfs_tag:
             # tag_name = "etf_" + name.replace(" ", "_")
             # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
@@ -247,9 +258,18 @@ def show_results_with_json(results, json_path, keywords):
             text.insert("end", name + "\n", 'tag2')
         text.insert("end", "\n") 
 
-    if matched_names_txt:
-        text.insert("end", "symbol_name:\n", 'directory_tag')
-        for name in matched_names_txt:
+    if matched_names_stocks_name:
+        text.insert("end", "Stock_name:\n", 'directory_tag')
+        for name in matched_names_stocks_name:
+            # tag_name = "txt_" + name.replace(" ", "_")
+            # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
+            # text.insert("end", name + "\n", (tag_name, 'txt_tag'))
+            text.insert("end", name + "\n", 'tag2')
+        text.insert("end", "\n") 
+
+    if matched_names_etfs_name:
+        text.insert("end", "ETF_name:\n", 'directory_tag')
+        for name in matched_names_etfs_name:
             # tag_name = "txt_" + name.replace(" ", "_")
             # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_file_and_change_tag_color("/Users/yanzhang/Documents/News/backup/symbol_names.txt", tag))
             # text.insert("end", name + "\n", (tag_name, 'txt_tag'))
@@ -257,7 +277,7 @@ def show_results_with_json(results, json_path, keywords):
         text.insert("end", "\n") 
 
     if matched_names_stocks:
-        text.insert("end", "Descreption Stock:\n", 'directory_tag')
+        text.insert("end", "Descreption_Stock:\n", 'directory_tag')
         for name in matched_names_stocks:
             # tag_name = "stock_" + name.replace(" ", "_")
             # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
@@ -266,7 +286,7 @@ def show_results_with_json(results, json_path, keywords):
         text.insert("end", "\n") 
 
     if matched_names_etfs:
-        text.insert("end", "Descreption ETFs:\n", 'directory_tag')
+        text.insert("end", "Descreption_ETFs:\n", 'directory_tag')
         for name in matched_names_etfs:
             # tag_name = "etf_" + name.replace(" ", "_")
             # text.tag_bind(tag_name, "<Button-1>", lambda event, tag=tag_name: open_json_file(tag))
@@ -287,14 +307,14 @@ def search_with_clipboard_content():
         print("剪贴板为空，请复制一些文本后再试。")
 
 json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
-txt_path = "/Users/yanzhang/Documents/News/backup/symbol_names.txt"
+# txt_path = "/Users/yanzhang/Documents/News/backup/symbol_names.txt"
 
 # 解析命令行参数
 if len(sys.argv) > 1:
     arg = sys.argv[1]
     if arg == "input":
         custom_input_window("请输入要检索的字符串内容：", 
-                            lambda keyword: threading.Thread(target=threaded_search_files_with_json, args=(searchFolders, keyword, json_path, show_results_with_json)).start())
+                           lambda keyword: threading.Thread(target=threaded_search_files_with_json, args=(searchFolders, keyword, json_path, show_results_with_json)).start())
     elif arg == "paste":
         search_with_clipboard_content()  # 使用剪贴板内容进行搜索
 else:

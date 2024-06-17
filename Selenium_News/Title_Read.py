@@ -1,6 +1,7 @@
 import re
 import shutil
 from html.parser import HTMLParser
+from math import ceil
 
 # 创建一个子类并重写HTMLParser的方法
 class MyHTMLParser(HTMLParser):
@@ -8,24 +9,23 @@ class MyHTMLParser(HTMLParser):
         super().__init__()
         self.titles = []
         self.capture = False
-        self.current_data = ""
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
             for attr in attrs:
                 if attr[0] == "target" and attr[1] == "_blank":
                     self.capture = True
-                    self.current_data = ""
+                    self.current_data = []
 
     def handle_endtag(self, tag):
         if tag == "a" and self.capture:
-            cleaned_data = self.current_data.strip().strip('"').strip("'")
+            cleaned_data = ''.join(self.current_data).strip().strip('"').strip("'")
             self.titles.append(cleaned_data)
             self.capture = False
 
     def handle_data(self, data):
         if self.capture:
-            self.current_data += data.replace("\n", " ").replace("\r", " ").strip()
+            self.current_data.append(data.replace("\n", " ").replace("\r", " ").strip())
 
 # 定义文件路径和备份路径
 file_path = '/Users/yanzhang/Documents/News/today_eng.html'
@@ -49,39 +49,52 @@ with open('/Users/yanzhang/Documents/News/today_eng.txt', 'w', encoding='utf-8')
     for title in titles:
         a_file.write(title + "\n")
 
-# 将标题列表分成三部分
+# 获取总标题数
 total_titles = len(titles)
-part_size = total_titles // 3
-remainder = total_titles % 3
 
-titles_part1 = titles[:part_size]
-titles_part2 = titles[part_size:2*part_size]
-titles_part3 = titles[2*part_size:]
+# 根据标题数量决定分割文件的数量
+if total_titles <= 50:
+    num_parts = 1
+elif total_titles <= 100:
+    num_parts = 2
+elif total_titles <= 150:
+    num_parts = 3
+elif total_titles <= 200:
+    num_parts = 4
+elif total_titles <= 250:
+    num_parts = 5
+elif total_titles <= 300:
+    num_parts = 6
+elif total_titles <= 350:
+    num_parts = 7
+elif total_titles <= 400:
+    num_parts = 8
+else:
+    num_parts = 9
 
-# 如果有余数，将其分配到最后一部分
-if remainder:
-    titles_part3.extend(titles[2*part_size:])
+# 计算每个部分的大小
+part_size = ceil(total_titles / num_parts)
 
-# 将三部分标题拼接成字符串，以换行符隔开
-titles_text1 = "\n".join(titles_part1)
-titles_text2 = "\n".join(titles_part2)
-titles_text3 = "\n".join(titles_part3)
-
-# 将三部分标题写入到不同的文件中
-with open('/tmp/segment_1.txt', 'w', encoding='utf-8') as file1:
-    file1.write(titles_text1)
-with open('/tmp/segment_2.txt', 'w', encoding='utf-8') as file2:
-    file2.write(titles_text2)
-with open('/tmp/segment_3.txt', 'w', encoding='utf-8') as file3:
-    file3.write(titles_text3)
+# 分割标题并写入文件
+for i in range(num_parts):
+    start_index = i * part_size
+    end_index = start_index + part_size
+    titles_part = titles[start_index:end_index]
+    titles_text = "\n".join(titles_part)
+    
+    with open(f'/tmp/segment_{i+1}.txt', 'w', encoding='utf-8') as file:
+        file.write(titles_text)
 
 # 备份HTML源文件到指定目录，如果文件已存在则覆盖
 shutil.copyfile(file_path, backup_path)
 
 # 打印出提取到的文本，以便验证
-print("Titles Part 1:")
-print(titles_text1)
-print("\nTitles Part 2:")
-print(titles_text2)
-print("\nTitles Part 3:")
-print(titles_text3)
+for i in range(num_parts):
+    start_index = i * part_size
+    end_index = start_index + part_size
+    titles_part = titles[start_index:end_index]
+    titles_text = "\n".join(titles_part)
+    
+    print(f"Titles Part {i+1}:")
+    print(titles_text)
+    print("\n")

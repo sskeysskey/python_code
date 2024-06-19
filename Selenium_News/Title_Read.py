@@ -45,56 +45,46 @@ parser.feed(html_content)
 titles = parser.titles
 
 # 将标题写入a.txt文件中
+titles_text = "\n".join(titles)
 with open('/Users/yanzhang/Documents/News/today_eng.txt', 'w', encoding='utf-8') as a_file:
-    for title in titles:
-        a_file.write(title + "\n")
+    a_file.write(titles_text)
 
-# 获取总标题数
-total_titles = len(titles)
+# 获取总字符数
+total_chars = len(titles_text)
 
-# 根据标题数量决定分割文件的数量
-if total_titles <= 50:
-    num_parts = 1
-elif total_titles <= 100:
-    num_parts = 2
-elif total_titles <= 150:
-    num_parts = 3
-elif total_titles <= 200:
-    num_parts = 4
-elif total_titles <= 250:
-    num_parts = 5
-elif total_titles <= 300:
-    num_parts = 6
-elif total_titles <= 350:
-    num_parts = 7
-elif total_titles <= 400:
-    num_parts = 8
-else:
-    num_parts = 9
-
-# 计算每个部分的大小
-part_size = ceil(total_titles / num_parts)
+# 根据字符数量决定分割文件的数量
+num_parts = ceil(total_chars / 3200)
 
 # 分割标题并写入文件
+start_index = 0
 for i in range(num_parts):
-    start_index = i * part_size
-    end_index = start_index + part_size
-    titles_part = titles[start_index:end_index]
-    titles_text = "\n".join(titles_part)
-    
+    end_index = start_index + 3200
+    if end_index >= total_chars:
+        end_index = total_chars - 1
+    else:
+        while end_index < total_chars and titles_text[end_index] not in ['\n', '\r']:
+            end_index += 1
+    titles_part = titles_text[start_index:end_index].strip()  # 去掉可能多余的空白字符
+    start_index = end_index + 1  # 跳过换行符
+
     with open(f'/tmp/segment_{i+1}.txt', 'w', encoding='utf-8') as file:
-        file.write(titles_text)
+        file.write(titles_part)
 
 # 备份HTML源文件到指定目录，如果文件已存在则覆盖
 shutil.copyfile(file_path, backup_path)
 
 # 打印出提取到的文本，以便验证
+start_index = 0
 for i in range(num_parts):
-    start_index = i * part_size
-    end_index = start_index + part_size
-    titles_part = titles[start_index:end_index]
-    titles_text = "\n".join(titles_part)
-    
-    print(f"Titles Part {i+1}:")
-    print(titles_text)
-    print("\n")
+    end_index = start_index + 3200
+    if end_index >= total_chars:
+        end_index = total_chars - 1
+    else:
+        while end_index < total_chars and titles_text[end_index] not in ['\n', '\r']:
+            end_index += 1
+    titles_part = titles_text[start_index:end_index].strip()  # 去掉可能多余的空白字符
+    start_index = end_index + 1  # 跳过换行符
+
+    # print(f"Titles Part {i+1}:")
+    # print(titles_part)
+    # print("\n")

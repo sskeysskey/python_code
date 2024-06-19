@@ -18,6 +18,22 @@ if not source_file_path:
     print('没有选择文件。')
     sys.exit()
 
+# 获取源文件的原始文件名
+source_file_name = os.path.basename(source_file_path)
+
+# 去除文件名中的空格
+cleaned_file_name = source_file_name.replace(' ', '')
+
+# 去除文件名的扩展名
+cleaned_file_name_without_extension = os.path.splitext(cleaned_file_name)[0]
+
+# 在/tmp目录下创建mp3name.txt文件，并写入处理后的文件名
+mp3name_path = "/tmp/mp3name.txt"
+with open(mp3name_path, 'w', encoding='utf-8') as mp3name_file:
+    mp3name_file.write(cleaned_file_name_without_extension)
+
+print(f"文件名已保存到: {mp3name_path}")
+
 # 读取文件内容
 with open(source_file_path, 'r', encoding='utf-8') as file:
     lines = file.readlines()

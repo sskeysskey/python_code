@@ -1,7 +1,6 @@
 import re
 import os
 import time
-import codecs
 import pyautogui
 import pyperclip
 import webbrowser
@@ -35,13 +34,6 @@ def get_clipboard_data():
     p = subprocess.Popen(['pbpaste'], stdout=subprocess.PIPE)
     data, _ = p.communicate()
     return data.decode('utf-8').splitlines()
-
-# 将修改后的内容写回剪贴板
-def set_clipboard_data(data):
-    p = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
-    p.stdin.write(data.encode('utf-8'))
-    p.stdin.close()
-    p.wait()
 
 class MyHTMLParser(HTMLParser):
     def __init__(self, new_texts):
@@ -100,7 +92,7 @@ translated_texts = get_clipboard_data()
 translated_texts = [line for line in translated_texts if line.strip() != '']
 
 # 读取HTML文件内容
-with open('/Users/yanzhang/Documents/News/today_eng.html', 'r', encoding='utf-8') as file:
+with open('/Users/yanzhang/Documents/News/today_all.html', 'r', encoding='utf-8') as file:
     html_content = file.read()
 
 # 创建解析器实例并传入翻译后的内容
@@ -113,12 +105,24 @@ try:
     # 如果新文本数量与原始链接数量相同，则写回文件
     if parser.current_index == len(translated_texts):
         # 定义原始和目标文件路径
-        original_file_path = '/Users/yanzhang/Documents/News/today_eng.html'
+        original_file_path = '/Users/yanzhang/Documents/News/today_all.html'
+        process_eng_txt = '/Users/yanzhang/Documents/News/today_eng.txt'
+        process_jpn_txt = '/Users/yanzhang/Documents/News/today_jpn.txt'
+        result_eng_html = '/Users/yanzhang/Documents/News/today_eng.html'
+        result_jpn_html = '/Users/yanzhang/Documents/News/today_jpn.html'
         
-        with open(original_file_path, 'w', encoding='utf-8') as file:
-            file.write(parser.result_html)
-        print("文件已成功更新。")
-        os.remove(file_path)
+        try:
+            with open(original_file_path, 'w', encoding='utf-8') as file:
+                file.write(parser.result_html)
+            print("文件已成功更新。")
+            os.remove(file_path)
+            os.remove(process_eng_txt)
+            os.remove(process_jpn_txt)
+            os.remove(result_eng_html)
+            os.remove(result_jpn_html)
+            print(f"文件已成功删除。")
+        except IOError as e:
+            print(f"文件操作失败: {e}")
 
         # 设置TXT文件的保存路径
         now = datetime.now()
@@ -133,7 +137,6 @@ try:
 
         # 调用函数，传入路径
         delete_done_txt_files("/tmp/")
-        os.remove('/Users/yanzhang/Documents/News/today_eng.txt')
     else:
         raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
         
@@ -153,6 +156,5 @@ if os.path.exists(txt_file_path):
     for _ in range(6):
         pyautogui.hotkey('command', '=')
         time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
-    delete_done_txt_files("/tmp/")
 else:
     print("文件不存在，无法打开。")

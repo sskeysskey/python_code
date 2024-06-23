@@ -5,75 +5,49 @@ import subprocess
 from time import sleep
 from datetime import datetime
 
-def append_to_html(html_file_path, segment_content, modified_content):
-    # 获取当前的系统时间，并格式化为字符串
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+# 常量定义
+TXT_DIRECTORY = '/Users/yanzhang/Documents/News'
+HTML_DIRECTORY = '/Users/yanzhang/Documents/sskeysskey.github.io/news'
+SCRIPT_PATH = '/Users/yanzhang/Documents/ScriptEditor/Close_Tab_News.scpt'
+SEGMENT_FILE_PATH = '/tmp/segment.txt'
+SITE_FILE_PATH = '/tmp/site.txt'
 
-    # HTML转义段落和修改后的内容
-    escaped_segment = html.escape(segment_content).replace('\n', '<br>\n')
-    escaped_modified = html.escape(modified_content).replace('\n', '<br>\n')
-    
-    # 读取整个HTML文件内容
-    with open(html_file_path, 'r', encoding='utf-8-sig') as html_file:
-        html_content = html_file.read()
+SEGMENT_TO_HTML_FILE = {
+    "technologyreview": "technologyreview.html",
+    "economist": "economist.html",
+    "nytimes": "nytimes.html",
+    "nikkei": "nikkei.html",
+    "bloomberg": "bloomberg.html",
+    "hbr": "hbr.html",
+}
 
-    # 构造新的表格行
-    new_row = f"""
-        <tr>
-            <td>{current_time}</td>
-            <td>{escaped_modified}</td>
-        </tr>
-    """
+def get_clipboard_content():
+    content = pyperclip.paste()
+    if content:
+        return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
+    return ""
 
-    # 找到插入点（在</tr>标签后的第一次出现的位置，这意味着在表格的开头）
-    insert_position = html_content.find("</tr>") + 5
+def read_file(file_path):
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        return file.read().strip()
 
-    # 插入新的表格行
-    updated_html_content = html_content[:insert_position] + new_row + html_content[insert_position:]
-
-    # 写回修改后的HTML内容
-    with open(html_file_path, 'w', encoding='utf-8-sig') as html_file:
-        html_file.write(updated_html_content)
-
-def create_html_skeleton(html_file_path, title):
-    # 创建HTML框架，并设定字体大小
-    with open(html_file_path, 'w', encoding='utf-8-sig') as html_file:
-        html_file.write(f"""
+def write_html_skeleton(file_path, title):
+    with open(file_path, 'w', encoding='utf-8-sig') as file:
+        file.write(f"""
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
             <meta charset="UTF-8">
             <title>{title}</title>
             <style>
-    body {{
-        font-size: 28px; /* 设置字体大小 */
-    }}
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        border: 2px solid #000; /* 加粗整个表格的外边框 */
-        box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2); /* 增加阴影效果 */
-    }}
-    th, td {{
-        padding: 10px;
-        text-align: left;
-        border-bottom: 2px solid #000;
-        border-right: 2px solid #000; /* 增加垂直分割线 */
-    }}
-    th {{
-        background-color: #f2f2f2; /* 表头背景色 */
-        font-weight: bold; /* 表头字体加粗 */
-    }}
-    tr:hover {{
-        background-color: #f5f5f5; /* 鼠标悬浮时行背景色变化 */
-    }}
-    tr:last-child td {{
-        border-bottom: 2px solid #000; /* 最后一行的底部边框加粗 */
-    }}
-    td:last-child, th:last-child {{
-        border-right: none; /* 最后一列去除垂直分割线 */
-    }}
-</style>
+                body {{ font-size: 28px; }}
+                table {{ width: 100%; border-collapse: collapse; border: 2px solid #000; box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2); }}
+                th, td {{ padding: 10px; text-align: left; border-bottom: 2px solid #000; border-right: 2px solid #000; }}
+                th {{ background-color: #f2f2f2; font-weight: bold; }}
+                tr:hover {{ background-color: #f5f5f5; }}
+                tr:last-child td {{ border-bottom: 2px solid #000; }}
+                td:last-child, th:last-child {{ border-right: none; }}
+            </style>
         </head>
         <body>
             <table>
@@ -83,115 +57,64 @@ def create_html_skeleton(html_file_path, title):
                 </tr>
         """)
 
-def close_html_skeleton(html_file_path):
-    # 结束HTML框架
-    with open(html_file_path, 'a', encoding='utf-8-sig') as html_file:
-        html_file.write("""
+def append_to_html(file_path, current_time, content):
+    with open(file_path, 'r+', encoding='utf-8-sig') as file:
+        content = html.escape(content).replace('\n', '<br>\n')
+        html_content = file.read()
+        insert_position = html_content.find("</tr>") + 5
+        new_row = f"""
+            <tr>
+                <td>{current_time}</td>
+                <td>{content}</td>
+            </tr>
+        """
+        updated_content = html_content[:insert_position] + new_row + html_content[insert_position:]
+        file.seek(0)
+        file.write(updated_content)
+
+def close_html_skeleton(file_path):
+    with open(file_path, 'a', encoding='utf-8-sig') as file:
+        file.write("""
             </table>
         </body>
         </html>
         """)
 
-# 主函数
 def main():
-    html_skeleton_created = False
-    html_file_path = ''  # 用空字符串初始化
-
-    # 读取剪贴板内容
-    clipboard_content = pyperclip.paste()
-
-    # 检查clipboard_content是否为None或者是否是一个字符串
-    if clipboard_content:
-        # 使用splitlines()分割剪贴板内容为多行
-        lines = clipboard_content.splitlines()
-        # 移除空行
-        non_empty_lines = [line for line in lines if line.strip()]
-    else:
-        print("剪贴板中没有内容或pyperclip无法访问剪贴板。")
-        non_empty_lines = []  # 确保non_empty_lines是一个列表，即使剪贴板为空
-
-    # 将非空行合并为一个字符串，用换行符分隔
-    modified_content = '\n'.join(non_empty_lines)
-
-    # 读取/tmp/segment.txt文件内容
-    segment_file_path = '/tmp/segment.txt'
-    with open(segment_file_path, 'r', encoding='utf-8-sig') as segment_file:
-        segment_content = segment_file.read().strip()  # 使用strip()移除可能的空白字符
-
-    # 读取/tmp/site.txt文件内容
-    site_file_path = '/tmp/site.txt'
-    with open(site_file_path, 'r', encoding='utf-8-sig') as site_file:
-        site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
+    clipboard_content = get_clipboard_content()
+    segment_content = read_file(SEGMENT_FILE_PATH)
+    site_content = read_file(SITE_FILE_PATH)
+    site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
     
-    # 在site_content的前后分别加入</document>
-    site_content_with_tags = '<document>' + site_content + '</document>请详细总结这篇文章'
-
-    # 将读取到的segment_content内容插入在剪贴板内容的最前面
-    final_content = segment_content + '\n' + site_content_with_tags + '\n\n' + modified_content
-
-    # 设置txt文件的保存目录
-    txt_directory = '/Users/yanzhang/Documents/News'
+    final_content = f"{segment_content}\n{site_content_with_tags}\n\n{clipboard_content}"
     
-    # 设置TXT文件的保存路径
     now = datetime.now()
-    time_str = now.strftime("_%y_%m_%d")
-    txt_file_name = f"News{time_str}.txt"
-    txt_file_path = os.path.join(txt_directory, txt_file_name)
-
-    if not os.path.isfile(txt_file_path):
-        with open(txt_file_path, 'w', encoding='utf-8-sig') as txt_file:
-            pass  # 创建文件后不进行任何操作，文件会被关闭
-
-    # 追加处理后的内容到TXT文件
-    with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
-        txt_file.write(final_content)
-        txt_file.write('\n\n')  # 添加两个换行符以创建一个空行
-
-    # 确定segment内容，并选择相应的HTML文件
-    segment_to_html_file = {
-        "technologyreview": "technologyreview.html",
-        "economist": "economist.html",
-        "nytimes": "nytimes.html",
-        "nikkei": "nikkei.html",
-        "bloomberg": "bloomberg.html",
-        "hbr": "hbr.html",
-    }
-
-    # 根据segment内容获取对应的HTML文件名
-    html_file_name = segment_to_html_file.get(segment_content.lower(), "other.html")
-    html_file_path = os.path.join('/Users/yanzhang/Documents/sskeysskey.github.io/news', html_file_name)
-
-    # 根据segment内容获取对应的标题
-    title = segment_content if segment_content.lower() in segment_to_html_file else "新闻摘要"
-
-    # 检查HTML文件是否已经存在
-    html_skeleton_created = os.path.isfile(html_file_path)
-
-    # 检查HTML文件是否已经存在
-    if not html_skeleton_created:
-        create_html_skeleton(html_file_path, title)
+    txt_file_name = f"News_{now.strftime('%y_%m_%d')}.txt"
+    txt_file_path = os.path.join(TXT_DIRECTORY, txt_file_name)
     
-    # 追加内容到HTML文件
-    append_to_html(html_file_path, segment_content, modified_content)
-
-    # 最后，关闭HTML框架
-    if html_skeleton_created and not os.path.isfile(html_file_path):
+    with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
+        txt_file.write(final_content + '\n\n')
+    
+    html_file_name = SEGMENT_TO_HTML_FILE.get(segment_content.lower(), "other.html")
+    html_file_path = os.path.join(HTML_DIRECTORY, html_file_name)
+    
+    if not os.path.isfile(html_file_path):
+        write_html_skeleton(html_file_path, segment_content)
+    
+    append_to_html(html_file_path, now.strftime('%Y-%m-%d %H:%M:%S'), clipboard_content)
+    
+    if os.path.isfile(html_file_path):
         close_html_skeleton(html_file_path)
     
-    script_path = '/Users/yanzhang/Documents/ScriptEditor/Close_Tab_News.scpt'
     try:
-        # 将坐标值作为参数传递给AppleScript
-        process = subprocess.run(['osascript', script_path], check=True, text=True, stdout=subprocess.PIPE)
-        # 输出AppleScript的返回结果
-        print(process.stdout.strip())
+        result = subprocess.run(['osascript', SCRIPT_PATH], check=True, text=True, stdout=subprocess.PIPE)
+        print(result.stdout.strip())
     except subprocess.CalledProcessError as e:
-        # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
     
     sleep(1)
-    # 删除/tmp/segment.txt文件
-    os.remove(segment_file_path)
-    os.remove(site_file_path)
+    os.remove(SEGMENT_FILE_PATH)
+    os.remove(SITE_FILE_PATH)
 
 if __name__ == '__main__':
     main()

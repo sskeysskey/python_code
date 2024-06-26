@@ -75,8 +75,8 @@ def append_to_html(file_path, new_rows1):
             html_file.write("</table></body></html>")
 
 current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
-chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
+chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 driver.get("https://www.nikkei.com/")

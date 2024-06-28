@@ -3,7 +3,7 @@ import shutil
 import re
 import sys
 sys.path.append('/Users/yanzhang/Documents/python_code/Modules')
-from Rename_segment import rename_first_segment_file
+from Rename_textspeech import rename_first_segment_file
 
 def find_and_move_mp4(source_dir, target_dir):
     # 查找source_dir目录下的第一个.mp4文件

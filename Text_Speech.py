@@ -46,7 +46,7 @@ part_lines = []
 
 def write_part_file(part_num, part_lines):
     directory = "/tmp/"
-    part_file_path = os.path.join(directory, f"segment_{part_num}.txt")
+    part_file_path = os.path.join(directory, f"textspeech_{part_num}.txt")
     with open(part_file_path, 'w', encoding='utf-8') as part_file:
         part_file.writelines(part_lines)
     print(f"生成文件: {part_file_path}")

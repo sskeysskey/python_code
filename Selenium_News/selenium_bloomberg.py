@@ -39,6 +39,9 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         css_selector = "a[href*='/2024']"
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+        # 打印titles_elements的内容
+        # for title_element in titles_elements:
+        #     print(f"Element: {title_element}, Href: {title_element.get_attribute('href')}, Text: {title_element.text.strip()}")
 
         def is_valid_title(title_text):
             invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto']

@@ -19,7 +19,7 @@ def click_event(event, x, y, flags, param):
             print(f"ROI: ({x1}, {y1}, {x2 - x1}, {y2 - y1})")  # 输出 ROI 值
 
 # 读取视频的第一帧
-video_path = '/Users/yanzhang/Downloads/a.MOV'
+video_path = '/Users/yanzhang/Downloads/RPReplay_Final1719361160.mov'
 cap = cv2.VideoCapture(video_path)
 ret, img = cap.read()
 # 获取视频帧的宽度和高度

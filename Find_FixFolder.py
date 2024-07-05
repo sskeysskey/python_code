@@ -201,8 +201,8 @@ def show_results_with_json(results, json_path, keywords):
         else:
             text.insert("end", "")
 
-    insert_results("Stock_tag", matched_names_stocks_tag, 'tag2')
     insert_results("ETF_tag", matched_names_etfs_tag, 'tag2')
+    insert_results("Stock_tag", matched_names_stocks_tag, 'tag2')
     insert_results("Stock_name", matched_names_stocks_name, 'tag2')
     insert_results("ETF_name", matched_names_etfs_name, 'tag2')
     insert_results("Description_Stock", matched_names_stocks, 'tag1')

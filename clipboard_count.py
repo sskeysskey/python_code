@@ -32,8 +32,11 @@ num_digits = len(re.findall(r'\d', clipboard_content))
 # 计算不是英文字母（a-z，A-Z）、数字（0-9）或空格的字符数量
 num_symbols = sum(not ch.isalnum() and not ch.isspace() for ch in clipboard_content)
 
-# 计算行数
-num_lines = clipboard_content.count('\n') + 1  # 假定内容至少有一行
+# 计算所有行数
+num_lines_all = clipboard_content.count('\n') + 1  # 假定内容至少有一行
+
+# 计算无空行行数
+num_lines_pure = sum(1 for line in clipboard_content.splitlines() if line.strip())
 
 # 创建 Tkinter 窗口
 root = tk.Tk()
@@ -43,7 +46,7 @@ root.title("剪贴板分析")
 font = Font(family="Helvetica", size=24)
 
 # 创建 Text 控件来显示信息，并设置字体
-text_widget = tk.Text(root, font=font, height=12, width=15)
+text_widget = tk.Text(root, font=font, height=15, width=15)
 text_widget.pack(pady=10, padx=10)
 
 # 定义不同类型文本的颜色标签
@@ -60,7 +63,8 @@ text_widget.insert('end', f"中文字： {num_chinese_characters}\n\n", 'chinese
 text_widget.insert('end', f"英文单词： {num_english_words}\n\n", 'english_color')
 text_widget.insert('end', f"数字数量： {num_digits}\n\n", 'digit_color')  # 应用数字数量的颜色标签
 text_widget.insert('end', f"符号数量： {num_symbols}\n\n", 'symbol_color')  # 应用符号的颜色标签
-text_widget.insert('end', f"行数： {num_lines}\n\n", 'line_color')  # 应用行数的颜色标签
+text_widget.insert('end', f"总行数： {num_lines_all}\n\n", 'line_color')  # 应用行数的颜色标签
+text_widget.insert('end', f"除空行行数： {num_lines_pure}\n\n", 'line_color')  # 应用行数的颜色标签
 
 # 禁止 Text 控件的编辑功能
 text_widget.config(state='disabled')

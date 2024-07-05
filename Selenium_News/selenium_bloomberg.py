@@ -44,7 +44,7 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         #     print(f"Element: {title_element}, Href: {title_element.get_attribute('href')}, Text: {title_element.text.strip()}")
 
         def is_valid_title(title_text):
-            invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto']
+            invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:']
             if any(phrase in title_text for phrase in invalid_phrases):
                 return False
             if any(keyword in title_text for keyword in ['Listen', 'Watch']) and '(' in title_text and ')' in title_text:

@@ -48,7 +48,7 @@ def main():
         templates[key] = template
 
     found = False
-    timeout_stop = time.time() + 10
+    timeout_stop = time.time() + 5
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
@@ -75,7 +75,8 @@ def main():
     #     sys.exit()
 
     found_stop = True
-    while found_stop:
+    timeout_found_stop = time.time() + 5
+    while found_stop and time.time() < timeout_found_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
             print("找到poe_stop图片，继续监控...")

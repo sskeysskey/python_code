@@ -60,13 +60,13 @@ def main():
             location, shape = find_image_on_screen(templates["failure"])
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
+                pyautogui.click(x=591, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             location, shape = find_image_on_screen(templates["no"])
             if location:
                 print("找到poe_no图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
+                pyautogui.click(x=591, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             sleep(1)
@@ -85,7 +85,7 @@ def main():
             location, shape = find_image_on_screen(templates["waiting"])
             if location:
                 print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=617, y=574)
+                pyautogui.click(x=591, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             sleep(1)  # 简短暂停再次监控

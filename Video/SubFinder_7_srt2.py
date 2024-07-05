@@ -1,18 +1,17 @@
+# 重复图片少，但个别图片时间不太精确
+
 import cv2
 import numpy as np
 import pytesseract
 from pytesseract import Output
 import os
+from difflib import SequenceMatcher
 import hashlib
 
 def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # 增加对比度和亮度
-    alpha = 1.5  # 对比度控制（1.0-3.0）
-    beta = 50    # 亮度控制（0-100）
-    enhanced = cv2.convertScaleAbs(gray, alpha=alpha, beta=beta)
-    # 使用自适应阈值
-    thresh = cv2.adaptiveThreshold(enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
     return thresh
 
 def image_hash(image):
@@ -127,5 +126,6 @@ def format_time(time):
 
 video_path = '/Users/yanzhang/Downloads/RPReplay_Final1720051080.mov'
 output_folder = '/Users/yanzhang/Movies/Subtitle'
-roi = (0, 846, 856, 257)
+# roi = (0, 734, 888, 431)
+roi = (0, 866, 856, 257)
 extract_subtitle_frames(video_path, output_folder, roi)

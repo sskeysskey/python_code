@@ -3,76 +3,152 @@ import sys
 import json
 import pyperclip
 import subprocess
-import threading
-from tkinter import Tk, Text, Scrollbar, Button, Entry, Label, Toplevel
-import tkinter as tk
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QScrollArea, QMainWindow, QSizePolicy, QAction
+from PyQt5.QtGui import QFont, QColor, QKeySequence, QTextDocument
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray
 
-# 初始化Tkinter，隐藏主窗口
-root = Tk()
-root.withdraw()
-
-# 固定的搜索目录列表
+# 保持原有的搜索目录列表
 searchFolders = [
     "/Users/yanzhang/Documents/ScriptEditor/",
     "/Users/yanzhang/Library/Services/",
     "/Users/yanzhang/Documents/Financial_System",
     "/Users/yanzhang/Documents/python_code",
-    "/Users/yanzhang/Documents/News/backup"
+    "/Users/yanzhang/Documents/News/backup",
     # "/Users/yanzhang/Documents/LuxuryBox",
     # "/Users/yanzhang/Documents/sskeysskey.github.io",
     # "/Users/yanzhang/Downloads/backup/TXT",
     # "/Users/yanzhang/Documents/Books"
 ]
 
-def window_center(win, width, height, offset_y=0):
-    screen_width, screen_height = win.winfo_screenwidth(), win.winfo_screenheight()
-    x, y = (screen_width - width) // 2, (screen_height - height) // 2 - offset_y
-    win.geometry(f'{width}x{height}+{x}+{y}')
+json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
 
-def open_file(file_path):
-    try:
-        subprocess.call(["open", file_path])
-    except Exception as e:
-        print(f"无法打开文件 {file_path}: {e}")
+class CustomTextBrowser(QTextBrowser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setOpenLinks(False)  # 禁止自动打开链接
 
-def custom_input_window(prompt, callback):
-    input_window = Toplevel(root)
-    input_window.title("输入")
-    window_center(input_window, 300, 100, 100)
+    def setHtml(self, html):
+        # 重写setHtml方法，确保初始内容能够正确加载
+        super().setHtml(html)
 
-    def on_ok():
-        keyword = entry.get()
-        input_window.destroy()
-        callback(keyword)
+class SearchWorker(QThread):
+    finished = pyqtSignal(dict, str, str)
 
-    def on_cancel():
-        input_window.destroy()
-        sys.exit(0)
+    def __init__(self, directories, keywords, json_path):
+        super().__init__()
+        self.directories = directories
+        self.keywords = keywords
+        self.json_path = json_path
 
-    def on_esc(event):
-        on_cancel()
+    def run(self):
+        results = search_files(self.directories, self.keywords)
+        self.finished.emit(results, self.json_path, self.keywords)
 
-    def on_enter(event):
-        on_ok()
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("文件搜索")
+        self.setGeometry(350, 200, 800, 600)
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget)
 
-    Label(input_window, text=prompt).pack()
-    entry = Entry(input_window)
-    entry.pack()
-    entry.focus_set()
+        self.input_layout = QHBoxLayout()
+        self.input_field = QLineEdit()
+        self.input_field.setFixedHeight(30)
+        self.input_field.setFont(QFont("Arial", 18))
+        self.search_button = QPushButton("搜索")
+        self.search_button.setFixedSize(60, 30)
+        self.input_layout.addWidget(self.input_field, 7)
+        self.input_layout.addWidget(self.search_button, 1)
+        self.layout.addLayout(self.input_layout)
 
-    try:
-        clipboard_content = root.clipboard_get()
-    except tk.TclError:
-        clipboard_content = ''
-    entry.insert(0, clipboard_content)
-    entry.select_range(0, tk.END)
+        self.loading_label = QLabel("正在搜索...", self)
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_label.setFont(QFont("Arial", 14))
+        self.loading_label.hide()
+        self.layout.addWidget(self.loading_label)
 
-    Button(input_window, text="取消", command=on_cancel).pack(side="right")
-    Button(input_window, text="确定", command=on_ok).pack(side="right")
+        self.result_area = CustomTextBrowser()
+        self.result_area.anchorClicked.connect(self.open_file)
+        self.result_area.setFont(QFont("Arial", 12))
+        self.layout.addWidget(self.result_area)
 
-    entry.bind('<Return>', on_enter)
-    input_window.bind('<Escape>', on_esc)
+        self.search_button.clicked.connect(self.start_search)
+        self.input_field.returnPressed.connect(self.start_search)
+        self.result_area.anchorClicked.connect(self.open_file)
 
+        # 添加 ESC 键关闭窗口的功能
+        self.shortcut_close = QKeySequence("Esc")
+        self.quit_action = QAction("Quit", self)
+        self.quit_action.setShortcut(self.shortcut_close)
+        self.quit_action.triggered.connect(self.close)
+        self.addAction(self.quit_action)
+
+    def start_search(self):
+        keywords = self.input_field.text()
+        self.loading_label.show()
+        self.result_area.clear()
+        self.result_area.setEnabled(False)
+        self.search_button.setEnabled(False)
+        self.input_field.setEnabled(False)
+        self.worker = SearchWorker(searchFolders, keywords, json_path)
+        self.worker.finished.connect(self.show_results)
+        self.worker.start()
+
+    def show_results(self, results, json_path, keywords):
+        self.loading_label.hide()
+        self.result_area.setEnabled(True)
+        self.search_button.setEnabled(True)
+        self.input_field.setEnabled(True)
+        
+        matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
+        matched_names_stocks_tag, matched_names_etfs_tag, matched_names_stocks_name, matched_names_etfs_name = search_tag_for_keywords(json_path, keywords)
+
+        html_content = ""
+
+        for directory, files in results.items():
+            if files:
+                html_content += f"<h2 style='color: yellow; font-size: 18px;'>{directory}</h2>"
+                for file in files:
+                    file_path = os.path.join(directory, file)
+                    html_content += f"<p><a href='{file_path}' style='color: orange; text-decoration: underline; font-size: 18px;'>{file}</a></p>"
+                # html_content += "<br>"
+
+        html_content += self.insert_results_html("ETF_tag", matched_names_etfs_tag, 'white', 16)
+        html_content += self.insert_results_html("Stock_tag", matched_names_stocks_tag, 'white', 16)
+        html_content += self.insert_results_html("Stock_name", matched_names_stocks_name, 'white', 16)
+        html_content += self.insert_results_html("ETF_name", matched_names_etfs_name, 'white', 16)
+        html_content += self.insert_results_html("Description_Stock", matched_names_stocks, 'gray', 16)
+        html_content += self.insert_results_html("Description_ETFs", matched_names_etfs, 'gray', 16)
+
+        self.result_area.setHtml(html_content)
+
+        # 滚动到顶部
+        self.result_area.verticalScrollBar().setValue(0)
+
+    def insert_results_html(self, category, results, color, font_size):
+        html = ""
+        if results:
+            html += f"<h2 style='color: yellow; font-size: 16px;'>{category}:</h2>"
+            for name in results:
+                html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{name}</p>"
+            # html += "<br>"
+        return html
+
+    def open_file(self, url):
+        file_path = url.toLocalFile()
+        if not file_path:
+            file_path = url.toString()
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            else:
+                subprocess.call(("open", file_path))
+        except Exception as e:
+            print(f"无法打开文件 {file_path}: {e}")
+
+# 保持原有的搜索相关函数不变
 def search_files(directories, keywords):
     matched_files = {}
     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
@@ -158,78 +234,33 @@ def search_tag_for_keywords(json_path, keywords):
         search_category_for_name('stocks'), search_category_for_name('etfs')
     )
 
-def show_results_with_json(results, json_path, keywords):
-    matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
-    matched_names_stocks_tag, matched_names_etfs_tag, matched_names_stocks_name, matched_names_etfs_name = search_tag_for_keywords(json_path, keywords)
+if __name__ == "__main__":
+    # 处理剪贴板警告
+    try:
+        from PyQt5.QtWidgets import QApplication
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    except AttributeError:
+        pass  # 较旧的 PyQt 版本可能没有这些属性
 
-    result_window = Toplevel(root)
-    result_window.title(f"搜索关键字: {keywords}")
-    window_center(result_window, 800, 600)
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
 
-    scrollbar = Scrollbar(result_window)
-    scrollbar.pack(side="right", fill="y")
-    text = Text(result_window, width=120, height=25, yscrollcommand=scrollbar.set)
-    text.pack(side="left", fill="both")
-    text.tag_configure('directory_tag', foreground='yellow', font=('Helvetica', '24', 'bold'))
-    text.tag_configure('file_tag', foreground='orange', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('tag1', foreground='gray', underline=True, font=('Helvetica', '20'))
-    text.tag_configure('tag2', foreground='white', underline=True, font=('Helvetica', '20'))
-    scrollbar.config(command=text.yview)
-    result_window.bind('<Escape>', lambda e: (result_window.destroy(), sys.exit(0)))
-
-    def open_file_and_change_tag_color(path, tag_name):
-        open_file(path)
-        text.tag_configure(tag_name, foreground='grey', underline=False)
-
-    def insert_results(category, results, tag):
-        if results:
-            text.insert("end", f"{category}:\n", 'directory_tag')
-            for name in results:
-                text.insert("end", name + "\n", tag)
-            text.insert("end", "\n")
-
-    for directory, files in results.items():
-        if files:
-            text.insert("end", directory + "\n", 'directory_tag')
-            for file in files:
-                file_path = os.path.join(directory, file)
-                tag_name = "link_" + file.replace(".", "_")
-                # text.tag_bind(tag_name, "<Button-1>", lambda event, path=file_path, tag=tag_name: open_file(path))
-                text.tag_bind(tag_name, "<Button-1>", lambda event, path=file_path, tag=tag_name: open_file_and_change_tag_color(path, tag))
-                text.insert("end", file + "\n", (tag_name, 'file_tag'))
-            text.insert("end", "\n")
-        else:
-            text.insert("end", "")
-
-    insert_results("ETF_tag", matched_names_etfs_tag, 'tag2')
-    insert_results("Stock_tag", matched_names_stocks_tag, 'tag2')
-    insert_results("Stock_name", matched_names_stocks_name, 'tag2')
-    insert_results("ETF_name", matched_names_etfs_name, 'tag2')
-    insert_results("Description_Stock", matched_names_stocks, 'tag1')
-    insert_results("Description_ETFs", matched_names_etfs, 'tag1')
-
-def threaded_search_files_with_json(directories, keywords, json_path, callback):
-    results = search_files(directories, keywords)
-    root.after(0, callback, results, json_path, keywords)
-
-def search_with_clipboard_content():
-    clipboard_content = pyperclip.paste()
-    if clipboard_content:
-        threading.Thread(target=threaded_search_files_with_json, args=(searchFolders, clipboard_content, json_path, show_results_with_json)).start()
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg == "input":
+            # 显示窗口，让用户输入
+            pass
+        elif arg == "paste":
+            # 使用剪贴板内容进行搜索
+            clipboard_content = pyperclip.paste()
+            if clipboard_content:
+                window.input_field.setText(clipboard_content)
+                window.start_search()
+            else:
+                print("剪贴板为空，请复制一些文本后再试。")
     else:
-        print("剪贴板为空，请复制一些文本后再试。")
+        print("请提供参数 input 或 paste")
 
-json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
-
-if len(sys.argv) > 1:
-    arg = sys.argv[1]
-    if arg == "input":
-        custom_input_window("请输入要检索的字符串内容：", 
-                           lambda keyword: threading.Thread(target=threaded_search_files_with_json, args=(searchFolders, keyword, json_path, show_results_with_json)).start())
-    elif arg == "paste":
-        search_with_clipboard_content()
-else:
-    print("请提供参数 input 或 paste")
-    sys.exit(1)
-
-root.mainloop()
+    sys.exit(app.exec_())

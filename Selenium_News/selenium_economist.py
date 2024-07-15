@@ -150,7 +150,7 @@ try:
         title_text = title_element.text.strip()
 
         if href and title_text:
-            if 'podcasts' not in href and "film" not in href and "cartoon" not in href and not ('letters' in href and 'editor' in href):
+            if 'podcasts' not in href and "film" not in href and "cartoon" not in href and not ('letters' in href and 'editor' in href and 'Sources and acknowledgments' in href):
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])

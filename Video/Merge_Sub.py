@@ -17,15 +17,28 @@ file_name = f"{current_month}月{current_day}日.srt"
 file_path = os.path.join(base_path, file_name)
 
 if not os.path.exists(file_path):
-    # 读取文件内容
-    with open(os.path.join(base_path, "bob.txt"), 'r', encoding='utf-8') as f:
-        file1_lines = f.readlines()
-    with open(os.path.join(base_path, "sub.srt"), 'r', encoding='utf-8') as f:
-        file2_lines = f.readlines()
+    # 查找以Bob开头的txt文件或bob.txt
+    bob_file = next((f for f in os.listdir(base_path) if f.startswith("Bob") and f.endswith(".txt")), None)
+    
+    if not bob_file:
+        bob_file = "bob.txt" if os.path.exists(os.path.join(base_path, "bob.txt")) else None
 
-    # 初始化结果列表和索引
-    result_lines = []
-    file1_line_index = 0
+    if not bob_file:
+        print("未找到以Bob开头的txt文件或bob.txt，处理终止。")
+        exit()
+    
+    # 查找目录下的第一个srt文件
+    srt_file = next((f for f in os.listdir(base_path) if f.endswith(".srt")), None)
+    
+    if not srt_file:
+        print("未找到srt文件，处理终止。")
+        exit()
+
+    # 读取文件内容
+    with open(os.path.join(base_path, bob_file), 'r', encoding='utf-8') as f:
+        file1_lines = f.readlines()
+    with open(os.path.join(base_path, srt_file), 'r', encoding='utf-8') as f:
+        file2_lines = f.readlines()
 
     # 初始化结果列表和索引
     result_lines = []
@@ -61,11 +74,11 @@ if not os.path.exists(file_path):
 
     # 备份原始文件
     date_string = f"{current_month}月{current_day}日"
-    for old_name, new_name in [("bob.txt", f"{date_string}_bob.txt"), ("sub.srt", f"{date_string}_sub.srt")]:
+    for old_name, new_name in [(bob_file, f"{date_string}_{bob_file}"), (srt_file, f"{date_string}_{srt_file}")]:
         old_path = os.path.join(base_path, old_name)
         new_path = os.path.join(backup_folder, new_name)
         shutil.move(old_path, new_path)
 
-    print("处理完成。")
+    print(f"处理完成。使用的文件: {bob_file} 和 {srt_file}")
 else:
     print("目标文件已存在，无需处理。")

@@ -104,7 +104,7 @@ try:
             #print(f"标题: {title_text}, 链接: {href}")
 
             if len(title_text) >= 6:
-                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href and "sports" not in href and "music" not in href and "new-books-recommendations" not in href:
+                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href and "sports" not in href and "music" not in href and "new-books-recommendations" not in href and "THE EDITORIAL BOARD" not in href and "THE INTERVIEW" not in href:
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])

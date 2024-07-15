@@ -1,7 +1,7 @@
 from PIL import Image
 import os
 
-def vertically_concatenate_images(input_dir, output_dir, images_per_file=20, separator_height=10):
+def vertically_concatenate_images(input_dir, output_dir, images_per_file=15, separator_height=40):
     # 获取输入目录中的所有PNG和JPEG文件并按名称排序
     image_extensions = ('.png', '.jpg', '.jpeg')
     image_paths = sorted([os.path.join(input_dir, f) for f in os.listdir(input_dir) 

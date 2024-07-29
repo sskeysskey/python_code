@@ -44,7 +44,7 @@ def fetch_new_content(driver, old_links, formatted_datetime):
     for title_element in titles_elements:
         href = title_element.get_attribute('href')
         title_text = title_element.text.strip()
-        if not title_text or any(sub in title_text for sub in ["AP", "共同", "ロイター", "高野地域協議会提供"]):
+        if not title_text or any(sub in title_text for sub in ["AP", "ＡＰ", "共同", "ロイター", "高野地域協議会提供"]):
             continue
         title_text = re.sub(r'^\d{1,2}:\d{2}\s*', '', title_text)
         if not any(is_similar(href, link) for link in old_links + [row[2] for row in new_rows]):

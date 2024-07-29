@@ -13,13 +13,20 @@ from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 
+# 定义一些全局变量
+chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
+template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/economist_accept.png'
+file_pattern = "/Users/yanzhang/Documents/News/site/economist.html"
+new_html_path = "/Users/yanzhang/Documents/News/site/economist.html"
+today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
+timeout = 10  # 设置超时时间
+
+# 打开 HTML 文件
 def open_html_file(file_path):
     webbrowser.open('file://' + os.path.realpath(file_path), new=2)
     exit()  # 终止程序
 
-def open_new_html_file():
-    webbrowser.open('file://' + os.path.realpath(new_html_path), new=2)
-
+# 比较两个 URL 的相似度
 def is_similar(url1, url2):
     """
     比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
@@ -33,6 +40,7 @@ def is_similar(url1, url2):
 
     return base_url1 == base_url2
 
+# 截取屏幕
 def capture_screen():
     # 使用PIL的ImageGrab直接截取屏幕
     screenshot = ImageGrab.grab()
@@ -40,27 +48,14 @@ def capture_screen():
     screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
-# 查找图片
+# 查找屏幕上的图片
 def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-    # 释放截图和模板图像以节省内存
-    del screen
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
     if max_val >= threshold:
         return max_loc, template.shape
-    else:
-        return None, None
-
-# 获取当前日期
-current_datetime = datetime.now()
-current_year = datetime.now().year
-current_month = datetime.now().month
-current_day = datetime.now().day
-formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
-
-# ChromeDriver 路径
-chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
+    return None, None
 
 # 设置 ChromeDriver
 service = Service(executable_path=chrome_driver_path)
@@ -68,19 +63,16 @@ driver = webdriver.Chrome(service=service)
 
 # 打开 Economist 网站
 driver.get("https://www.economist.com/")
-
-template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/economist_accept.png'  # 替换为你PNG图片的实际路径
 template_accept = cv2.imread(template_path_accept, cv2.IMREAD_COLOR)
 
 if template_accept is None:
-    raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+    raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path_accept}")
 
 found = False
 start_time = time.time()
-timeout = 10  # 设置超时时间
 time.sleep(1)
 
-# 开始循环，直到找到图片或者超时
+# 循环查找图片
 while not found and time.time() - start_time < timeout:
     location, shape = find_image_on_screen(template_accept)
     if location:
@@ -93,29 +85,15 @@ while not found and time.time() - start_time < timeout:
         pyautogui.click(center_x, center_y)
         found = True  # 找到图片，设置found为True以退出循环
     else:
-        print("未找到图片，等待后再次尝试。")
-        time.sleep(1)  # 等待1秒后再次尝试
+        time.sleep(1)
 
-if not found:
-    print("未找到图片，继续执行后续程序。")
-
-# 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/News/site/economist.html"
+# 查找旧的 HTML 文件
 old_file_list = glob.glob(file_pattern)
+old_content = []
 
-if not old_file_list:
-    print("未找到符合条件的旧文件。")
-    # 处理未找到旧文件的情况
-else:
-    # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
+if old_file_list:
     old_file_path = old_file_list[0]
-
-    # 计算当前日期30天前的日期
-    current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=35)
-    
-    # 读取旧文件中的所有内容，并删除30天前的内容
-    old_content = []
+    seven_days_ago = datetime.now() - timedelta(days=35)
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
         rows = soup.find_all('tr')[1:]  # 跳过标题行
@@ -139,12 +117,12 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    css_selector = f"a[href*='/{current_year}/']"
-    titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+    titles_elements = driver.find_elements(By.CSS_SELECTOR, f"a[href*='/{datetime.now().year}/']")
     # 打印titles_elements的内容
     # for title_element in titles_elements:
     #     print(f"Element: {title_element}, Href: {title_element.get_attribute('href')}, Text: {title_element.text.strip()}")
-
+    
+    formatted_datetime = datetime.now().strftime("%Y_%m_%d_%H")
     for title_element in titles_elements:
         href = title_element.get_attribute('href')
         title_text = title_element.text.strip()
@@ -163,15 +141,14 @@ except Exception as e:
 # 关闭驱动
 driver.quit()
 
-try:
-    os.remove(old_file_path)
-    print(f"文件 {old_file_path} 已被删除。")
-except OSError as e:
-    print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
+if old_file_list:
+    try:
+        os.remove(old_file_path)
+        print(f"文件 {old_file_path} 已被删除。")
+    except OSError as e:
+        print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
 # 创建 site HTML 文件
-new_html_path = f"/Users/yanzhang/Documents/News/site/economist.html"
-
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签
     html_file.write("<html><body><table border='1'>\n")
@@ -194,11 +171,8 @@ with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 结束表格和 HTML 结构
     html_file.write("</table></body></html>")
 
+# 创建每日新闻总表 HTML
 if new_rows1:
-    # 创建用于翻译的每日新闻总表html
-    today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
-
-    # 检查文件是否存在
     file_exists = os.path.isfile(today_html_path)
 
     # 如果文件不存在，创建文件并写入基础HTML结构

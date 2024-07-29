@@ -16,9 +16,6 @@ def open_new_html_file():
 
 # 获取当前日期
 current_datetime = datetime.now()
-current_year = datetime.now().year
-current_month = datetime.now().month
-current_day = datetime.now().day
 formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 
 # ChromeDriver 路径
@@ -28,42 +25,37 @@ chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
-# 打开 Economist 网站
+# 打开 MIT Technology Review 网站
 driver.get("https://www.technologyreview.com/")
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/site/technologyreview.html"
 old_file_list = glob.glob(file_pattern)
 
-if not old_file_list:
-    print("未找到符合条件的旧文件。")
-    # 处理未找到旧文件的情况
-else:
-    # 选择第一个找到的文件（您可能需要进一步的逻辑来选择正确的文件）
+old_content = []
+if old_file_list:
     old_file_path = old_file_list[0]
+    seven_days_ago = current_datetime - timedelta(days=50)
 
-    # 计算当前日期35天前的日期
-    current_date = datetime.now()
-    seven_days_ago = current_date - timedelta(days=50)
-    
-    # 读取旧文件中的所有内容，并删除35天前的内容
-    old_content = []
-    with open(old_file_path, 'r', encoding='utf-8') as file:
-        soup = BeautifulSoup(file, 'html.parser')
-        rows = soup.find_all('tr')[1:]  # 跳过标题行
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) >= 2:  # 确保行有足够的列
-                date_str = cols[0].text.strip()
-                # 解析日期字符串
-                date = datetime.strptime(date_str, '%Y_%m_%d_%H')
-                # 若日期大于等于26天前的日期，则保留
-                if date >= seven_days_ago:
-                    title_column = cols[1]
-                    title = title_column.text.strip()
-                    # 从标题所在的列中提取链接
-                    link = title_column.find('a')['href'] if title_column.find('a') else None
-                    old_content.append([date_str, title, link])
+    try:
+        with open(old_file_path, 'r', encoding='utf-8') as file:
+            soup = BeautifulSoup(file, 'html.parser')
+            rows = soup.find_all('tr')[1:]  # 跳过标题行
+            for row in rows:
+                cols = row.find_all('td')
+                if len(cols) >= 2:  # 确保行有足够的列
+                    date_str = cols[0].text.strip()
+                    # 解析日期字符串
+                    date = datetime.strptime(date_str, '%Y_%m_%d_%H')
+                    # 若日期大于等于50天前的日期，则保留
+                    if date >= seven_days_ago:
+                        title_column = cols[1]
+                        title = title_column.text.strip()
+                        # 从标题所在的列中提取链接
+                        link = title_column.find('a')['href'] if title_column.find('a') else None
+                        old_content.append([date_str, title, link])
+    except OSError as e:
+        print(f"读取文件时出错: {e}")
 
 # 抓取新内容
 new_rows = []
@@ -71,7 +63,7 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    css_selector = f"a[href*='technologyreview.com/{current_year}/']"
+    css_selector = f"a[href*='technologyreview.com/{current_datetime.year}/']"
     titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
     for title_element in titles_elements:
@@ -94,11 +86,12 @@ except Exception as e:
 # 关闭驱动
 driver.quit()
 
-try:
-    os.remove(old_file_path)
-    print(f"文件 {old_file_path} 已被删除。")
-except OSError as e:
-    print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
+if old_file_list:
+    try:
+        os.remove(old_file_path)
+        print(f"文件 {old_file_path} 已被删除。")
+    except OSError as e:
+        print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
 # 创建 HTML 文件
 new_html_path = f"/Users/yanzhang/Documents/News/site/technologyreview.html"
@@ -127,11 +120,8 @@ with open(new_html_path, 'w', encoding='utf-8') as html_file:
 if new_rows1:
     # 创建用于翻译的每日新闻总表html
     today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
-
-    # 检查文件是否存在
     file_exists = os.path.isfile(today_html_path)
 
-    # 如果文件不存在，创建文件并写入基础HTML结构
     if not file_exists:
         with open(today_html_path, 'w', encoding='utf-8') as html_file:
             html_file.write("<html><body><table border='1'>\n")

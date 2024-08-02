@@ -41,6 +41,8 @@ num_lines_pure = sum(1 for line in clipboard_content.splitlines() if line.strip(
 # 创建 Tkinter 窗口
 root = tk.Tk()
 root.title("剪贴板分析")
+root.lift()
+root.focus_force()
 
 # 设置字体喽
 font = Font(family="Helvetica", size=24)

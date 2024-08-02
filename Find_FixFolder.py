@@ -131,9 +131,8 @@ class MainWindow(QMainWindow):
         html = ""
         if results:
             html += f"<h2 style='color: yellow; font-size: 16px;'>{category}:</h2>"
-            for name in results:
-                html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{name}</p>"
-            # html += "<br>"
+            for name, extra in results:
+                html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{name} - {extra}</p>"
         return html
 
     def open_file(self, url):
@@ -206,7 +205,7 @@ def search_json_for_keywords(json_path, keywords):
 
     def search_category(category):
         return [
-            item['symbol'] for item in data.get(category, [])
+            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
             if all(keyword in ' '.join([item['description1'], item['description2']]).lower() for keyword in keywords_lower)
         ]
 
@@ -219,13 +218,13 @@ def search_tag_for_keywords(json_path, keywords):
 
     def search_category_for_tag(category):
         return [
-            item['symbol'] for item in data.get(category, [])
+            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
             if all(keyword in ' '.join(item.get('tag', [])).lower() for keyword in keywords_lower)
         ]
 
     def search_category_for_name(category):
         return [
-            item['symbol'] for item in data.get(category, [])
+            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
             if all(keyword in item['name'].lower() for keyword in keywords_lower)
         ]
 

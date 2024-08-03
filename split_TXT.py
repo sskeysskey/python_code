@@ -3,8 +3,9 @@ import os
 import sys
 import shutil
 import pyperclip
+import subprocess
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
 from tkinter.font import Font
 
 # 全局变量
@@ -107,7 +108,8 @@ save_path = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
 if check_for_existing_segments(save_path, 'segment'):
     root = tk.Tk()
     root.withdraw()
-    messagebox.showwarning("警告", "目录segments中存在包含'segment'的txt文件，请先处理好现有文件。")
+    applescript_code = 'display dialog "目录segments中存在同名的txt文件，请先处理好现有文件。" buttons {"OK"} default button "OK"'
+    process = subprocess.run(['osascript', '-e', applescript_code], check=True)
     sys.exit()
 
 root = tk.Tk()

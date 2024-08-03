@@ -7,7 +7,6 @@ import webbrowser
 import subprocess
 import tkinter as tk
 from datetime import datetime
-from tkinter import messagebox
 from html.parser import HTMLParser
 
 def delete_done_txt_files(directory):
@@ -144,7 +143,8 @@ except IndexError as e:
     # 初始化Tkinter窗口
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
-    messagebox.showerror("错误", str(e))  # 弹出错误对话框
+    applescript_code = 'display dialog {"发生错误"} buttons {"OK"} default button "OK"'
+    process = subprocess.run(['osascript', '-e', applescript_code], check=True)
     root.destroy()  # 销毁窗口
 
 # 检查文件是否存在

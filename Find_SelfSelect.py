@@ -2,7 +2,7 @@ import os
 import sys
 import threading
 import subprocess
-from tkinter import Tk, filedialog, Text, Scrollbar, Button, Entry, Label, messagebox, Toplevel
+from tkinter import Tk, filedialog, Text, Scrollbar, Button, Entry, Label, Toplevel
 
 # 初始化Tkinter，隐藏主窗口
 root = Tk()

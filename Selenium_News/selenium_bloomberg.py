@@ -1,4 +1,5 @@
 import os
+import time
 import glob
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -37,8 +38,11 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
     new_rows = []
     try:
         css_selector = "a[href*='/2024']"
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+        # 暂停5秒，等待页面完全加载
+        time.sleep(5)
+
         # 打印titles_elements的内容
         # for title_element in titles_elements:
         #     print(f"Element: {title_element}, Href: {title_element.get_attribute('href')}, Text: {title_element.text.strip()}")
@@ -63,9 +67,13 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
+            print(f"Processing element: Href: {href}, Text: {title_text}")  # 调试信息
             if is_valid_title(title_text) and href and not any(is_similar(href, link) for link in existing_links):
                 new_rows.append([formatted_datetime, title_text, href])
                 existing_links.add(href)
+                print(f"Added new row: {title_text}")  # 调试信息
+            else:
+                print(f"Skipped: {title_text}")  # 调试信息
     except Exception as e:
         print("抓取过程中出现错误:", e)
     return new_rows

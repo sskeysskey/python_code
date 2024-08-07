@@ -91,8 +91,17 @@ translated_texts = get_clipboard_data()
 translated_texts = [line for line in translated_texts if line.strip() != '']
 
 # 读取HTML文件内容
-with open('/Users/yanzhang/Documents/News/today_all.html', 'r', encoding='utf-8') as file:
-    html_content = file.read()
+try:
+    with open('/Users/yanzhang/Documents/News/today_all.html', 'r', encoding='utf-8') as file:
+        html_content = file.read()
+except FileNotFoundError:
+    try:
+        print("未找到 today_all.html，尝试打开 today_eng.html")
+        with open('/Users/yanzhang/Documents/News/today_eng.html', 'r', encoding='utf-8') as file:
+            html_content = file.read()
+    except FileNotFoundError:
+        print("未找到 today_eng.html，无法继续处理。")
+        exit(1)
 
 # 创建解析器实例并传入翻译后的内容
 parser = MyHTMLParser(translated_texts)
@@ -114,11 +123,31 @@ try:
             with open(original_file_path, 'w', encoding='utf-8') as file:
                 file.write(parser.result_html)
             print("文件已成功更新。")
-            os.remove(file_path)
-            os.remove(process_eng_txt)
-            os.remove(process_jpn_txt)
-            os.remove(result_eng_html)
-            os.remove(result_jpn_html)
+            # 删除不需要的文件
+            try:
+                os.remove(file_path)
+            except FileNotFoundError:
+                print(f"{file_path} 文件不存在，跳过删除。")
+
+            try:
+                os.remove(process_eng_txt)
+            except FileNotFoundError:
+                print(f"{process_eng_txt} 文件不存在，跳过删除。")
+
+            try:
+                os.remove(process_jpn_txt)
+            except FileNotFoundError:
+                print(f"{process_jpn_txt} 文件不存在，跳过删除。")
+
+            try:
+                os.remove(result_eng_html)
+            except FileNotFoundError:
+                print(f"{result_eng_html} 文件不存在，跳过删除。")
+
+            try:
+                os.remove(result_jpn_html)
+            except FileNotFoundError:
+                print(f"{result_jpn_html} 文件不存在，跳过删除。")
             print(f"文件已成功删除。")
         except IOError as e:
             print(f"文件操作失败: {e}")

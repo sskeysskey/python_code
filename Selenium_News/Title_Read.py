@@ -79,45 +79,49 @@ for i in range(num_parts_eng):
 # 备份HTML源文件到指定目录，如果文件已存在则覆盖
 shutil.copyfile(file_path_eng, backup_path_eng)
 
-# 处理日文文件
-# 读取HTML文件内容
-with open(file_path_jpn, 'r', encoding='utf-8') as file:
-    html_content_jpn = file.read()
+try:
+    # 处理日文文件
+    # 读取HTML文件内容
+    with open(file_path_jpn, 'r', encoding='utf-8') as file:
+        html_content_jpn = file.read()
 
-# 创建解析器实例
-parser_jpn = MyHTMLParser()
+    # 创建解析器实例
+    parser_jpn = MyHTMLParser()
 
-# 喂数据给解析器
-parser_jpn.feed(html_content_jpn)
+    # 喂数据给解析器
+    parser_jpn.feed(html_content_jpn)
 
-# 获取提取到的标题
-titles_jpn = parser_jpn.titles
+    # 获取提取到的标题
+    titles_jpn = parser_jpn.titles
 
-# 将标题写入a.txt文件中
-titles_text_jpn = "\n".join(titles_jpn)
-with open('/Users/yanzhang/Documents/News/today_jpn.txt', 'w', encoding='utf-8') as a_file:
-    a_file.write(titles_text_jpn)
+    # 将标题写入a.txt文件中
+    titles_text_jpn = "\n".join(titles_jpn)
+    with open('/Users/yanzhang/Documents/News/today_jpn.txt', 'w', encoding='utf-8') as a_file:
+        a_file.write(titles_text_jpn)
 
-# 获取总字符数
-total_chars_jpn = len(titles_text_jpn)
+    # 获取总字符数
+    total_chars_jpn = len(titles_text_jpn)
 
-# 平均分割成两部分
-mid_index = total_chars_jpn // 2
+    # 平均分割成两部分
+    mid_index = total_chars_jpn // 2
 
-# 找到适合的分割点
-while mid_index < total_chars_jpn and titles_text_jpn[mid_index] not in ['\n', '\r']:
-    mid_index += 1
+    # 找到适合的分割点
+    while mid_index < total_chars_jpn and titles_text_jpn[mid_index] not in ['\n', '\r']:
+        mid_index += 1
 
-# 分割标题并写入文件
-titles_part_1 = titles_text_jpn[0:mid_index].strip()
-titles_part_2 = titles_text_jpn[mid_index:].strip()
+    # 分割标题并写入文件
+    titles_part_1 = titles_text_jpn[0:mid_index].strip()
+    titles_part_2 = titles_text_jpn[mid_index:].strip()
 
-# 写入文件
-with open(f'/tmp/segment_{num_parts_eng + 1}.txt', 'w', encoding='utf-8') as file:
-    file.write(titles_part_1)
+    # 写入文件
+    with open(f'/tmp/segment_{num_parts_eng + 1}.txt', 'w', encoding='utf-8') as file:
+        file.write(titles_part_1)
 
-with open(f'/tmp/segment_{num_parts_eng + 2}.txt', 'w', encoding='utf-8') as file:
-    file.write(titles_part_2)
+    with open(f'/tmp/segment_{num_parts_eng + 2}.txt', 'w', encoding='utf-8') as file:
+        file.write(titles_part_2)
 
-# 备份HTML源文件到指定目录，如果文件已存在则覆盖
-shutil.copyfile(file_path_jpn, backup_path_jpn)
+    # 备份HTML源文件到指定目录，如果文件已存在则覆盖
+    shutil.copyfile(file_path_jpn, backup_path_jpn)
+
+except FileNotFoundError:
+    print(f"Warning: {file_path_jpn} 文件不存在，已跳过日文文件的处理。")

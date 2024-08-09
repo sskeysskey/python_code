@@ -3,7 +3,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 
 # 读取整个文本文件
-with open('/Users/yanzhang/Downloads/backup/TXT/关键对话如何高效能沟通.txt', 'r', encoding='utf-8') as file:
+with open('/Users/yanzhang/Downloads/backup/TXT/10倍成長思維.txt', 'r', encoding='utf-8') as file:
     text = file.read()
 
 # 指定中文支持的字体路径

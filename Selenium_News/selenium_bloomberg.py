@@ -1,6 +1,5 @@
 import os
 import time
-import glob
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.parse import urlparse
@@ -37,11 +36,39 @@ def get_old_content(file_path, days_ago):
 def fetch_new_content(driver, existing_links, formatted_datetime):
     new_rows = []
     try:
+        # 尝试点击 "Dismiss" 按钮
+        try:
+            dismiss_button = WebDriverWait(driver, 20).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'Button_text-N76nbJyFyw0-') and text()='Dismiss']"))
+            )
+            dismiss_button.click()
+            print("Dismiss按钮已点击")
+        except Exception:
+            print("Dismiss按钮未出现或未点击")
+        
+        # 点击 "Asia Edition" 按钮
+        region_button = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-ui-RegionPicker_region-p79mNAtF--M-"))
+        )
+        region_button.click()
+
+        # 暂停以确保下拉菜单加载完毕
+        time.sleep(1)
+
+        # 点击 "US" 选项
+        us_option = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.XPATH, "//div[@data-testid='dropdown']//div[text()='US']"))
+        )
+        us_option.click()
+
+        # 暂停以确保页面切换
+        time.sleep(4)
+
         css_selector = "a[href*='/2024']"
         WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
         # 暂停5秒，等待页面完全加载
-        time.sleep(5)
+        time.sleep(3)
 
         # 打印titles_elements的内容
         # for title_element in titles_elements:

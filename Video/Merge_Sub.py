@@ -7,6 +7,11 @@ from datetime import datetime
 base_path = "/Users/yanzhang/Downloads/"
 backup_folder = "/Users/yanzhang/Movies/Caption_Backup/"
 
+# 删除以 "concatenated" 开头的 PNG 文件
+for file in os.listdir(base_path):
+    if file.startswith("concatenated") and file.endswith(".png"):
+        os.remove(os.path.join(base_path, file))
+
 # 获取当前日期
 current_date = datetime.now()
 current_month = current_date.month

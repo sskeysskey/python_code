@@ -64,9 +64,7 @@ class MyHTMLParser(HTMLParser):
             if self.current_index < len(self.new_texts):
                 self.result_html += self.new_texts[self.current_index]
             else:
-                # 抛出错误，并指明是哪一行有问题
-                error_message = f"错误：超出新文本行的数量。当前处理到第 {self.current_index + 1} 个链接，但是新文本只有 {len(self.new_texts)} 行。"
-                raise IndexError(error_message)
+                raise IndexError(f"错误：超出新文本行的数量。当前处理到第 {self.current_index + 1} 个链接，但是新文本只有 {len(self.new_texts)} 行。")
         else:
             self.result_html += data
 
@@ -123,32 +121,12 @@ try:
             with open(original_file_path, 'w', encoding='utf-8') as file:
                 file.write(parser.result_html)
             print("文件已成功更新。")
-            # 删除不需要的文件
-            try:
-                os.remove(file_path)
-            except FileNotFoundError:
-                print(f"{file_path} 文件不存在，跳过删除。")
-
-            try:
-                os.remove(process_eng_txt)
-            except FileNotFoundError:
-                print(f"{process_eng_txt} 文件不存在，跳过删除。")
-
-            try:
-                os.remove(process_jpn_txt)
-            except FileNotFoundError:
-                print(f"{process_jpn_txt} 文件不存在，跳过删除。")
-
-            try:
-                os.remove(result_eng_html)
-            except FileNotFoundError:
-                print(f"{result_eng_html} 文件不存在，跳过删除。")
-
-            try:
-                os.remove(result_jpn_html)
-            except FileNotFoundError:
-                print(f"{result_jpn_html} 文件不存在，跳过删除。")
-            print(f"文件已成功删除。")
+            for file_to_delete in [file_path, process_eng_txt, process_jpn_txt, result_eng_html, result_jpn_html]:
+                try:
+                    os.remove(file_to_delete)
+                except FileNotFoundError:
+                    print(f"{file_to_delete} 文件不存在，跳过删除。")
+            print("文件已成功删除。")
         except IOError as e:
             print(f"文件操作失败: {e}")
 
@@ -169,16 +147,16 @@ try:
         raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
         
 except IndexError as e:
+    # 打印错误信息
+    print(e)
     # 初始化Tkinter窗口
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
-    applescript_code = 'display dialog {"发生错误"} buttons {"OK"} default button "OK"'
-    process = subprocess.run(['osascript', '-e', applescript_code], check=True)
-    root.destroy()  # 销毁窗口
+    applescript_code = f'display dialog "{str(e)}" buttons {{"OK"}} default button "OK"'
+    subprocess.run(['osascript', '-e', applescript_code], check=True)
+    root.destroy()
 
-# 检查文件是否存在
-if os.path.exists(txt_file_path):
-    # 如果文件存在，使用webbrowser打开它
+if 'txt_file_path' in locals() and os.path.exists(txt_file_path):
     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     time.sleep(0.5)
     # 循环7次模拟按下Command + '='快捷键

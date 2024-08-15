@@ -165,6 +165,9 @@ def search_files(directories, keywords):
 
 def handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files):
     workflow_path = os.path.join(root, dir_name)
+    if all(keyword_lower in dir_name.lower() for keyword_lower in keywords_lower):
+        matched_files[directory].append(os.path.relpath(workflow_path, directory))
+        return
     try:
         wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
         with open(wflow_path, 'r') as file:
@@ -176,6 +179,9 @@ def handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files
 
 def handle_file(root, name, directory, keywords_lower, matched_files):
     item_path = os.path.join(root, name)
+    if all(keyword_lower in name.lower() for keyword_lower in keywords_lower):
+        matched_files[directory].append(os.path.relpath(item_path, directory))
+        return
     if item_path.endswith('.scpt'):
         try:
             content = subprocess.check_output(['osadecompile', item_path], text=True).lower()

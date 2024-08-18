@@ -35,7 +35,7 @@ old_file_list = glob.glob(file_pattern)
 old_content = []
 if old_file_list:
     old_file_path = old_file_list[0]
-    seven_days_ago = current_datetime - timedelta(days=50)
+    seven_days_ago = current_datetime - timedelta(days=40)
 
     try:
         with open(old_file_path, 'r', encoding='utf-8') as file:

@@ -67,7 +67,6 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         css_selector = "a[href*='/2024']"
         WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
-        # 暂停5秒，等待页面完全加载
         time.sleep(3)
 
         # 打印titles_elements的内容

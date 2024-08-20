@@ -1,26 +1,22 @@
 import re
 import os
-import datetime
 import pyperclip
 
 def SRT_File(clipboard_content):
     print("执行函数A")
+    
     # 使用正则表达式找到第一个以数字开头并且紧跟一个换行符的行
     match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
-
-    # 获取当前日期并格式化为指定的文件名形式
-    current_date = datetime.datetime.now().strftime('%m月%d日%H%M.srt')
-
-    # 拼接文件完整路径
-    file_path = os.path.join('/Users/yanzhang/Movies', current_date)
+    
+    # 固定文件名
+    file_path = '/Users/yanzhang/Movies/subtitle.srt'
 
     if match:
         start_index = match.start()  # 获取匹配行的起始索引
-        number_at_start = int(match.group(1))  # 获取行首的数字
         remaining_content = clipboard_content[start_index:]  # 截取剩余内容
 
-        # 根据行首数字决定是创建新文件还是追加现有文件
-        if number_at_start == 1 or not os.path.exists(file_path):
+        # 判断文件是否存在
+        if not os.path.exists(file_path):
             mode = 'w'  # 创建新文件
         else:
             mode = 'a'  # 追加到现有文件

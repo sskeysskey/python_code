@@ -88,7 +88,7 @@ def main():
                 found_stop = False
 
     pyautogui.scroll(-80)
-    sleep(0.5)
+    sleep(1.5)
     found_copy = False
     timeout_copy = time.time() + 10
     while not found_copy and time.time() < timeout_copy:

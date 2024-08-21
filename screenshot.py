@@ -8,11 +8,11 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_name, click=False, choise=False):
+    def __init__(self, template_name, click=False, Opposite=False):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
         self.template = self.load_template()
         self.click = click
-        self.choise = choise
+        self.Opposite = Opposite
 
     def load_template(self):
         # 在初始化时加载模板图片
@@ -76,13 +76,13 @@ class ScreenDetector:
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Usage: python a.py <image_name> <click> <choise>")
+        print("Usage: python a.py <image_name> <click> <Opposite>")
         sys.exit(1)
     image_name = sys.argv[1]
     click = sys.argv[2].lower() == 'true'
-    choise = sys.argv[3].lower() == 'true'
-    detector = ScreenDetector(image_name, click, choise)
-    if choise:
+    Opposite = sys.argv[3].lower() == 'true'
+    detector = ScreenDetector(image_name, click, Opposite)
+    if Opposite:
         detector.run2()
     else:
         detector.run1()

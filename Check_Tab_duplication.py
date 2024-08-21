@@ -1,5 +1,6 @@
 import subprocess
 from collections import defaultdict
+import sys
 
 def get_chrome_tabs():
     # AppleScript to get the URL, window index and tab index of all tabs in Chrome
@@ -36,8 +37,7 @@ def get_chrome_tabs():
     
     # Decode the result
     tab_info_list = stdout.decode('utf-8').strip().split("\n")
-    tab_infos = [tuple(tab_info.split(",")) for tab_info in tab_info_list]
-    return tab_infos
+    return [tuple(tab_info.split(",")) for tab_info in tab_info_list]
 
 def find_duplicate_tabs(tab_infos):
     # Create a dictionary to store URLs and their corresponding positions
@@ -46,11 +46,9 @@ def find_duplicate_tabs(tab_infos):
     for window_index, tab_index, tab_url in tab_infos:
         url_positions[tab_url].append((window_index, tab_index))
     
-    # Find URLs that appear more than once
-    duplicate_tabs = {url: positions for url, positions in url_positions.items() if len(positions) > 1}
-    return duplicate_tabs
+    return {url: positions for url, positions in url_positions.items() if len(positions) > 1}
 
-if __name__ == "__main__":
+def main():
     try:
         tab_infos = get_chrome_tabs()
         duplicate_tabs = find_duplicate_tabs(tab_infos)
@@ -65,4 +63,8 @@ if __name__ == "__main__":
         else:
             print("No duplicate URLs found.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

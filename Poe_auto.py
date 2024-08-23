@@ -1,5 +1,6 @@
 import cv2
 import time
+import argparse
 import pyautogui
 import subprocess
 import numpy as np
@@ -27,7 +28,7 @@ def find_image_on_screen(template, threshold=0.9):
         return None, None
 
 # 主函数
-def main():
+def main(mode):
     # 定义模板路径字典
     template_paths = {
         "stop": "/Users/yanzhang/Documents/python_code/Resource/poe_stop.png",
@@ -71,10 +72,6 @@ def main():
                 pyautogui.hotkey('command', 'r')
             sleep(1)
     
-    # if time.time() > timeout_stop:
-    #     print("在20秒内未找到图片，退出程序。")
-    #     sys.exit()
-
     found_stop = True
     while found_stop:
         location, shape = find_image_on_screen(templates["stop"])
@@ -93,49 +90,72 @@ def main():
             print("Stop图片没有了...")
             found_stop = False
 
-    found_thumb = False
-    timeout_thumb = time.time() + 15
-    while not found_thumb and time.time() < timeout_thumb:
+    if mode == 'long':
+        found_thumb = False
+        timeout_thumb = time.time() + 15
+        while not found_thumb and time.time() < timeout_thumb:
+            location, shape = find_image_on_screen(templates["thumb"])
+            if location:
+                found_thumb = True
+                print(f"找到图片位置: {location}")
+            else:
+                print("未找到图片，继续监控...")
+                # pyautogui.click(x=618, y=458)
+                pyautogui.scroll(-80)
+                sleep(1)
+
+        if time.time() > timeout_thumb:
+            print("在20秒内未找到图片，退出程序。")
+            sys.exit()
+        
+        found_compare = False
+        timeout_compare = time.time() + 10
+        while not found_compare and time.time() < timeout_compare:
+            location, shape = find_image_on_screen(templates["compare"])
+            if location:
+                found_compare = True
+            else:
+                pyautogui.click(x=618, y=458)
+                pyautogui.scroll(-80)
+                print("未找到图片，继续监控...")
+        
+        sleep(1)
         location, shape = find_image_on_screen(templates["thumb"])
         if location:
-            found_thumb = True
+            center_x = (location[0] + shape[1] // 2) // 2
+            center_y = (location[1] + shape[0] // 2) // 2
+
+            # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
+            xCoord = center_x
+            yCoord = center_y - 50
+
+            # 使用pyautogui移动鼠标并进行右键点击
+            pyautogui.moveTo(xCoord, yCoord)
+            pyautogui.click(button='right')
+        else:
             print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            # pyautogui.click(x=618, y=458)
-            pyautogui.scroll(-80)
-            sleep(1)
 
-    if time.time() > timeout_thumb:
-        print("在20秒内未找到图片，退出程序。")
-        sys.exit()
-    
-    found_compare = False
-    timeout_compare = time.time() + 10
-    while not found_compare and time.time() < timeout_compare:
-        location, shape = find_image_on_screen(templates["compare"])
-        if location:
-            found_compare = True
-        else:
-            pyautogui.click(x=618, y=458)
-            pyautogui.scroll(-80)
-            print("未找到图片，继续监控...")
-    
-    sleep(1)
-    location, shape = find_image_on_screen(templates["thumb"])
-    if location:
-        center_x = (location[0] + shape[1] // 2) // 2
-        center_y = (location[1] + shape[0] // 2) // 2
+    elif mode == 'short':
+        found_thumb = False
+        timeout_thumb = time.time() + 15
+        while not found_thumb and time.time() < timeout_thumb:
+            location, shape = find_image_on_screen(templates["thumb"])
+            if location:
+                center_x = (location[0] + shape[1] // 2) // 2
+                center_y = (location[1] + shape[0] // 2) // 2
 
-        # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
-        xCoord = center_x
-        yCoord = center_y - 50
+                # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
+                xCoord = center_x
+                yCoord = center_y - 50
 
-        # 使用pyautogui移动鼠标并进行右键点击
-        pyautogui.moveTo(xCoord, yCoord)
-        pyautogui.click(button='right')
-    else:
-        print(f"找到图片位置: {location}")
+                # 使用pyautogui移动鼠标并进行右键点击
+                pyautogui.moveTo(xCoord, yCoord)
+                pyautogui.click(button='right')
+                found_thumb = True
+            else:
+                print(f"找到图片位置: {location}")
+                pyautogui.scroll(-80)
+                sleep(0.5)
 
     sleep(1)
     found_copy = False
@@ -155,10 +175,6 @@ def main():
             print("未找到图片，继续监控...")
             sleep(1)
     
-    # if time.time() > timeout_copy:
-    #     print("在5秒内未找到图片，退出程序。")
-    #     sys.exit()
-
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
     sleep(1)
     found_success_image = False
@@ -171,9 +187,9 @@ def main():
         else:
             sleep(1)  # 每次检测间隔1秒
 
-    # if not found_success_image:
-    #     print("在10秒内未找到poe_copy_success图片，退出程序。")
-    #     sys.exit()
-
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='Process files based on the given mode.')
+    parser.add_argument('mode', choices=['short', 'long'], help='The processing mode: etf or other')
+    args = parser.parse_args()
+
+    main(args.mode)

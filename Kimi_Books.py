@@ -47,7 +47,7 @@ def main():
         templates[key] = template
 
     found = False
-    timeout_stop = time.time() + 20
+    timeout_stop = time.time() + 5
     while not found and time.time() < timeout_stop:
         location, shape = find_image_on_screen(templates["stop"])
         if location:
@@ -55,23 +55,23 @@ def main():
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
-            location, shape = find_image_on_screen(templates["outofline"])
-            if location:
-                pyperclip.copy("illegal")
-                timeout_stop = time.time() - 20
-                exit()
-            else:
-                location, shape = find_image_on_screen(templates["retry"])
-                if location:
-                    pyperclip.copy("illegal")
-                    timeout_stop = time.time() - 20
-                    exit()
             pyautogui.scroll(-80)
             sleep(1)
 
     if time.time() > timeout_stop:
         print("在15秒内未找到图片，退出程序。")
-        webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+
+    location, shape = find_image_on_screen(templates["outofline"])
+    if location:
+        pyperclip.copy("illegal")
+        timeout_stop = time.time() - 20
+        exit()
+    else:
+        location, shape = find_image_on_screen(templates["retry"])
+        if location:
+            pyperclip.copy("illegal")
+            timeout_stop = time.time() - 20
+            exit()
 
     found_stop = True
     while found_stop:

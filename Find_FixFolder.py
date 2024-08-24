@@ -103,7 +103,9 @@ class MainWindow(QMainWindow):
         self.input_field.setEnabled(True)
         
         matched_names_stocks, matched_names_etfs = search_json_for_keywords(json_path, keywords)
-        matched_names_stocks_tag, matched_names_etfs_tag, matched_names_stocks_name, matched_names_etfs_name = search_tag_for_keywords(json_path, keywords)
+        (matched_names_stocks_tag, matched_names_etfs_tag, 
+        matched_names_stocks_name, matched_names_etfs_name,
+        matched_names_stocks_symbol, matched_names_etfs_symbol) = search_tag_for_keywords(json_path, keywords)
 
         html_content = ""
 
@@ -115,12 +117,14 @@ class MainWindow(QMainWindow):
                     html_content += f"<p><a href='{file_path}' style='color: orange; text-decoration: underline; font-size: 18px;'>{file}</a></p>"
                 # html_content += "<br>"
 
-        html_content += self.insert_results_html("ETF_tag", matched_names_etfs_tag, 'white', 16)
         html_content += self.insert_results_html("Stock_tag", matched_names_stocks_tag, 'white', 16)
+        html_content += self.insert_results_html("ETF_tag", matched_names_etfs_tag, 'white', 16)
+        html_content += self.insert_results_html("Stock_symbol", matched_names_stocks_symbol, 'cyan', 16)
+        html_content += self.insert_results_html("ETF_symbol", matched_names_etfs_symbol, 'cyan', 16)
         html_content += self.insert_results_html("Stock_name", matched_names_stocks_name, 'white', 16)
         html_content += self.insert_results_html("ETF_name", matched_names_etfs_name, 'white', 16)
-        html_content += self.insert_results_html("Description_Stock", matched_names_stocks, 'gray', 16)
-        html_content += self.insert_results_html("Description_ETFs", matched_names_etfs, 'gray', 16)
+        html_content += self.insert_results_html("Stock_Description", matched_names_stocks, 'gray', 16)
+        html_content += self.insert_results_html("ETFs_Description", matched_names_etfs, 'gray', 16)
 
         self.result_area.setHtml(html_content)
 
@@ -131,8 +135,13 @@ class MainWindow(QMainWindow):
         html = ""
         if results:
             html += f"<h2 style='color: yellow; font-size: 16px;'>{category}:</h2>"
-            for name, extra in results:
-                html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{name} - {extra}</p>"
+            for result in results:
+                if len(result) == 3:  # 股票结果
+                    symbol, name, tags = result
+                    html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {name} - {tags}</p>"
+                else:  # ETF结果
+                    symbol, tags = result
+                    html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {tags}</p>"
         return html
 
     def open_file(self, url):
@@ -210,34 +219,84 @@ def search_json_for_keywords(json_path, keywords):
     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
     def search_category(category):
-        return [
-            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
-            if all(keyword in ' '.join([item['description1'], item['description2']]).lower() for keyword in keywords_lower)
-        ]
+        if category == 'stocks':
+            return [
+                (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) 
+                for item in data.get(category, [])
+                if all(keyword in ' '.join([item['description1'], item['description2']]).lower() for keyword in keywords_lower)
+            ]
+        else:  # ETFs
+            return [
+                (item['symbol'], ' '.join(item.get('tag', []))) 
+                for item in data.get(category, [])
+                if all(keyword in ' '.join([item['description1'], item['description2']]).lower() for keyword in keywords_lower)
+            ]
 
     return search_category('stocks'), search_category('etfs')
 
-def search_tag_for_keywords(json_path, keywords):
+def search_tag_for_keywords(json_path, keywords, max_distance=1):
     with open(json_path, 'r') as file:
         data = json.load(file)
     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
-    def search_category_for_tag(category):
+    def fuzzy_match(text, keyword):
+        words = text.lower().split()
+        return any(levenshtein_distance(word, keyword) <= max_distance for word in words)
+
+    def two_step_search(category, search_field):
+        exact_results = [
+            (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))
+            for item in data.get(category, [])
+            if all(keyword in item[search_field].lower() for keyword in keywords_lower)
+        ]
+        if exact_results:
+            return exact_results
+        
         return [
-            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
-            if all(keyword in ' '.join(item.get('tag', [])).lower() for keyword in keywords_lower)
+            (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))
+            for item in data.get(category, [])
+            if all(fuzzy_match(item[search_field], keyword) for keyword in keywords_lower)
         ]
 
-    def search_category_for_name(category):
+    def search_category_for_tag(category):
+        exact_results = [
+            (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))
+            for item in data.get(category, [])
+            if all(keyword in ' '.join(item.get('tag', [])).lower() for keyword in keywords_lower)
+        ]
+        if exact_results:
+            return exact_results
+        
         return [
-            (item['symbol'], ' '.join(item.get('tag', []))) for item in data.get(category, [])
-            if all(keyword in item['name'].lower() for keyword in keywords_lower)
+            (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))
+            for item in data.get(category, [])
+            if all(any(fuzzy_match(tag, keyword) for tag in item.get('tag', [])) for keyword in keywords_lower)
         ]
 
     return (
-        search_category_for_tag('stocks'), search_category_for_tag('etfs'),
-        search_category_for_name('stocks'), search_category_for_name('etfs')
+        search_category_for_tag('stocks'),
+        search_category_for_tag('etfs'),
+        two_step_search('stocks', 'name'),
+        two_step_search('etfs', 'name'),
+        two_step_search('stocks', 'symbol'),
+        two_step_search('etfs', 'symbol')
     )
+
+def levenshtein_distance(s1, s2):
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
 
 if __name__ == "__main__":
     # 处理剪贴板警告

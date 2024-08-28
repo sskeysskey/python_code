@@ -15,6 +15,23 @@ def is_similar(url1, url2):
     base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
     return base_url1 == base_url2
 
+# 截取屏幕
+def capture_screen():
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    return screenshot
+
+# 查找屏幕上的图片
+def find_image_on_screen(template, threshold=0.9):
+    screen = capture_screen()
+    result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    if max_val >= threshold:
+        return max_loc, template.shape
+    return None, None
+
 def get_old_content(file_path, days_ago):
     old_content = []
     if not os.path.exists(file_path):
@@ -128,9 +145,35 @@ def append_to_today_html(today_html_path, new_rows1):
 if __name__ == "__main__":
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
     chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
+    timeout = 7  # 设置超时时间
+    template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/Bloomberg_agree.png'
     service = Service(executable_path=chrome_driver_path)
     driver = webdriver.Chrome(service=service)
     driver.get("https://www.bloomberg.com/")
+
+    template_accept = cv2.imread(template_path_accept, cv2.IMREAD_COLOR)
+
+    if template_accept is None:
+        raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path_accept}")
+
+    found = False
+    start_time = time.time()
+    time.sleep(1)
+
+    # 循环查找图片
+    while not found and time.time() - start_time < timeout:
+        location, shape = find_image_on_screen(template_accept)
+        if location:
+            print("找到图片，继续执行后续程序。")
+            # 计算中心坐标
+            center_x = (location[0] + shape[1] // 2) // 2
+            center_y = (location[1] + shape[0] // 2) // 2
+                
+            # 鼠标点击中心坐标
+            pyautogui.click(center_x, center_y)
+            found = True  # 找到图片，设置found为True以退出循环
+        else:
+            time.sleep(1)
 
     old_file_path = "/Users/yanzhang/Documents/News/site/bloomberg.html"
     old_content = get_old_content(old_file_path, 30)

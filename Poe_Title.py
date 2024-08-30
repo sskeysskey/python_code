@@ -28,10 +28,15 @@ def NewsTitle_File(clipboard_content, file_path):
     # 移除剪贴板内容中的空行
     clipboard_content = remove_empty_lines(clipboard_content)
     
+    # 如果文件为空，直接写入内容并添加换行符。如果文件不为空且最后一个字符不是换行符，添加一个换行符后再写入新内容，否则直接写入新内容。
     if clipboard_content:
-        # 检查文件是否存在，不存在则创建
-        with codecs.open(file_path, 'a', 'utf-8') as file:
-            file.write(clipboard_content + '\n')  # 追加剪贴板内容并在最后加入换行符
+        with codecs.open(file_path, 'a+', 'utf-8') as file:
+            file.seek(0, os.SEEK_END)
+            if file.tell() > 0:
+                file.seek(file.tell() - 1, os.SEEK_SET)
+                if file.read(1) != '\n':
+                    file.write('\n')
+            file.write(clipboard_content + '\n')
     else:
         print("剪贴板内容为空，未写入文件。")
 

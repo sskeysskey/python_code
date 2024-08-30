@@ -1,5 +1,8 @@
 import os
+import cv2
 import time
+import numpy as np
+from PIL import ImageGrab
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.parse import urlparse
@@ -94,6 +97,14 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
             invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage']
             if any(phrase in title_text for phrase in invalid_phrases):
                 return False
+
+            # 过滤掉仅包含"opinion content."的标题
+            cleaned_title = title_text.lower().strip()
+            
+            # 过滤掉仅包含"opinion content."或"review."的标题
+            if cleaned_title in ["opinion content.", "review."]:
+                return False
+
             if any(keyword in title_text for keyword in ['Listen', 'Watch']) and '(' in title_text and ')' in title_text:
                 title_text = title_text.split(')')[1].strip()
             return True if title_text and not is_time_format(title_text) else False

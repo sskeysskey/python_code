@@ -7,6 +7,13 @@ from datetime import datetime
 base_path = "/Users/yanzhang/Downloads/"
 backup_folder = "/Users/yanzhang/Movies/Caption_Backup/"
 
+def find_bob_file(base_path):
+    bob_pattern = re.compile(r'bob', re.IGNORECASE)
+    for file in os.listdir(base_path):
+        if file.endswith('.txt') and bob_pattern.search(file):
+            return file
+    return None
+
 # 删除以 "concatenated" 开头的 PNG 文件
 for file in os.listdir(base_path):
     if file.startswith("concatenated") and file.endswith(".png"):
@@ -23,10 +30,7 @@ file_path = os.path.join(base_path, file_name)
 
 if not os.path.exists(file_path):
     # 查找以Bob开头的txt文件或bob.txt
-    bob_file = next((f for f in os.listdir(base_path) if f.startswith("Bob") and f.endswith(".txt")), None)
-    
-    if not bob_file:
-        bob_file = "bob.txt" if os.path.exists(os.path.join(base_path, "bob.txt")) else None
+    bob_file = find_bob_file(base_path)
 
     if not bob_file:
         print("未找到以Bob开头的txt文件或bob.txt，处理终止。")

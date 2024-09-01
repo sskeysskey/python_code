@@ -9,10 +9,12 @@ def vertically_concatenate_images(input_dir, output_dir, images_per_file=15, sep
     
     if not image_paths:
         print("没有找到PNG或JPEG文件。")
-        return
+        return 0  # 返回0，表示没有生成文件
 
-    # 将图片路径分组，每组20张
+    # 将图片路径分组，每组15张
     image_groups = [image_paths[i:i+images_per_file] for i in range(0, len(image_paths), images_per_file)]
+
+    files_generated = 0  # 初始化生成文件计数器
 
     for group_index, group in enumerate(image_groups):
         # 打开当前组的所有图片
@@ -42,10 +44,22 @@ def vertically_concatenate_images(input_dir, output_dir, images_per_file=15, sep
         # 保存结果
         result_image.save(output_path)
         print(f"第 {group_index+1} 组图片已拼接并保存到 {output_path}")
+        
+        files_generated += 1  # 增加生成文件计数
+
+    return files_generated  # 返回生成的文件数量
 
 # 使用示例
 if __name__ == "__main__":
     input_directory = "/Users/yanzhang/Movies/Subtitle"
     output_directory = "/Users/yanzhang/Downloads"
     
-    vertically_concatenate_images(input_directory, output_directory)
+    # 调用函数并获取生成的文件数量
+    generated_files_count = vertically_concatenate_images(input_directory, output_directory)
+
+    # 将生成的文件数量写入 /tmp/FileIndex.txt
+    with open('/tmp/FileIndex.txt', 'w') as f:
+        f.write(str(generated_files_count))
+    
+    print(f"总共生成了 {generated_files_count} 个PNG文件。")
+    print(f"文件数量已记录到 /tmp/FileIndex.txt")

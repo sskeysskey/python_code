@@ -8,10 +8,10 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_name, click=False, Opposite=False):
+    def __init__(self, template_name, clickValue=False, Opposite=False):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
         self.template = self.load_template()
-        self.click = click
+        self.clickValue = clickValue
         self.Opposite = Opposite
 
     def load_template(self):
@@ -45,7 +45,7 @@ class ScreenDetector:
         while not found and time.time() < timeout:
             location, shape = self.find_image_on_screen()
             if location:
-                if self.click:
+                if self.clickValue:
                     # 计算中心坐标
                     center_x = (location[0] + shape[1] // 2) // 2
                     center_y = (location[1] + shape[0] // 2) // 2
@@ -76,12 +76,12 @@ class ScreenDetector:
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Usage: python a.py <image_name> <click> <Opposite>")
+        print("Usage: python a.py <image_name> <clickValue> <Opposite>")
         sys.exit(1)
     image_name = sys.argv[1]
-    click = sys.argv[2].lower() == 'true'
+    clickValue = sys.argv[2].lower() == 'true'
     Opposite = sys.argv[3].lower() == 'true'
-    detector = ScreenDetector(image_name, click, Opposite)
+    detector = ScreenDetector(image_name, clickValue, Opposite)
     if Opposite:
         detector.run2()
     else:

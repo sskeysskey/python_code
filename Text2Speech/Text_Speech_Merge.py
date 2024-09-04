@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -38,10 +39,16 @@ def extract_audio(input_video, output_audio):
         print(f"音频提取失败: {e}")
 
 def get_video_files(directory):
+    def sort_key(filename):
+        # 提取文件名中的数字部分
+        match = re.search(r'\d+', os.path.splitext(os.path.basename(filename))[0])
+        if match:
+            return int(match.group())
+        return float('inf')  # 将非数字命名的文件排到最后
+
     # 获取指定目录下所有的MP4文件并按数字顺序排序
-    video_files = sorted([os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.mp4')],
-                         key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
-    return video_files
+    video_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.mp4') and f != 'output.mp4']
+    return sorted(video_files, key=sort_key)
 
 def rename_mp3(directory):
     tmp_dir = "/tmp/"

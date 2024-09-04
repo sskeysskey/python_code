@@ -1,4 +1,5 @@
 import os
+import time
 import glob
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -79,7 +80,11 @@ try:
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
 
-            if 'podcasts' not in title_text and "film" not in title_text:
+            if ('podcasts' not in title_text and 
+                "film" not in title_text and 
+                title_text != "opinion content." and
+                title_text != "Review." and
+                title_text != "HTSI."):
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])
@@ -128,11 +133,6 @@ if new_rows1:
     today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
     file_exists = os.path.isfile(today_html_path)
 
-    if not file_exists:
-        with open(today_html_path, 'w', encoding='utf-8') as html_file:
-            html_file.write("<html><body><table border='1'>\n")
-            html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
-
     # 准备要追加的内容
     append_content = ""
     for row in new_rows1:
@@ -153,5 +153,10 @@ if new_rows1:
     # 如果文件是新建的，添加新内容和HTML结束标签
     else:
         with open(today_html_path, 'a', encoding='utf-8') as html_file:
+            html_file.write("<html><body><table border='1'>\n")
+            html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
             html_file.write(append_content)
             html_file.write("</table></body></html>")
+            html_file.flush()
+            os.fsync(html_file.fileno())
+    time.sleep(1)  # 等待1秒

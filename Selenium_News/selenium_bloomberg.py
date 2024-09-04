@@ -98,13 +98,6 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
             if any(phrase in title_text for phrase in invalid_phrases):
                 return False
 
-            # 过滤掉仅包含"opinion content."的标题
-            cleaned_title = title_text.lower().strip()
-            
-            # 过滤掉仅包含"opinion content."或"review."的标题
-            if cleaned_title in ["opinion content.", "review."]:
-                return False
-
             if any(keyword in title_text for keyword in ['Listen', 'Watch']) and '(' in title_text and ')' in title_text:
                 title_text = title_text.split(')')[1].strip()
             return True if title_text and not is_time_format(title_text) else False
@@ -121,6 +114,11 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
             title_text = title_element.text.strip()
+
+            # 删除 "Newsletter: " 字符
+            if title_text.startswith("Newsletter: "):
+                title_text = title_text[11:]
+                
             print(f"Processing element: Href: {href}, Text: {title_text}")  # 调试信息
             if is_valid_title(title_text) and href and not any(is_similar(href, link) for link in existing_links):
                 new_rows.append([formatted_datetime, title_text, href])
@@ -200,3 +198,4 @@ if __name__ == "__main__":
 
     write_html(old_file_path, new_rows, old_content)
     append_to_today_html("/Users/yanzhang/Documents/News/today_eng.html", new_rows1)
+    time.sleep(1)  # 等待1秒

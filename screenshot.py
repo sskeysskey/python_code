@@ -41,7 +41,7 @@ class ScreenDetector:
 
     def run1(self):
         found = False
-        timeout = time.time() + 60
+        timeout = time.time() + 590
         while not found and time.time() < timeout:
             location, shape = self.find_image_on_screen()
             if location:

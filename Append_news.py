@@ -245,6 +245,7 @@ def main():
         "nikkei": "nikkei.html",
         "bloomberg": "bloomberg.html",
         "hbr": "hbr.html",
+        "ft": "ft.html",
     }
 
     # 根据segment内容获取对应的HTML文件名

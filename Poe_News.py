@@ -19,6 +19,7 @@ SEGMENT_TO_HTML_FILE = {
     "nikkei": "nikkei.html",
     "bloomberg": "bloomberg.html",
     "hbr": "hbr.html",
+    "ft": "ft.html",
 }
 
 def get_clipboard_content():

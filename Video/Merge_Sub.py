@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import subprocess
 from datetime import datetime
 
 # 设置基本路径
@@ -13,6 +14,17 @@ def find_bob_file(base_path):
         if file.endswith('.txt') and bob_pattern.search(file):
             return file
     return None
+
+def count_valid_lines(file_path, is_bob_file):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        if is_bob_file:
+            return sum(1 for line in f if line.strip())
+        else:
+            return sum(1 for line in f if line.strip() and re.search(r'[a-zA-Z]', line))
+
+def display_dialog(message):
+    applescript_code = f'display dialog "{message}" buttons {{"OK"}} default button "OK"'
+    subprocess.run(['osascript', '-e', applescript_code], check=True)
 
 # 删除以 "concatenated" 开头的 PNG 文件
 for file in os.listdir(base_path):
@@ -41,6 +53,14 @@ if not os.path.exists(file_path):
     
     if not srt_file:
         print("未找到srt文件，处理终止。")
+        exit()
+
+    # 计算有效行数
+    bob_lines = count_valid_lines(os.path.join(base_path, bob_file), True)
+    srt_lines = count_valid_lines(os.path.join(base_path, srt_file), False)
+
+    if bob_lines != srt_lines:
+        display_dialog(f"文件行数不匹配：Bob文件有 {bob_lines} 行，SRT文件有 {srt_lines} 行有效内容。")
         exit()
 
     # 读取文件内容

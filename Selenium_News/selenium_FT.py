@@ -88,7 +88,7 @@ try:
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])
-                        new_rows1.append(["ft", title_text, href])
+                        new_rows1.append(["FT", title_text, href])
                         all_links.append(href)  # 添加到所有链接的列表中
 
 except Exception as e:

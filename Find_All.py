@@ -1,26 +1,48 @@
+import os
 import sys
 import json
 import pyperclip
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QMainWindow
-from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+import subprocess
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QScrollArea, QMainWindow, QSizePolicy, QAction
+from PyQt5.QtGui import QFont, QColor, QKeySequence, QTextDocument
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray
 
-json_path = "/Users/yanzhang/Documents/Financial_System/Modules/Description.json"
+# 保持原有的搜索目录列表
+searchFolders = [
+    "/Users/yanzhang/Documents/ScriptEditor/",
+    "/Users/yanzhang/Library/Services/",
+    "/Users/yanzhang/Documents/Financial_System",
+    "/Users/yanzhang/Documents/python_code",
+    "/Users/yanzhang/Documents/News/backup",
+    # "/Users/yanzhang/Documents/LuxuryBox",
+    # "/Users/yanzhang/Documents/sskeysskey.github.io",
+    # "/Users/yanzhang/Downloads/backup/TXT",
+    # "/Users/yanzhang/Documents/Books"
+]
+
+json_path = "/Users/yanzhang/Documents/Financial_System/Modules/description.json"
 
 class CustomTextBrowser(QTextBrowser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setOpenLinks(False)  # 禁止自动打开链接
+
+    def setHtml(self, html):
+        # 重写setHtml方法，确保初始内容能够正确加载
+        super().setHtml(html)
 
 class SearchWorker(QThread):
-    finished = pyqtSignal(str, str)
+    finished = pyqtSignal(dict, str, str)
 
-    def __init__(self, keywords, json_path):
+    def __init__(self, directories, keywords, json_path):
         super().__init__()
+        self.directories = directories
         self.keywords = keywords
         self.json_path = json_path
 
     def run(self):
-        self.finished.emit(self.json_path, self.keywords)
+        results = search_files(self.directories, self.keywords)
+        self.finished.emit(results, self.json_path, self.keywords)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -48,11 +70,20 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.loading_label)
 
         self.result_area = CustomTextBrowser()
+        self.result_area.anchorClicked.connect(self.open_file)
         self.result_area.setFont(QFont("Arial", 12))
         self.layout.addWidget(self.result_area)
 
         self.search_button.clicked.connect(self.start_search)
         self.input_field.returnPressed.connect(self.start_search)
+        self.result_area.anchorClicked.connect(self.open_file)
+
+        # 添加 ESC 键关闭窗口的功能
+        self.shortcut_close = QKeySequence("Esc")
+        self.quit_action = QAction("Quit", self)
+        self.quit_action.setShortcut(self.shortcut_close)
+        self.quit_action.triggered.connect(self.close)
+        self.addAction(self.quit_action)
 
     def start_search(self):
         keywords = self.input_field.text()
@@ -61,11 +92,11 @@ class MainWindow(QMainWindow):
         self.result_area.setEnabled(False)
         self.search_button.setEnabled(False)
         self.input_field.setEnabled(False)
-        self.worker = SearchWorker(keywords, json_path)
+        self.worker = SearchWorker(searchFolders, keywords, json_path)
         self.worker.finished.connect(self.show_results)
         self.worker.start()
 
-    def show_results(self, json_path, keywords):
+    def show_results(self, results, json_path, keywords):
         self.loading_label.hide()
         self.result_area.setEnabled(True)
         self.search_button.setEnabled(True)
@@ -77,6 +108,14 @@ class MainWindow(QMainWindow):
         matched_names_stocks_symbol, matched_names_etfs_symbol) = search_tag_for_keywords(json_path, keywords)
 
         html_content = ""
+
+        for directory, files in results.items():
+            if files:
+                html_content += f"<h2 style='color: yellow; font-size: 18px;'>{directory}</h2>"
+                for file in files:
+                    file_path = os.path.join(directory, file)
+                    html_content += f"<p><a href='{file_path}' style='color: orange; text-decoration: underline; font-size: 18px;'>{file}</a></p>"
+                # html_content += "<br>"
 
         html_content += self.insert_results_html("Stock_tag", matched_names_stocks_tag, 'white', 16)
         html_content += self.insert_results_html("ETF_tag", matched_names_etfs_tag, 'white', 16)
@@ -104,6 +143,75 @@ class MainWindow(QMainWindow):
                     symbol, tags = result
                     html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {tags}</p>"
         return html
+
+    def open_file(self, url):
+        file_path = url.toLocalFile()
+        if not file_path:
+            file_path = url.toString()
+        try:
+            if sys.platform == "win32":
+                os.startfile(file_path)
+            else:
+                subprocess.call(("open", file_path))
+        except Exception as e:
+            print(f"无法打开文件 {file_path}: {e}")
+
+# 保持原有的搜索相关函数不变
+def search_files(directories, keywords):
+    matched_files = {}
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+
+    for directory in directories:
+        matched_files[directory] = []
+        for root, dirs, files in os.walk(directory):
+            for dir_name in dirs:
+                if dir_name.endswith('.workflow'):
+                    handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files)
+            for name in files:
+                handle_file(root, name, directory, keywords_lower, matched_files)
+
+    return matched_files
+
+def handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files):
+    workflow_path = os.path.join(root, dir_name)
+    if all(keyword_lower in dir_name.lower() for keyword_lower in keywords_lower):
+        matched_files[directory].append(os.path.relpath(workflow_path, directory))
+        return
+    try:
+        wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
+        with open(wflow_path, 'r') as file:
+            content = file.read().lower()
+        if all(keyword_lower in content for keyword_lower in keywords_lower):
+            matched_files[directory].append(os.path.relpath(workflow_path, directory))
+    except Exception as e:
+        print(f"Error reading {wflow_path}: {e}")
+
+def handle_file(root, name, directory, keywords_lower, matched_files):
+    item_path = os.path.join(root, name)
+    if all(keyword_lower in name.lower() for keyword_lower in keywords_lower):
+        matched_files[directory].append(os.path.relpath(item_path, directory))
+        return
+    if item_path.endswith('.scpt'):
+        try:
+            content = subprocess.check_output(['osadecompile', item_path], text=True).lower()
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
+                matched_files[directory].append(os.path.relpath(item_path, directory))
+        except Exception as e:
+            print(f"Error decompiling {item_path}: {e}")
+    elif item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md')):
+        try:
+            with open(item_path, 'r') as file:
+                content = file.read().lower()
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
+                matched_files[directory].append(os.path.relpath(item_path, directory))
+        except Exception as e:
+            print(f"Error reading {item_path}: {e}")
+
+def read_file_content(path):
+    if path.endswith('.scpt'):
+        return subprocess.check_output(['osadecompile', path], text=True).lower()
+    with open(path, 'r') as file:
+        return file.read().lower()
 
 def search_json_for_keywords(json_path, keywords):
     with open(json_path, 'r') as file:
@@ -191,9 +299,14 @@ def levenshtein_distance(s1, s2):
     return previous_row[-1]
 
 if __name__ == "__main__":
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
+    # 处理剪贴板警告
+    try:
+        from PyQt5.QtWidgets import QApplication
+        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+    except AttributeError:
+        pass  # 较旧的 PyQt 版本可能没有这些属性
+
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

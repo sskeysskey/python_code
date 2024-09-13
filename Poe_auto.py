@@ -119,7 +119,7 @@ def main(mode):
                 pyautogui.scroll(-80)
                 print("未找到图片，继续监控...")
         
-        sleep(1)
+        sleep(1.5)
         location, shape = find_image_on_screen(templates["thumb"])
         if location:
             center_x = (location[0] + shape[1] // 2) // 2

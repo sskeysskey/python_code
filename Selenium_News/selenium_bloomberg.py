@@ -1,6 +1,7 @@
 import os
 import cv2
 import time
+import pyautogui
 import numpy as np
 from PIL import ImageGrab
 from bs4 import BeautifulSoup

@@ -139,6 +139,8 @@ def search_tag_for_keywords(json_path, keywords, max_distance=1):
     keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
 
     def fuzzy_match(text, keyword):
+        if len(keyword) <= 1:  # 对于单个字符，只进行精确匹配
+            return keyword in text.lower()
         words = text.lower().split()
         return any(levenshtein_distance(word, keyword) <= max_distance for word in words)
 
@@ -158,13 +160,20 @@ def search_tag_for_keywords(json_path, keywords, max_distance=1):
         ]
 
     def search_category_for_tag(category):
+        # 定义一个计算匹配分数的函数
+        def match_score(item):
+            tags = item[2].lower() if category == 'stocks' else item[1].lower()
+            exact_matches = sum(keyword in tags for keyword in keywords_lower)
+            fuzzy_matches = sum(any(fuzzy_match(tag.lower(), keyword) for tag in tags.split()) for keyword in keywords_lower)
+            return (exact_matches, fuzzy_matches)
+
         exact_results = [
             (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))
             for item in data.get(category, [])
             if all(keyword in ' '.join(item.get('tag', [])).lower() for keyword in keywords_lower)
         ]
         if exact_results:
-            return exact_results
+            return sorted(exact_results, key=match_score, reverse=True)
         
         return [
             (item['symbol'], item.get('name', ''), ' '.join(item.get('tag', []))) if category == 'stocks' else (item['symbol'], ' '.join(item.get('tag', [])))

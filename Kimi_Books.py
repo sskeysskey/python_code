@@ -66,12 +66,12 @@ def main():
         pyperclip.copy("illegal")
         timeout_stop = time.time() - 20
         exit()
-    else:
-        location, shape = find_image_on_screen(templates["retry"])
-        if location:
-            pyperclip.copy("illegal")
-            timeout_stop = time.time() - 20
-            exit()
+    # else:
+    #     location, shape = find_image_on_screen(templates["retry"])
+    #     if location:
+    #         pyperclip.copy("illegal")
+    #         timeout_stop = time.time() - 20
+    #         exit()
 
     found_stop = True
     while found_stop:
@@ -90,7 +90,7 @@ def main():
     pyautogui.scroll(-80)
     sleep(1.5)
     found_copy = False
-    timeout_copy = time.time() + 10
+    timeout_copy = time.time() + 20
     while not found_copy and time.time() < timeout_copy:
         location, shape = find_image_on_screen(templates["copy"])
         if location:

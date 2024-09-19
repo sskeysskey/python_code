@@ -3,9 +3,9 @@ import sys
 import json
 import pyperclip
 import subprocess
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QScrollArea, QMainWindow, QSizePolicy, QAction
-from PyQt5.QtGui import QFont, QColor, QKeySequence, QTextDocument
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QByteArray
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QMainWindow, QAction
+from PyQt5.QtGui import QFont, QKeySequence
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
 
 # 保持原有的搜索目录列表
 searchFolders = [
@@ -138,23 +138,36 @@ class MainWindow(QMainWindow):
             for result in results:
                 if len(result) == 3:  # 股票结果
                     symbol, name, tags = result
-                    html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {name} - {tags}</p>"
+                    # 创建 symbol 链接
+                    html += f"<p><a href='symbol://{symbol}' style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {name} - {tags}</a></p>"
                 else:  # ETF结果
                     symbol, tags = result
-                    html += f"<p style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {tags}</p>"
+                    # 创建 symbol 链接
+                    html += f"<p><a href='symbol://{symbol}' style='color: {color}; text-decoration: underline; font-size: {font_size}px;'>{symbol} - {tags}</a></p>"
         return html
 
     def open_file(self, url):
-        file_path = url.toLocalFile()
-        if not file_path:
-            file_path = url.toString()
-        try:
-            if sys.platform == "win32":
-                os.startfile(file_path)
-            else:
-                subprocess.call(("open", file_path))
-        except Exception as e:
-            print(f"无法打开文件 {file_path}: {e}")
+        if url.scheme() == 'symbol':
+            # 提取 symbol
+            symbol = url.toString().replace('symbol://', '').strip()
+            if symbol:
+                # 将 symbol 复制到剪贴板
+                pyperclip.copy(symbol)
+                # 获取 stock_chart.py 的绝对路径
+                stock_chart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '/Users/yanzhang/Documents/Financial_System/Query/Stock_Chart.py')
+                # 调用 stock_chart.py，传递 'paste' 参数
+                subprocess.Popen([sys.executable, stock_chart_path, 'paste'])
+        else:
+            file_path = url.toLocalFile()
+            if not file_path:
+                file_path = url.toString()
+            try:
+                if sys.platform == "win32":
+                    os.startfile(file_path)
+                else:
+                    subprocess.call(("open", file_path))
+            except Exception as e:
+                print(f"无法打开文件 {file_path}: {e}")
 
 # 保持原有的搜索相关函数不变
 def search_files(directories, keywords):

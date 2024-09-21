@@ -144,7 +144,6 @@ def search_files(directories, keywords):
                     handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files)
             for name in files:
                 handle_file(root, name, directory, keywords_lower, matched_files)
-
     return matched_files
 
 def handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files):

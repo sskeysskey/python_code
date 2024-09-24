@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import shutil  # 添加这行来导入 shutil 模块
 
 def merge_videos(video_files, output_file):
     # 在临时目录中创建一个文件列表
@@ -50,31 +51,6 @@ def get_video_files(directory):
     video_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.mp4') and f != 'output.mp4']
     return sorted(video_files, key=sort_key)
 
-def rename_mp3(directory):
-    tmp_dir = "/tmp/"
-    mp3name_file_path = os.path.join(tmp_dir, 'mp3name.txt')
-    output_mp3 = os.path.join(directory, "output.mp3")
-    
-    if os.path.exists(mp3name_file_path) and os.path.isfile(mp3name_file_path):
-        with open(mp3name_file_path, 'r') as mp3name_file:
-            final_mp3_name = mp3name_file.read().strip() + ".mp3"  # 确保文件名以 .mp3 结尾
-        
-        final_mp3_path = os.path.join(directory, final_mp3_name)
-        
-        try:
-            os.rename(output_mp3, final_mp3_path)
-            print(f"MP3 文件已重命名为 {final_mp3_path}")
-        except OSError as e:
-            print(f"重命名失败: {e}")
-        
-        try:
-            os.remove(mp3name_file_path)
-            print(f"临时文件 {mp3name_file_path} 已删除")
-        except OSError as e:
-            print(f"删除临时文件失败: {e}")
-    else:
-        print(f"临时文件 {mp3name_file_path} 不存在或不是一个有效的文件")
-
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("请提供一个目录路径作为参数，例如：python merge_videos.py /path/to/directory")
@@ -100,4 +76,40 @@ if __name__ == "__main__":
         extract_audio(output_file, output_mp3)
         
         # 重命名 MP3 文件并删除临时文件
-        rename_mp3(directory)
+        tmp_dir = "/tmp/"
+        book_dir = "/Users/yanzhang/Documents/Books/"
+        mp3name_file_path = os.path.join(tmp_dir, 'mp3name.txt')
+        output_mp3 = os.path.join(directory, "output.mp3")
+        
+        if os.path.exists(mp3name_file_path) and os.path.isfile(mp3name_file_path):
+            with open(mp3name_file_path, 'r') as mp3name_file:
+                book_name = mp3name_file.read().strip()
+                final_mp3_name = book_name + ".mp3"  # 确保文件名以 .mp3 结尾
+        
+            final_mp3_path = os.path.join(directory, final_mp3_name)
+            book_path = os.path.join(book_dir, book_name + ".txt")
+            
+            try:
+                os.rename(output_mp3, final_mp3_path)
+                print(f"MP3 文件已重命名为 {final_mp3_path}")
+            except OSError as e:
+                print(f"重命名失败: {e}")
+            
+            try:
+                os.remove(mp3name_file_path)
+                print(f"临时文件 {mp3name_file_path} 已删除")
+            except OSError as e:
+                print(f"删除临时文件失败: {e}")
+            
+            # 移动 book_path 文件到 Read 目录
+            read_dir = "/Users/yanzhang/Documents/Books/Read/"
+            if os.path.exists(book_path):
+                try:
+                    shutil.move(book_path, read_dir)
+                    print(f"文件 {book_path} 已成功移动到 {read_dir}")
+                except shutil.Error as e:
+                    print(f"移动文件失败: {e}")
+            else:
+                print(f"文件 {book_path} 不存在")
+        else:
+            print(f"临时文件 {mp3name_file_path} 不存在或不是一个有效的文件")

@@ -1,24 +1,31 @@
 import os
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import sys
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 def select_file():
-    root = tk.Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename(
-        title='选择要处理的文件',
-        filetypes=[('Text files', '*.txt'), ('All files', '*.*')]
+    # 创建一个QApplication实例，PyQt5需要有一个全局的事件循环
+    app = QApplication.instance() or QApplication(sys.argv)
+    
+    default_path = "/Users/yanzhang/Documents/Books"
+    file_path, _ = QFileDialog.getOpenFileName(
+        None, 
+        "选择要处理的文件", 
+        default_path,  # 设置默认打开路径
+        "Text files (*.txt);;All files (*.*)"
     )
-    root.destroy()
+    
+    # 退出应用程序事件循环
+    app.exit()
+    
     return file_path
 
 def process_file(file_path):
     file_name = os.path.basename(file_path)
-    cleaned_name = os.path.splitext(file_name.replace(' ', ''))[0]
+    name_without_extension = os.path.splitext(file_name)[0]
     
     mp3name_path = "/tmp/mp3name.txt"
     with open(mp3name_path, 'w', encoding='utf-8') as mp3name_file:
-        mp3name_file.write(cleaned_name)
+        mp3name_file.write(name_without_extension)
     print(f"文件名已保存到: {mp3name_path}")
 
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -73,8 +80,11 @@ def main():
 
         process_file(file_path)
     except Exception as e:
-        messagebox.showerror("错误", f"处理过程中发生错误：{str(e)}")
+        # 使用PyQt5的QMessageBox来显示错误信息
+        app = QApplication.instance() or QApplication(sys.argv)
+        QMessageBox.critical(None, "错误", f"处理过程中发生错误：{str(e)}")
         print(f"发生错误：{str(e)}")
+        app.exit()
 
 if __name__ == "__main__":
     main()

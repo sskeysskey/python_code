@@ -34,8 +34,7 @@ def main():
     template_paths = {
         "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
-        "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png",
-        "retry": "/Users/yanzhang/Documents/python_code/Resource/Kimi_retry.png",
+        "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -66,12 +65,6 @@ def main():
         pyperclip.copy("illegal")
         timeout_stop = time.time() - 20
         exit()
-    # else:
-    #     location, shape = find_image_on_screen(templates["retry"])
-    #     if location:
-    #         pyperclip.copy("illegal")
-    #         timeout_stop = time.time() - 20
-    #         exit()
 
     found_stop = True
     while found_stop:
@@ -90,7 +83,7 @@ def main():
     pyautogui.scroll(-80)
     sleep(1.5)
     found_copy = False
-    timeout_copy = time.time() + 20
+    timeout_copy = time.time() + 30
     while not found_copy and time.time() < timeout_copy:
         location, shape = find_image_on_screen(templates["copy"])
         if location:
@@ -113,12 +106,6 @@ def main():
                 pyperclip.copy("illegal")
                 print(f"找到图片位置: {location}")
                 exit()
-            else:
-                location, shape = find_image_on_screen(templates["retry"])
-                if location:
-                    pyperclip.copy("illegal")
-                    timeout_stop = time.time() - 20
-                    exit()
             sleep(1)
 
     if not found_copy:

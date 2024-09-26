@@ -4,40 +4,78 @@ import sys
 import shutil
 import pyperclip
 import subprocess
-import tkinter as tk
-from tkinter import filedialog
-from tkinter.font import Font
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox
+from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt, QTimer
 
 # 全局变量
 file_moved = False
 
-def on_escape(event=None):
-    global file_moved
-    file_moved = False
-    root.destroy()
+def show_warning_message():
+    # 创建一个临时的顶层窗口
+    tmp = QWidget()
+    tmp.setWindowFlags(Qt.WindowStaysOnTopHint)
+    
+    # 显示警告消息
+    QMessageBox.warning(tmp, "警告", "目录segments中存在同名的txt文件，请先处理好现有文件。")
+    
+    # 销毁临时窗口
+    tmp.deleteLater()
 
-def center_window(win):
-    win.update_idletasks()
-    width, height = win.winfo_width(), win.winfo_height()
-    x = (win.winfo_screenwidth() // 2) - (width // 2)
-    y = (win.winfo_screenheight() // 3) - (height // 2)
-    win.geometry(f'{width}x{height}+{x}+{y}')
+class TextSplitterApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
 
-def on_split(event=None):
-    global file_moved
-    try:
-        n = int(entry.get())
-        if n <= 0:
-            raise ValueError("请输入大于0的数字")
-        save_segments(n)
-        info_label.config(text=f"分割完成，共分割成{n}部分")
-        file_moved = True
-    except ValueError as ve:
-        info_label.config(text=str(ve))
-    except Exception as e:
-        info_label.config(text=f"发生错误：{e}")
-    finally:
-        root.destroy()
+    def initUI(self):
+        self.setWindowTitle("分割文本")
+        self.setFont(QFont("Helvetica", 14))
+        
+        layout = QVBoxLayout()
+
+        self.clipboard_size_label = QLabel(f"文本大小：{get_clipboard_size()}")
+        layout.addWidget(self.clipboard_size_label)
+
+        self.info_label = QLabel("需要分割成几份？")
+        layout.addWidget(self.info_label)
+
+        self.entry = QLineEdit()
+        self.entry.setFocus()
+        self.entry.returnPressed.connect(self.on_split)
+        layout.addWidget(self.entry)
+
+        self.setLayout(layout)
+        self.center()
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QApplication.desktop().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.on_escape()
+
+    def on_escape(self):
+        global file_moved
+        file_moved = False
+        self.close()
+
+    def on_split(self):
+        global file_moved
+        try:
+            n = int(self.entry.text())
+            if n <= 0:
+                raise ValueError("请输入大于0的数字")
+            save_segments(n)
+            file_moved = True
+        except ValueError as ve:
+            print(f"错误：{ve}")
+        except Exception as e:
+            print(f"发生错误：{e}")
+        finally:
+            self.close()
 
 def move_file_to_backup(file_path, destination_folder):
     try:
@@ -105,72 +143,62 @@ url_pattern = re.compile(
 
 save_path = "/Users/yanzhang/Downloads/backup/TXT/Segments/"
 
-if check_for_existing_segments(save_path, 'segment'):
-    root = tk.Tk()
-    root.withdraw()
-    applescript_code = 'display dialog "目录segments中存在同名的txt文件，请先处理好现有文件。" buttons {"OK"} default button "OK"'
-    process = subprocess.run(['osascript', '-e', applescript_code], check=True)
-    sys.exit()
+# 定义默认打开目录
+DEFAULT_OPEN_DIR = "/Users/yanzhang/Downloads/backup/TXT"
 
-root = tk.Tk()
-source_file_path = filedialog.askopenfilename(title='选择要处理的文件', filetypes=[('Text files', '*.txt'), ('All files', '*.*')])
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
 
-if not source_file_path:
-    print('没有选择文件。')
-    sys.exit()
+    if check_for_existing_segments(save_path, 'segment'):
+        show_warning_message()
+        sys.exit()
 
-with open(source_file_path, 'r', encoding='utf-8') as file:
-    content = file.read()
+    # 使用新的默认目录打开文件选择对话框
+    source_file_path, _ = QFileDialog.getOpenFileName(
+        None, 
+        '选择要处理的文件', 
+        DEFAULT_OPEN_DIR,
+        'Text files (*.txt);;All files (*.*)'
+    )
 
-clean_content = re.sub(url_pattern, '', content)
-pyperclip.copy(clean_content)
+    if not source_file_path:
+        print('没有选择文件。')
+        sys.exit()
 
-root.title("分割文本")
-font = Font(family="Helvetica", size=24)
+    with open(source_file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
 
-clipboard_size_label = tk.Label(root, text=f"文本大小：{get_clipboard_size()}", font=font)
-clipboard_size_label.pack(pady=10, padx=10)
+    clean_content = re.sub(url_pattern, '', content)
+    pyperclip.copy(clean_content)
 
-info_label = tk.Label(root, text="需要分割成几份？", font=font)
-info_label.pack(pady=10, padx=10)
+    text_splitter = TextSplitterApp()
+    text_splitter.show()
 
-entry = tk.Entry(root, font=font)
-entry.pack(pady=10, padx=30)
-entry.focus()
+    app.exec_()
 
-entry.bind('<Return>', on_split)
-root.bind('<Escape>', on_escape)
+    if 'segment' not in os.path.basename(source_file_path):
+        new_file_directory = "/Users/yanzhang/Documents/"
+        new_file_path = os.path.join(new_file_directory, os.path.basename(source_file_path))
 
-center_window(root)
-root.lift()
-root.focus_force()
-entry.focus_set()
-
-root.mainloop()
-
-if 'segment' not in os.path.basename(source_file_path):
-    new_file_directory = "/Users/yanzhang/Documents/"
-    new_file_path = os.path.join(new_file_directory, os.path.basename(source_file_path))
-
-    try:
-        os.makedirs(new_file_directory, exist_ok=True)
-        with open(new_file_path, 'x', encoding='utf-8'):
-            pass
-        print(f"在 {new_file_directory} 下创建了同名空txt文件：{os.path.basename(source_file_path)}")
-    except FileExistsError:
-        print(f"文件已存在：{new_file_path}")
-    except Exception as e:
-        print(f"创建文件时发生错误：{e}")
-else:
-    print('文件名中包含"segment"，不创建空文件。')
-
-backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"
-
-if file_moved:
-    if contains_segment(os.path.basename(source_file_path), 'segment'):
-        os.remove(source_file_path)
-        print(f"文件包含'segment'，已被删除：{source_file_path}")
+        try:
+            os.makedirs(new_file_directory, exist_ok=True)
+            with open(new_file_path, 'x', encoding='utf-8'):
+                pass
+            print(f"在 {new_file_directory} 下创建了同名空txt文件：{os.path.basename(source_file_path)}")
+        except FileExistsError:
+            print(f"文件已存在：{new_file_path}")
+        except Exception as e:
+            print(f"创建文件时发生错误：{e}")
     else:
-        move_file_to_backup(source_file_path, backup_folder)
+        print('文件名中包含"segment"，不创建空文件。')
 
-sys.exit()
+    backup_folder = "/Users/yanzhang/Downloads/backup/TXT/Done"
+
+    if file_moved:
+        if contains_segment(os.path.basename(source_file_path), 'segment'):
+            os.remove(source_file_path)
+            print(f"文件包含'segment'，已被删除：{source_file_path}")
+        else:
+            move_file_to_backup(source_file_path, backup_folder)
+
+    sys.exit()

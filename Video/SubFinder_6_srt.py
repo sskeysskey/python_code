@@ -18,9 +18,6 @@ def image_hash(image):
     pil_image = Image.fromarray(image)
     return str(phash(pil_image))
 
-def are_similar_texts(text1, text2):
-    return SequenceMatcher(None, text1, text2).ratio() > 0.85
-
 def extract_subtitle_frames(video_path, output_folder, roi):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -29,20 +26,17 @@ def extract_subtitle_frames(video_path, output_folder, roi):
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     prev_hash = ""
-    prev_text = ""
     start_time = None
     last_change_time = None
     subtitle_roi = None
     recent_hashes = {}
-    MIN_TEXT_LENGTH = 5
-    MIN_TIME_BETWEEN_SUBTITLES = 0.3
-    CONSECUTIVE_FRAMES = 3  # 连续帧数
+    MIN_TEXT_LENGTH = 5  # 调整文本长度限制
+    MIN_TIME_BETWEEN_SUBTITLES = 0.3  # 调整时间间隔
 
     last_subtitle_time = -MIN_TIME_BETWEEN_SUBTITLES
     subtitles = []
     subtitle_count = 0
 
-    text_counter = {}
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -55,21 +49,13 @@ def extract_subtitle_frames(video_path, output_folder, roi):
 
         processed_frame = preprocess_image(cropped_frame)
 
-        # d = pytesseract.image_to_data(processed_frame, output_type=Output.DICT)
-        # text = " ".join([d['text'][i] for i in range(len(d['text'])) if int(d['conf'][i]) > 50]).strip()
-        custom_config = r'--oem 3 --psm 6 -l eng'
-        d = pytesseract.image_to_data(processed_frame, output_type=Output.DICT, config=custom_config)
-        text = " ".join([d['text'][i] for i in range(len(d['text'])) if int(d['conf'][i]) > 50]).strip()
+        d = pytesseract.image_to_data(processed_frame, output_type=Output.DICT)
+        text = " ".join([d['text'][i] for i in range(len(d['text'])) if int(d['conf'][i]) > 60]).strip()
 
         if len(text) >= MIN_TEXT_LENGTH:
-            if text in text_counter:
-                text_counter[text] += 1
-            else:
-                text_counter[text] = 1
-
             current_hash = image_hash(processed_frame)
 
-            if not are_similar_texts(text, prev_text) and current_hash not in recent_hashes:
+            if current_hash not in recent_hashes:
                 if prev_hash and current_time - last_subtitle_time >= MIN_TIME_BETWEEN_SUBTITLES:
                     if start_time is not None:
                         save_subtitle(output_folder, start_time, last_change_time, subtitle_roi)
@@ -86,14 +72,13 @@ def extract_subtitle_frames(video_path, output_folder, roi):
                 last_change_time = current_time
                 subtitle_roi = cropped_frame.copy()
                 prev_hash = current_hash
-                prev_text = text
                 last_subtitle_time = current_time
                 recent_hashes[current_hash] = current_time
             else:
                 last_change_time = current_time
                 recent_hashes[current_hash] = current_time
-                text_counter = {}  # 重置计数器
 
+    # 保存最后一个字幕
     if prev_hash and start_time is not None:
         save_subtitle(output_folder, start_time, last_change_time, subtitle_roi)
         subtitle_count += 1
@@ -107,6 +92,7 @@ def extract_subtitle_frames(video_path, output_folder, roi):
     cap.release()
     cv2.destroyAllWindows()
 
+    # 写入srt文件
     write_srt_file(output_folder, subtitles)
 
 def save_subtitle(output_folder, start_time, end_time, roi_image):

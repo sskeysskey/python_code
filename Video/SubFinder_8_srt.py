@@ -36,13 +36,11 @@ def extract_subtitle_frames(video_path, output_folder, roi):
     recent_hashes = {}
     MIN_TEXT_LENGTH = 5
     MIN_TIME_BETWEEN_SUBTITLES = 0.3
-    CONSECUTIVE_FRAMES = 3  # 连续帧数
 
     last_subtitle_time = -MIN_TIME_BETWEEN_SUBTITLES
     subtitles = []
     subtitle_count = 0
 
-    text_counter = {}
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -62,11 +60,6 @@ def extract_subtitle_frames(video_path, output_folder, roi):
         text = " ".join([d['text'][i] for i in range(len(d['text'])) if int(d['conf'][i]) > 50]).strip()
 
         if len(text) >= MIN_TEXT_LENGTH:
-            if text in text_counter:
-                text_counter[text] += 1
-            else:
-                text_counter[text] = 1
-
             current_hash = image_hash(processed_frame)
 
             if not are_similar_texts(text, prev_text) and current_hash not in recent_hashes:
@@ -92,7 +85,6 @@ def extract_subtitle_frames(video_path, output_folder, roi):
             else:
                 last_change_time = current_time
                 recent_hashes[current_hash] = current_time
-                text_counter = {}  # 重置计数器
 
     if prev_hash and start_time is not None:
         save_subtitle(output_folder, start_time, last_change_time, subtitle_roi)

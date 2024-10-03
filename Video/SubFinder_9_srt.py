@@ -1,3 +1,5 @@
+# 图片重复的多，偶尔漏抓
+
 import cv2
 import numpy as np
 import pytesseract
@@ -5,21 +7,25 @@ from pytesseract import Output
 import os
 from imagehash import phash, dhash
 from difflib import SequenceMatcher
+import hashlib
 from PIL import Image
 
 def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # 使用自适应直方图均衡化提高对比度
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
+    # 边缘增强
     laplacian = cv2.Laplacian(enhanced, cv2.CV_64F)
     return cv2.convertScaleAbs(laplacian)
 
 def image_hash(image):
     pil_image = Image.fromarray(image)
-    # 返回 ImageHash 对象
-    return dhash(pil_image)
+    # 使用更鲁棒的dhash算法
+    return str(dhash(pil_image))
 
 def are_similar_texts(text1, text2):
+    # 改进文本相似度算法，增加Levenshtein距离和标点去除
     def levenshtein(s1, s2):
         if len(s1) < len(s2):
             return levenshtein(s2, s1)
@@ -35,19 +41,16 @@ def are_similar_texts(text1, text2):
                 current_row.append(min(insertions, deletions, substitutions))
             previous_row = current_row
         return previous_row[-1]
-
+    
+    # 去除标点符号
     text1 = ''.join(e for e in text1 if e.isalnum())
     text2 = ''.join(e for e in text2 if e.isalnum())
-
+    
+    # 使用Levenshtein距离和SequenceMatcher结合判断相似度
     text_similarity = SequenceMatcher(None, text1, text2).ratio()
     lev_distance = levenshtein(text1, text2)
-
-    return text_similarity > 0.9 or lev_distance < 3  # 提高文本相似度阈值
-
-def are_similar_hashes(hash1, hash2, threshold=5):
-    """计算图像哈希值之间的汉明距离，判断是否相似"""
-    # 使用 ImageHash 对象的 hash 属性，这是一个 numpy 数组，表示哈希值
-    return (hash1 - hash2) <= threshold
+    
+    return text_similarity > 0.85 or lev_distance < 5
 
 def extract_subtitle_frames(video_path, output_folder, roi):
     if not os.path.exists(output_folder):
@@ -56,14 +59,14 @@ def extract_subtitle_frames(video_path, output_folder, roi):
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
 
-    prev_hash = None
+    prev_hash = ""
     prev_text = ""
     start_time = None
     last_change_time = None
     subtitle_roi = None
     recent_hashes = {}
     MIN_TEXT_LENGTH = 5
-    MIN_TIME_BETWEEN_SUBTITLES = 0.1
+    MIN_TIME_BETWEEN_SUBTITLES = 0.1  # 调整字幕时间间隔
 
     last_subtitle_time = -MIN_TIME_BETWEEN_SUBTITLES
     subtitles = []
@@ -81,6 +84,7 @@ def extract_subtitle_frames(video_path, output_folder, roi):
 
         processed_frame = preprocess_image(cropped_frame)
 
+        # OCR 配置调整为单行文本处理
         custom_config = r'--oem 3 --psm 7 -l eng+osd'
         d = pytesseract.image_to_data(processed_frame, output_type=Output.DICT, config=custom_config)
         text = " ".join([d['text'][i] for i in range(len(d['text'])) if int(d['conf'][i]) > 50]).strip()
@@ -88,8 +92,7 @@ def extract_subtitle_frames(video_path, output_folder, roi):
         if len(text) >= MIN_TEXT_LENGTH:
             current_hash = image_hash(processed_frame)
 
-            # 判断文本和图像哈希是否都发生了足够的变化
-            if (not are_similar_texts(text, prev_text)) and (prev_hash is None or not are_similar_hashes(current_hash, prev_hash)):
+            if not are_similar_texts(text, prev_text) and current_hash not in recent_hashes:
                 if prev_hash and current_time - last_subtitle_time >= MIN_TIME_BETWEEN_SUBTITLES:
                     if start_time is not None:
                         save_subtitle(output_folder, start_time, last_change_time, subtitle_roi)

@@ -54,7 +54,7 @@ def get_old_content(file_path, days_ago):
                 old_content.append([date_str, title, link])
     return old_content
 
-def fetch_new_content(driver, existing_links, formatted_datetime):
+def fetch_content(driver, existing_links, formatted_datetime):
     new_rows = []
     try:
         # 尝试点击 "Dismiss" 按钮
@@ -67,6 +67,18 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         except Exception:
             print("Dismiss按钮未出现或未点击")
         
+        css_selector = "a[href*='/2024']"
+        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+        time.sleep(3)
+
+        new_rows = process_titles(titles_elements, existing_links, formatted_datetime)
+    except Exception as e:
+        print("抓取过程中出现错误:", e)
+    return new_rows
+
+def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
+    try:
         # 点击 "Asia Edition" 按钮
         region_button = WebDriverWait(driver, 20).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-ui-RegionPicker_region-p79mNAtF--M-"))
@@ -85,32 +97,46 @@ def fetch_new_content(driver, existing_links, formatted_datetime):
         # 暂停以确保页面切换
         time.sleep(4)
 
-        css_selector = "a[href*='/2024']"
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
-        titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
-        time.sleep(3)
+        # 抓取US版内容
+        return fetch_content(driver, existing_links, formatted_datetime)
+    except Exception as e:
+        print("切换到US版并抓取内容时出现错误:", e)
+        return []
 
-        # 打印titles_elements的内容
-        # for title_element in titles_elements:
-        #     print(f"Element: {title_element}, Href: {title_element.get_attribute('href')}, Text: {title_element.text.strip()}")
+def process_titles(titles_elements, existing_links, formatted_datetime):
+    new_rows = []
+    for title_element in titles_elements:
+        href = title_element.get_attribute('href')
+        title_text = title_element.text.strip()
 
-        def is_valid_title(title_text):
-            invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage']
-            if any(phrase in title_text for phrase in invalid_phrases):
-                return False
+        # 删除 "Newsletter: " 字符
+        if title_text.startswith("Newsletter: "):
+            title_text = title_text[11:]
+            
+        print(f"Processing element: Href: {href}, Text: {title_text}")  # 调试信息
+        if is_valid_title(title_text) and href and not any(is_similar(href, link) for link in existing_links):
+            new_rows.append([formatted_datetime, title_text, href])
+            existing_links.add(href)
+            print(f"Added new row: {title_text}")  # 调试信息
+        else:
+            print(f"Skipped: {title_text}")  # 调试信息
+    return new_rows
 
-            if any(keyword in title_text for keyword in ['Listen', 'Watch']) and '(' in title_text and ')' in title_text:
-                title_text = title_text.split(')')[1].strip()
-            return True if title_text and not is_time_format(title_text) else False
+def is_valid_title(title_text):
+    invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage']
+    if any(phrase in title_text for phrase in invalid_phrases):
+        return False
 
-        def is_time_format(text):
-            try:
-                if len(text) in [4, 5] and ':' in text:
-                    parts = text.split(':')
-                    return all(part.isdigit() for part in parts)
-                return False
-            except:
-                return False
+    if any(keyword in title_text for keyword in ['Listen', 'Watch']) and '(' in title_text and ')' in title_text:
+        title_text = title_text.split(')')[1].strip()
+    return True if title_text and not is_time_format(title_text) else False
+
+def is_time_format(text):
+    try:
+        if len(text) in [4, 5] and ':' in text:
+            parts = text.split(':')
+            return all(part.isdigit() for part in parts)
+        return False
         
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
@@ -189,14 +215,25 @@ if __name__ == "__main__":
     old_content = get_old_content(old_file_path, 30)
     existing_links = {link for _, _, link in old_content}
 
-    new_rows = fetch_new_content(driver, existing_links, current_datetime)
-    new_rows1 = [["Bloomberg", title, link] for _, title, link in new_rows]
+    # 第一次抓取（当前页面）
+    new_rows = fetch_content(driver, existing_links, current_datetime)
+    
+    # 更新existing_links以包含第一次抓取的结果
+    existing_links.update(link for _, _, link in new_rows)
+    
+    # 切换到US版并再次抓取
+    us_new_rows = switch_to_us_and_fetch(driver, existing_links, current_datetime)
+    
+    # 合并两次抓取的结果并去重
+    all_new_rows = list({row[2]: row for row in new_rows + us_new_rows}.values())
+    
+    new_rows1 = [["Bloomberg", title, link] for _, title, link in all_new_rows]
 
     driver.quit()
 
     if os.path.exists(old_file_path):
         os.remove(old_file_path)
 
-    write_html(old_file_path, new_rows, old_content)
+    write_html(old_file_path, all_new_rows, old_content)
     append_to_today_html("/Users/yanzhang/Documents/News/today_eng.html", new_rows1)
     time.sleep(1)  # 等待1秒

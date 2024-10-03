@@ -1,3 +1,5 @@
+# 图片会漏抓，重复的少
+
 import cv2
 import numpy as np
 import pytesseract

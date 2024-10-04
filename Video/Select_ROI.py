@@ -1,29 +1,52 @@
 import cv2
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog
+from PyQt5.QtWidgets import QApplication, QFileDialog
+import threading
+import time
 
 class VideoPlayer:
     def __init__(self, video_path):
         self.cap = cv2.VideoCapture(video_path)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
         self.playing = False
         self.current_frame = 0
+        self.lock = threading.Lock()
         
         self.start_point = None
         self.end_point = None
         self.selecting = False
+        self.running = True
+        self.frame = None  # 当前帧
+
+        # 启动视频读取线程
+        self.read_thread = threading.Thread(target=self.read_frames)
+        self.read_thread.start()
 
     @staticmethod
     def choose_video():
-        root = tk.Tk()
-        root.withdraw()  # 隐藏主窗口
-        video_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.avi *.mov")])
+        app = QApplication([])  # 创建一个应用程序实例
+        video_path, _ = QFileDialog.getOpenFileName(None, "选择视频文件", "/Users/yanzhang/Downloads", "Video Files (*.mp4 *.avi *.mov)")
+        app.quit()  # 文件选择完成后退出应用程序
         return video_path
+
+    def read_frames(self):
+        while self.running:
+            if self.playing:
+                ret, frame = self.cap.read()
+                if not ret:
+                    self.playing = False
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    self.current_frame = 0
+                    continue
+                with self.lock:
+                    self.frame = frame.copy()
+                    self.current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+            else:
+                time.sleep(0.01)  # 减少CPU占用
 
     def play(self):
         cv2.namedWindow('Video Player')
@@ -31,33 +54,36 @@ class VideoPlayer:
         cv2.setMouseCallback('Video Player', self.mouse_callback)
 
         while True:
-            if self.playing:
-                ret, frame = self.cap.read()
-                if not ret:
-                    self.playing = False
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    continue
-                self.current_frame += 1
-                cv2.setTrackbarPos('Progress', 'Video Player', self.current_frame)
-            else:
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
-                ret, frame = self.cap.read()
+            with self.lock:
+                if self.frame is not None:
+                    frame_display = self.draw_roi(self.frame.copy())
+                else:
+                    frame_display = np.zeros((self.frame_height, self.frame_width, 3), dtype=np.uint8)
 
-            frame_with_roi = self.draw_roi(frame.copy())
-            cv2.imshow('Video Player', frame_with_roi)
+            cv2.imshow('Video Player', frame_display)
 
-            key = cv2.waitKey(1000 // self.fps) & 0xFF
-            if key == 27:  # 27 是 ESC 键的 ASCII 码
+            key = cv2.waitKey(int(1000 / self.fps)) & 0xFF
+            if key == 27:  # ESC 键
                 break
             elif key == ord(' '):
                 self.playing = not self.playing
+                if self.playing:
+                    print("播放")
+                else:
+                    print("暂停")
 
+        self.running = False
+        self.read_thread.join()
         self.cap.release()
         cv2.destroyAllWindows()
 
     def on_trackbar(self, value):
-        self.current_frame = value
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, value)
+        with self.lock:
+            self.current_frame = value
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, value)
+            ret, frame = self.cap.read()
+            if ret:
+                self.frame = frame.copy()
 
     def mouse_callback(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -96,6 +122,7 @@ if video_path:
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     print(f"视频宽度: {frame_width}, 视频高度: {frame_height}")
+    cap.release()
 
     player = VideoPlayer(video_path)
     player.play()

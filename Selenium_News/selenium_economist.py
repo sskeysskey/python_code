@@ -93,7 +93,7 @@ old_content = []
 
 if old_file_list:
     old_file_path = old_file_list[0]
-    seven_days_ago = datetime.now() - timedelta(days=35)
+    seven_days_ago = datetime.now() - timedelta(days=45)
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
         rows = soup.find_all('tr')[1:]  # 跳过标题行

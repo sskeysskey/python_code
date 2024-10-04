@@ -59,7 +59,7 @@ def fetch_content(driver, existing_links, formatted_datetime):
     try:
         # 尝试点击 "Dismiss" 按钮
         try:
-            dismiss_button = WebDriverWait(driver, 20).until(
+            dismiss_button = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'Button_text-N76nbJyFyw0-') and text()='Dismiss']"))
             )
             dismiss_button.click()
@@ -80,7 +80,7 @@ def fetch_content(driver, existing_links, formatted_datetime):
 def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
     try:
         # 点击 "Asia Edition" 按钮
-        region_button = WebDriverWait(driver, 20).until(
+        region_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-ui-RegionPicker_region-p79mNAtF--M-"))
         )
         region_button.click()
@@ -95,7 +95,7 @@ def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
         us_option.click()
 
         # 暂停以确保页面切换
-        time.sleep(4)
+        time.sleep(1)
 
         # 抓取US版内容
         return fetch_content(driver, existing_links, formatted_datetime)
@@ -181,7 +181,7 @@ def append_to_today_html(today_html_path, new_rows1):
 if __name__ == "__main__":
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
     chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
-    timeout = 7  # 设置超时时间
+    timeout = 5  # 设置超时时间
     template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/Bloomberg_agree.png'
     service = Service(executable_path=chrome_driver_path)
     driver = webdriver.Chrome(service=service)

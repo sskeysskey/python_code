@@ -57,20 +57,10 @@ def get_old_content(file_path, days_ago):
 def fetch_content(driver, existing_links, formatted_datetime):
     new_rows = []
     try:
-        # 尝试点击 "Dismiss" 按钮
-        try:
-            dismiss_button = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'Button_text-N76nbJyFyw0-') and text()='Dismiss']"))
-            )
-            dismiss_button.click()
-            print("Dismiss按钮已点击")
-        except Exception:
-            print("Dismiss按钮未出现或未点击")
-        
         css_selector = "a[href*='/2024']"
-        WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
-        time.sleep(3)
+        # time.sleep(3)
 
         new_rows = process_titles(titles_elements, existing_links, formatted_datetime)
     except Exception as e:
@@ -80,7 +70,7 @@ def fetch_content(driver, existing_links, formatted_datetime):
 def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
     try:
         # 点击 "Asia Edition" 按钮
-        region_button = WebDriverWait(driver, 5).until(
+        region_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-ui-RegionPicker_region-p79mNAtF--M-"))
         )
         region_button.click()
@@ -89,7 +79,7 @@ def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
         time.sleep(1)
 
         # 点击 "US" 选项
-        us_option = WebDriverWait(driver, 20).until(
+        us_option = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, "//div[@data-testid='dropdown']//div[text()='US']"))
         )
         us_option.click()
@@ -214,6 +204,16 @@ if __name__ == "__main__":
     old_file_path = "/Users/yanzhang/Documents/News/site/bloomberg.html"
     old_content = get_old_content(old_file_path, 30)
     existing_links = {link for _, _, link in old_content}
+
+    # 尝试点击 "Dismiss" 按钮
+    try:
+        dismiss_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'Button_text-N76nbJyFyw0-') and text()='Dismiss']"))
+        )
+        dismiss_button.click()
+        print("Dismiss按钮已点击")
+    except Exception:
+        print("Dismiss按钮未出现或未点击")
 
     # 第一次抓取（当前页面）
     new_rows = fetch_content(driver, existing_links, current_datetime)

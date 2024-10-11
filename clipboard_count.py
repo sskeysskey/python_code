@@ -2,16 +2,6 @@ import re
 import pyperclip
 import tkinter as tk
 from tkinter.font import Font
-import subprocess
-
-def copy2clipboard():
-    script = '''
-    tell application "System Events"
-	    keystroke "c" using {command down}
-        delay 0.5
-    end tell
-    '''
-    subprocess.run(['osascript', '-e', script], check=True)
 
 def on_escape(event=None):
     root.destroy()
@@ -24,7 +14,6 @@ def center_window(win):
     y = (win.winfo_screenheight() // 3) - (height // 2)
     win.geometry(f'{width}x{height}+{x}+{y}')
 
-copy2clipboard()
 # 获取剪贴板内容
 clipboard_content = pyperclip.paste()
 

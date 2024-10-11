@@ -28,7 +28,7 @@ def count_words_and_create_file():
     num_english_words = len(re.findall(r'\b[A-Za-z]+\b', processed_content))
     
     # 判断是否超过2000个单词
-    if num_english_words > 2000:
+    if num_english_words > 2300:
         file_path = '/tmp/longarticle.txt'
         try:
             with open(file_path, 'w', encoding='utf-8') as f:

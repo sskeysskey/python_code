@@ -93,6 +93,7 @@ def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
         print("切换到US版并抓取内容时出现错误:", e)
         return []
 
+# 修改后的函数：处理标题并过滤掉包含 '/videos/2024' 的链接
 def process_titles(titles_elements, existing_links, formatted_datetime):
     new_rows = []
     for title_element in titles_elements:
@@ -102,7 +103,12 @@ def process_titles(titles_elements, existing_links, formatted_datetime):
         # 删除 "Newsletter: " 字符
         if title_text.startswith("Newsletter: "):
             title_text = title_text[11:]
-            
+
+        # 新增过滤条件：跳过包含 '/videos/2024' 的链接
+        if '/videos/2024' in href:
+            print(f"Skipped video link: {href}")  # 调试信息
+            continue
+
         print(f"Processing element: Href: {href}, Text: {title_text}")  # 调试信息
         if is_valid_title(title_text) and href and not any(is_similar(href, link) for link in existing_links):
             new_rows.append([formatted_datetime, title_text, href])
@@ -127,25 +133,8 @@ def is_time_format(text):
             parts = text.split(':')
             return all(part.isdigit() for part in parts)
         return False
-        
-        for title_element in titles_elements:
-            href = title_element.get_attribute('href')
-            title_text = title_element.text.strip()
-
-            # 删除 "Newsletter: " 字符
-            if title_text.startswith("Newsletter: "):
-                title_text = title_text[11:]
-                
-            print(f"Processing element: Href: {href}, Text: {title_text}")  # 调试信息
-            if is_valid_title(title_text) and href and not any(is_similar(href, link) for link in existing_links):
-                new_rows.append([formatted_datetime, title_text, href])
-                existing_links.add(href)
-                print(f"Added new row: {title_text}")  # 调试信息
-            else:
-                print(f"Skipped: {title_text}")  # 调试信息
-    except Exception as e:
-        print("抓取过程中出现错误:", e)
-    return new_rows
+    except:
+        return False
 
 def write_html(file_path, new_rows, old_content):
     with open(file_path, 'w', encoding='utf-8') as html_file:

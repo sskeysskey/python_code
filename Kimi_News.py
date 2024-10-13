@@ -1,8 +1,13 @@
 import os
+import cv2
 import html
+import time
 import pyperclip
 import subprocess
+import pyautogui
+import numpy as np
 from time import sleep
+from PIL import ImageGrab
 from datetime import datetime
 
 # 常量定义
@@ -22,6 +27,25 @@ SEGMENT_TO_HTML_FILE = {
     "ft": "ft.html",
     "wsj": "wsj.html"
 }
+
+def capture_screen():
+    # 使用PIL的ImageGrab直接截取屏幕
+    screenshot = ImageGrab.grab()
+    # 将截图对象转换为OpenCV格式
+    screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    return screenshot
+
+# 查找图片
+def find_image_on_screen(template, threshold=0.9):
+    screen = capture_screen()
+    result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    # 释放截图和模板图像以节省内存
+    del screen
+    if max_val >= threshold:
+        return max_loc, template.shape
+    else:
+        return None, None
 
 def get_clipboard_content():
     content = pyperclip.paste()
@@ -83,6 +107,88 @@ def close_html_skeleton(file_path):
         """)
 
 def main():
+    template_paths = {
+        "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
+        "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
+        "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
+    }
+
+    # 读取所有模板图片，并存储在字典中
+    templates = {}
+    for key, path in template_paths.items():
+        template = cv2.imread(path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+        templates[key] = template
+
+    # 引入一个标志位来控制逻辑流转
+    skip_to_clipboard = False
+
+    found = False
+    timeout_stop = time.time() + 5
+    while not found and time.time() < timeout_stop:
+        location, shape = find_image_on_screen(templates["stop"])
+        if location:
+            found = True
+            print(f"找到图片位置: {location}")
+        else:
+            print("未找到图片，继续监控...")
+            pyautogui.scroll(-80)
+            sleep(1)
+
+    if time.time() > timeout_stop:
+        print("在15秒内未找到图片，退出程序。")
+
+    # 检查是否找到outofline图片
+    location, shape = find_image_on_screen(templates["outofline"])
+    if location:
+        print(f"找到outofline图片位置: {location}")
+        skip_to_clipboard = True  # 设置标志位，跳过后续部分
+
+    if not skip_to_clipboard:
+        found_stop = True
+        while found_stop:
+            location, shape = find_image_on_screen(templates["stop"])
+            if location:
+                print("找到stop图了，准备下一步...")
+                pyautogui.scroll(-80)
+                sleep(1)  # 继续监控
+            else:
+                print("没找到图片，继续执行...")
+                pyautogui.scroll(-80)
+                location, shape = find_image_on_screen(templates["stop"])
+                if not location:
+                    found_stop = False
+
+        pyautogui.scroll(-80)
+        sleep(1.5)
+        found_copy = False
+        timeout_copy = time.time() + 30
+        while not found_copy and time.time() < timeout_copy:
+            location, shape = find_image_on_screen(templates["copy"])
+            if location:
+                print("找到copy图了，准备点击copy...")
+                # 计算中心坐标
+                center_x = (location[0] + shape[1] // 2) // 2
+                center_y = (location[1] + shape[0] // 2) // 2
+
+                modify_x = center_x
+                modify_y = center_y - 2
+
+                # 鼠标点击中心坐标
+                pyautogui.click(modify_x, modify_y)
+                found_copy = True
+            else:
+                print("没找到图片，继续执行...")
+                pyautogui.scroll(-80)
+                location, shape = find_image_on_screen(templates["outofline"])
+                if location:
+                    print(f"找到图片位置: {location}")
+                    skip_to_clipboard = True  # 设置标志位，跳过后续部分
+                    break  # 跳出循环
+    sleep(1)
+
+    # 跳转到clipboard_content处理部分
     clipboard_content = get_clipboard_content()
     segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)

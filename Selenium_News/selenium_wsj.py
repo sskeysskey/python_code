@@ -7,7 +7,10 @@ from selenium import webdriver
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
+import random  # 添加以生成随机等待时间
 
 def is_similar(url1, url2):
     """
@@ -29,12 +32,16 @@ formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
-# 设置 ChromeDriver
+# 设置 ChromeDriver，启用无头模式
+options = webdriver.ChromeOptions()
+# options.add_argument("--headless")  # 启用无头模式
+options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用自动化控制特征
+options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")  # 设置用户代理
 service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=options)
 
 # 打开 WSJ 网站
-driver.get("https://cn.wsj.com/")
+driver.get("https://www.wsj.com/")
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/site/wsj.html"
@@ -71,8 +78,12 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    css_selector = "//span[contains(@class, 'WSJTheme--headlineText')]/parent::a"
-    titles_elements = driver.find_elements(By.XPATH, css_selector)
+    wait = WebDriverWait(driver, 30)
+    
+    # 随机延迟模拟人类行为
+    time.sleep(random.uniform(1, 3))  # 随机等待 1-3 秒
+
+    titles_elements = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//span[contains(@class, 'WSJTheme--headline')]/parent::a")))
 
     print(f"找到 {len(titles_elements)} 个标题元素。")
 
@@ -86,10 +97,11 @@ try:
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
 
-            if 'cn.wsj.com' in href and 'podcasts' not in href and 'sports' not in href and 'buyside' not in href:
+            if 'www.wsj.com' in href and 'podcasts' not in href and 'sports' not in href and 'buyside' not in href:
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])
+                        new_rows1.append(["WSJ", title_text, href])
                         all_links.append(href)  # 添加到所有链接的列表中
 
 except Exception as e:

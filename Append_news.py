@@ -246,6 +246,7 @@ def main():
         "bloomberg": "bloomberg.html",
         "hbr": "hbr.html",
         "ft": "ft.html",
+        "wsj": "wsj.com"
     }
 
     # 根据segment内容获取对应的HTML文件名

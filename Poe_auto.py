@@ -39,6 +39,7 @@ def main(mode):
         "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
         "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/poe_copy.png",
+        # "reload": "/Users/yanzhang/Documents/python_code/Resource/poe_reload.png",
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -82,7 +83,7 @@ def main(mode):
             location, shape = find_image_on_screen(templates["waiting"])
             if location:
                 print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=574)
+                pyautogui.click(x=591, y=415)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
             sleep(1)  # 简短暂停再次监控
@@ -119,7 +120,6 @@ def main(mode):
                 pyautogui.scroll(-80)
                 print("未找到图片，继续监控...")
         
-        sleep(1.5)
         location, shape = find_image_on_screen(templates["thumb"])
         if location:
             center_x = (location[0] + shape[1] // 2) // 2
@@ -127,7 +127,7 @@ def main(mode):
 
             # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
             xCoord = center_x
-            yCoord = center_y - 50
+            yCoord = center_y - 200
 
             # 使用pyautogui移动鼠标并进行右键点击
             pyautogui.moveTo(xCoord, yCoord)
@@ -157,7 +157,7 @@ def main(mode):
                 pyautogui.scroll(-80)
                 sleep(0.5)
 
-    sleep(1)
+    sleep(0.5)
     found_copy = False
     timeout_copy = time.time() + 5
     while not found_copy and time.time() < timeout_copy:

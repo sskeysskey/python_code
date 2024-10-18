@@ -16,7 +16,8 @@ searchFolders = [
     "/Users/yanzhang/Documents/sskeysskey.github.io",
     # "/Users/yanzhang/Documents/LuxuryBox",
     # "/Users/yanzhang/Downloads/backup/TXT",
-    # "/Users/yanzhang/Documents/Books"
+    # "/Users/yanzhang/Documents/Books",
+    # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
 ]
 
 class CustomTextBrowser(QTextBrowser):

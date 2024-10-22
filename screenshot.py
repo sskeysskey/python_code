@@ -8,11 +8,13 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_name, clickValue=False, Opposite=False):
+    def __init__(self, template_name, clickValue=False, Opposite=False, x_offset=None, y_offset=None):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
         self.template = self.load_template()
         self.clickValue = clickValue
         self.Opposite = Opposite
+        self.x_offset = x_offset
+        self.y_offset = y_offset
 
     def load_template(self):
         # 在初始化时加载模板图片
@@ -49,8 +51,13 @@ class ScreenDetector:
                     # 计算中心坐标
                     center_x = (location[0] + shape[1] // 2) // 2
                     center_y = (location[1] + shape[0] // 2) // 2
+                    # 判断是否有偏移量，调整点击坐标
+                    if self.x_offset is not None:
+                        center_x += self.x_offset
+                    if self.y_offset is not None:
+                        center_y += self.y_offset
                     
-                    # 鼠标点击中心坐标
+                    # 鼠标点击中心坐标或偏移后的坐标
                     pyautogui.click(center_x, center_y)
                 found = True
                 print(f"找到图片位置: {location}")
@@ -75,15 +82,32 @@ class ScreenDetector:
                 found = False
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print("Usage: python a.py <image_name> <clickValue> <Opposite>")
+    # 检查参数数量
+    if len(sys.argv) < 4:
+        print("Usage: python a.py <image_name> <clickValue> <Opposite> [x_offset] [y_offset]")
         sys.exit(1)
+
+    # 基本参数
     image_name = sys.argv[1]
     clickValue = sys.argv[2].lower() == 'true'
     Opposite = sys.argv[3].lower() == 'true'
-    detector = ScreenDetector(image_name, clickValue, Opposite)
+
+    # 判断传入的参数数量，如果有6个参数则解析x_offset和y_offset
+    if len(sys.argv) >= 6:
+        x_offset = sys.argv[4] if sys.argv[4] != "" else None
+        y_offset = sys.argv[5] if sys.argv[5] != "" else None
+
+        # 将字符串转换为整数
+        x_offset = int(x_offset) if x_offset is not None else None
+        y_offset = int(y_offset) if y_offset is not None else None
+    else:
+        # 如果没有传递x_offset和y_offset，则设置为None
+        x_offset = None
+        y_offset = None
+
+    detector = ScreenDetector(image_name, clickValue, Opposite, x_offset, y_offset)
+
     if Opposite:
         detector.run2()
     else:
         detector.run1()
-    

@@ -32,14 +32,13 @@ def main(mode):
     # 定义模板路径字典
     template_paths = {
         "stop": "/Users/yanzhang/Documents/python_code/Resource/poe_stop.png",
-        "waiting": "/Users/yanzhang/Documents/python_code/Resource/poe_stillwaiting.png",
         "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
         "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
         "failure": "/Users/yanzhang/Documents/python_code/Resource/poe_failure.png",
-        "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
+        # "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
         "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/poe_copy.png",
-        # "reload": "/Users/yanzhang/Documents/python_code/Resource/poe_reload.png",
+        "noconnect": "/Users/yanzhang/Documents/python_code/Resource/poe_noconnect.png"
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -65,12 +64,12 @@ def main(mode):
                 pyautogui.click(x=591, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
-            location, shape = find_image_on_screen(templates["no"])
-            if location:
-                print("找到poe_no图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+            # location, shape = find_image_on_screen(templates["no"])
+            # if location:
+            #     print("找到poe_no图片，执行页面刷新操作...")
+            #     pyautogui.click(x=591, y=574)
+            #     sleep(0.5)
+            #     pyautogui.hotkey('command', 'r')
             sleep(1)
     
     found_stop = True
@@ -79,14 +78,12 @@ def main(mode):
         if location:
             print("找到poe_stop图片，继续监控...")
             pyautogui.scroll(-120)
-            # 检测poe_stillwaiting.png图片
-            location, shape = find_image_on_screen(templates["waiting"])
+            location, shape = find_image_on_screen(templates["noconnect"])
             if location:
-                print("找到poe_stillwaiting图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=415)
+                print("找到poe_noconnect图片，执行页面刷新操作...")
+                pyautogui.click(x=591, y=574)
                 sleep(0.5)
                 pyautogui.hotkey('command', 'r')
-            sleep(1)  # 简短暂停再次监控
         else:
             print("Stop图片没有了...")
             found_stop = False
@@ -101,8 +98,13 @@ def main(mode):
                 print(f"找到图片位置: {location}")
             else:
                 print("未找到图片，继续监控...")
-                # pyautogui.click(x=618, y=458)
                 pyautogui.scroll(-80)
+                location, shape = find_image_on_screen(templates["noconnect"])
+                if location:
+                    print("找到poe_noconnect图片，执行页面刷新操作...")
+                    pyautogui.click(x=591, y=574)
+                    sleep(0.5)
+                    pyautogui.hotkey('command', 'r')
                 sleep(1)
 
         if time.time() > timeout_thumb:
@@ -155,6 +157,12 @@ def main(mode):
             else:
                 print(f"找到图片位置: {location}")
                 pyautogui.scroll(-80)
+                location, shape = find_image_on_screen(templates["noconnect"])
+                if location:
+                    print("找到poe_noconnect图片，执行页面刷新操作...")
+                    pyautogui.click(x=591, y=574)
+                    sleep(0.5)
+                    pyautogui.hotkey('command', 'r')
                 sleep(0.5)
 
     sleep(0.5)

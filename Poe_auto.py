@@ -4,8 +4,8 @@ import argparse
 import pyautogui
 import subprocess
 import numpy as np
-from time import sleep
 from PIL import ImageGrab
+import subprocess
 
 # 截取屏幕
 def capture_screen():
@@ -61,16 +61,23 @@ def main(mode):
             location, shape = find_image_on_screen(templates["failure"])
             if location:
                 print("找到poe_failure图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+                sys.exit()
             # location, shape = find_image_on_screen(templates["no"])
             # if location:
             #     print("找到poe_no图片，执行页面刷新操作...")
             #     pyautogui.click(x=591, y=574)
-            #     sleep(0.5)
-            #     pyautogui.hotkey('command', 'r')
-            sleep(1)
+            #     time.sleep(0.5)
+            #     script = '''
+            #     tell application "System Events"
+            #         key code 15 using command down
+            #     end tell
+            #     '''
+            #     subprocess.run(['osascript', '-e', script], check=True)
+            #     # 给系统一点时间来完成复制操作
+            #     time.sleep(0.5)
+            pyautogui.moveTo(x=591, y=574)
+            pyautogui.scroll(-80)
+            time.sleep(1)
     
     found_stop = True
     while found_stop:
@@ -82,8 +89,15 @@ def main(mode):
             if location:
                 print("找到poe_noconnect图片，执行页面刷新操作...")
                 pyautogui.click(x=591, y=574)
-                sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+                time.sleep(0.5)
+                script = '''
+                tell application "System Events"
+                    key code 15 using command down
+                end tell
+                '''
+                subprocess.run(['osascript', '-e', script], check=True)
+                # 给系统一点时间来完成复制操作
+                time.sleep(0.5)
         else:
             print("Stop图片没有了...")
             found_stop = False
@@ -103,9 +117,16 @@ def main(mode):
                 if location:
                     print("找到poe_noconnect图片，执行页面刷新操作...")
                     pyautogui.click(x=591, y=574)
-                    sleep(0.5)
-                    pyautogui.hotkey('command', 'r')
-                sleep(1)
+                    time.sleep(0.5)
+                    script = '''
+                    tell application "System Events"
+                        key code 15 using command down
+                    end tell
+                    '''
+                    subprocess.run(['osascript', '-e', script], check=True)
+                    # 给系统一点时间来完成复制操作
+                    time.sleep(0.5)
+                time.sleep(1)
 
         if time.time() > timeout_thumb:
             print("在20秒内未找到图片，退出程序。")
@@ -161,11 +182,18 @@ def main(mode):
                 if location:
                     print("找到poe_noconnect图片，执行页面刷新操作...")
                     pyautogui.click(x=591, y=574)
-                    sleep(0.5)
-                    pyautogui.hotkey('command', 'r')
-                sleep(0.5)
+                    time.sleep(0.5)
+                    script = '''
+                    tell application "System Events"
+                        key code 15 using command down
+                    end tell
+                    '''
+                    subprocess.run(['osascript', '-e', script], check=True)
+                    # 给系统一点时间来完成复制操作
+                    time.sleep(0.5)
+                time.sleep(0.5)
 
-    sleep(0.5)
+    time.sleep(0.5)
     found_copy = False
     timeout_copy = time.time() + 5
     while not found_copy and time.time() < timeout_copy:
@@ -181,10 +209,10 @@ def main(mode):
             print(f"找到图片位置: {location}")
         else:
             print("未找到图片，继续监控...")
-            sleep(1)
+            time.sleep(1)
     
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
-    sleep(1)
+    time.sleep(1)
     found_success_image = False
     timeout_success = time.time() + 10
     while not found_success_image and time.time() < timeout_success:
@@ -193,7 +221,7 @@ def main(mode):
             print("找到poe_copy_success图片，继续执行程序...")
             found_success_image = True
         else:
-            sleep(1)  # 每次检测间隔1秒
+            time.sleep(1)  # 每次检测间隔1秒
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process files based on the given mode.')

@@ -61,13 +61,27 @@ def main():
                 print("找到poe_failure图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+                script = '''
+                tell application "System Events"
+                    key code 15 using command down
+                end tell
+                '''
+                subprocess.run(['osascript', '-e', script], check=True)
+                # 给系统一点时间来完成复制操作
+                sleep(0.5)
             location, shape = find_image_on_screen(templates["no"])
             if location:
                 print("找到poe_no图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+                script = '''
+                tell application "System Events"
+                    key code 15 using command down
+                end tell
+                '''
+                subprocess.run(['osascript', '-e', script], check=True)
+                # 给系统一点时间来完成复制操作
+                sleep(0.5)
             sleep(1)
 
     found_stop = True
@@ -82,7 +96,14 @@ def main():
                 print("找到poe_stillwaiting图片，执行页面刷新操作...")
                 pyautogui.click(x=617, y=574)
                 sleep(0.5)
-                pyautogui.hotkey('command', 'r')
+                script = '''
+                tell application "System Events"
+                    key code 15 using command down
+                end tell
+                '''
+                subprocess.run(['osascript', '-e', script], check=True)
+                # 给系统一点时间来完成复制操作
+                sleep(0.5)
             sleep(1)  # 简短暂停再次监控
         else:
             print("Stop图片没有了...")

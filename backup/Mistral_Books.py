@@ -3,6 +3,7 @@ import cv2
 import time
 import pyperclip
 import pyautogui
+import subprocess
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
@@ -59,7 +60,14 @@ def main():
         print("在25秒内仍未找到图片，刷新下页面。")
         pyautogui.click(x=754, y=800)
         sleep(0.5)
-        pyautogui.hotkey('command', 'r')
+        script = '''
+        tell application "System Events"
+            key code 15 using command down
+        end tell
+        '''
+        subprocess.run(['osascript', '-e', script], check=True)
+        # 给系统一点时间来完成复制操作
+        sleep(0.5)
 
     found2 = False
     timeout_stop2 = time.time() + 5

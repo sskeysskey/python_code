@@ -19,7 +19,7 @@ def clean_and_format_text(txt_path):
 
         # 应用替换规则
         cleaned_content = re.sub(
-            r'(wsj|bloomberg|ft|economist|hbr)\s*\n*<document>(.*?)</document>.*?(?=\n|$)',
+            r'(wsj|bloomberg|ft|economist|hbr|technologyreview)\s*\n*<document>(.*?)</document>.*?(?=\n|$)',
             replace_with_link,
             content
         )

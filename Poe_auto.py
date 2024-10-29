@@ -55,6 +55,7 @@ def main(mode):
         location, shape = find_image_on_screen(templates["stop"])
         if location:
             print(f"找到图片位置: {location}")
+            pyautogui.moveTo(x=591, y=574)
             found = True
         else:
             print("未找到图片，继续监控...")

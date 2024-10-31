@@ -119,7 +119,7 @@ def process_titles(titles_elements, existing_links, formatted_datetime):
     return new_rows
 
 def is_valid_title(title_text):
-    invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage','Listen (']
+    invalid_phrases = ['Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage','Listen (','Podcast:']
     if any(phrase in title_text for phrase in invalid_phrases):
         return False
 

@@ -15,8 +15,8 @@ searchFolders = [
     "/Users/yanzhang/Documents/News/backup",
     "/Users/yanzhang/Documents/sskeysskey.github.io",
     # "/Users/yanzhang/Documents/LuxuryBox",
-    # "/Users/yanzhang/Downloads/backup/TXT",
-    # "/Users/yanzhang/Documents/Books",
+    "/Users/yanzhang/Downloads/backup/TXT",
+    "/Users/yanzhang/Documents/Books",
     # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
 ]
 

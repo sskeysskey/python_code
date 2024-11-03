@@ -100,6 +100,7 @@ def txt_to_epub_with_formatting(txt_path, epub_path):
 
 def find_all_news_files(directory):
     pattern = os.path.join(directory, "News_*.txt")
+    # pattern = os.path.join(directory, "Play*.txt")
     return sorted(glob.glob(pattern))
 
 def get_epub_path(txt_path):
@@ -164,4 +165,5 @@ def process_all_files(directory):
 
 if __name__ == "__main__":
     news_directory = "/Users/yanzhang/Documents/News/"
+    # news_directory = "/Users/yanzhang/Documents"
     process_all_files(news_directory)

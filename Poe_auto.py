@@ -105,7 +105,7 @@ def main(mode):
 
     if mode == 'long':
         found_thumb = False
-        timeout_thumb = time.time() + 15
+        timeout_thumb = time.time() + 35
         while not found_thumb and time.time() < timeout_thumb:
             location, shape = find_image_on_screen(templates["thumb"])
             if location:

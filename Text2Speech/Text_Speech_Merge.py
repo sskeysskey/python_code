@@ -101,8 +101,8 @@ if __name__ == "__main__":
             except OSError as e:
                 print(f"删除临时文件失败: {e}")
             
-            # 移动 book_path 文件到 Read 目录
-            read_dir = "/Users/yanzhang/Documents/Books/Read/"
+            # 移动 book_path 文件到 mp3 目录
+            read_dir = "/Users/yanzhang/Documents/Books/mp3/"
             if os.path.exists(book_path):
                 try:
                     shutil.move(book_path, read_dir)

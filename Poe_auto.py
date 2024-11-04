@@ -134,7 +134,7 @@ def main(mode):
             sys.exit()
         
         found_compare = False
-        timeout_compare = time.time() + 10
+        timeout_compare = time.time() + 25
         while not found_compare and time.time() < timeout_compare:
             location, shape = find_image_on_screen(templates["compare"])
             if location:
@@ -161,7 +161,7 @@ def main(mode):
 
     elif mode == 'short':
         found_thumb = False
-        timeout_thumb = time.time() + 15
+        timeout_thumb = time.time() + 25
         while not found_thumb and time.time() < timeout_thumb:
             location, shape = find_image_on_screen(templates["thumb"])
             if location:
@@ -196,7 +196,7 @@ def main(mode):
 
     time.sleep(0.5)
     found_copy = False
-    timeout_copy = time.time() + 5
+    timeout_copy = time.time() + 25
     while not found_copy and time.time() < timeout_copy:
         location, shape = find_image_on_screen(templates["copy"])
         if location:
@@ -215,7 +215,7 @@ def main(mode):
     # 设置寻找poe_copy_success.png图片的超时时间为15秒
     time.sleep(1)
     found_success_image = False
-    timeout_success = time.time() + 10
+    timeout_success = time.time() + 25
     while not found_success_image and time.time() < timeout_success:
         location, shape = find_image_on_screen(templates["success"])
         if location:

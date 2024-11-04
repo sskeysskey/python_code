@@ -98,6 +98,8 @@ def main():
             # 鼠标点击中心坐标
             pyautogui.click(modify_x, modify_y)
             found_copy = True
+            sleep(0.5)
+            pyautogui.moveTo(x=569, y=474)
         else:
             print("没找到图片，继续执行...")
             pyautogui.scroll(-80)

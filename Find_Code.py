@@ -69,7 +69,6 @@ class MainWindow(QMainWindow):
 
         self.search_button.clicked.connect(self.start_search)
         self.input_field.returnPressed.connect(self.start_search)
-        self.result_area.anchorClicked.connect(self.open_file)
 
         # 添加 ESC 键关闭窗口的功能
         self.shortcut_close = QKeySequence("Esc")
@@ -101,36 +100,71 @@ class MainWindow(QMainWindow):
             if files:
                 html_content += f"<h2 style='color: yellow; font-size: 18px;'>{directory}</h2>"
                 for file in files:
-                    file_path = os.path.join(directory, file)
-                    html_content += f"<p><a href='{file_path}' style='color: orange; text-decoration: underline; font-size: 18px;'>{file}</a></p>"
+                    # 确保使用绝对路径
+                    file_path = os.path.abspath(os.path.join(directory, file))
+                    # 确保路径格式正确
+                    file_path = file_path.replace('\\', '/')
+                    # 对路径进行编码
+                    from urllib.parse import quote
+                    encoded_path = quote(file_path)
+                    file_url = f"file://{encoded_path}"
+                    display_name = os.path.basename(file)
+                    html_content += f"<p><a href='{file_url}' style='color: orange; text-decoration: underline; font-size: 18px;'>{display_name}</a></p>"
 
         self.result_area.setHtml(html_content)
-
-        # 滚动到顶部
         self.result_area.verticalScrollBar().setValue(0)
 
     def open_file(self, url):
-        if url.scheme() == 'symbol':
-            # 提取 symbol
-            symbol = url.toString().replace('symbol://', '').strip()
-            if symbol:
-                # 将 symbol 复制到剪贴板
-                pyperclip.copy(symbol)
-                # 获取 stock_chart.py 的绝对路径
-                stock_chart_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '/Users/yanzhang/Documents/Financial_System/Query/Stock_Chart.py')
-                # 调用 stock_chart.py，传递 'paste' 参数
-                subprocess.Popen([sys.executable, stock_chart_path, 'paste'])
-        else:
+        try:
+            # 获取文件路径并处理可能的编码问题
             file_path = url.toLocalFile()
             if not file_path:
-                file_path = url.toString()
-            try:
-                if sys.platform == "win32":
-                    os.startfile(file_path)
-                else:
-                    subprocess.call(("open", file_path))
-            except Exception as e:
-                print(f"无法打开文件 {file_path}: {e}")
+                file_path = url.toString().replace('file://', '')
+                
+            # URL解码处理
+            from urllib.parse import unquote
+            file_path = unquote(file_path).strip()
+            
+            # 确保路径是绝对路径
+            abs_path = os.path.abspath(os.path.expanduser(file_path))
+            
+            print(f"调试信息:")
+            print(f"原始URL: {url.toString()}")
+            print(f"处理后路径: {abs_path}")
+            print(f"文件是否存在: {os.path.exists(abs_path)}")
+            
+            if not os.path.exists(abs_path):
+                raise Exception(f"文件不存在: {abs_path}")
+                
+            # 阻止事件进一步传播
+            url.setUrl("")
+            
+            if abs_path.endswith('.workflow'):
+                print("检测到workflow文件，尝试打开...")
+                subprocess.run(['open', '-a', 'Automator', abs_path], 
+                            check=True,
+                            capture_output=True,
+                            text=True)
+            else:
+                # macOS 系统使用 open 命令
+                if sys.platform == 'darwin':  # macOS
+                    subprocess.run(['open', abs_path], 
+                                check=True,
+                                capture_output=True,
+                                text=True)
+                elif sys.platform == 'win32':  # Windows
+                    os.startfile(abs_path)
+                else:  # Linux 和其他系统
+                    subprocess.run(['xdg-open', abs_path], 
+                                check=True,
+                                capture_output=True,
+                                text=True)
+                        
+        except Exception as e:
+            error_msg = f"无法打开文件\n路径: {abs_path}\n错误: {str(e)}"
+            print(error_msg)
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "错误", error_msg)
 
 # 保持原有的搜索相关函数不变
 def search_files(directories, keywords):

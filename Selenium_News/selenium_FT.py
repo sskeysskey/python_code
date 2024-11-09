@@ -83,6 +83,7 @@ try:
             if ('podcasts' not in title_text and 
                 "film" not in title_text and 
                 title_text != "opinion content." and
+                title_text != "FT Series." and
                 title_text != "Review." and
                 title_text != "HTSI."):
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):

@@ -34,8 +34,7 @@ class SearchWorker(QThread):
         self.keywords = keywords
 
     def run(self):
-        keywords_processed = process_keywords(self.keywords)
-        results = search_files(self.directories, keywords_processed)
+        results = search_files(self.directories, self.keywords)
         self.finished.emit(results)
 
 class MainWindow(QMainWindow):
@@ -167,103 +166,55 @@ class MainWindow(QMainWindow):
             from PyQt5.QtWidgets import QMessageBox
             QMessageBox.warning(self, "错误", error_msg)
 
-def process_keywords(keywords):
-    """
-    智能关键词处理函数:
-    1. 如果有引号，提取引号中的内容作为完整短语
-    2. 如果第一个字符是特殊字符(如=)，将剩余部分按空格分割
-    3. 否则按空格分割所有内容
-    """
-    keywords = keywords.strip()
-    
-    # 处理空输入
-    if not keywords:
-        return []
-        
-    # 处理带引号的情况
-    if '"' in keywords:
-        phrases = []
-        # 提取所有引号中的内容
-        parts = keywords.split('"')
-        # 处理引号外的内容
-        for i in range(0, len(parts), 2):
-            if parts[i].strip():
-                phrases.extend([k.lower() for k in parts[i].strip().split()])
-        # 处理引号内的内容
-        for i in range(1, len(parts), 2):
-            if parts[i].strip():
-                phrases.append(parts[i].strip().lower())
-        return phrases if phrases else []
-
-    # # 特殊字符列表
-    # special_chars = '=<>+-*/()[]{}!@#$%^&'
-    
-    # # 如果以特殊字符开头
-    # if keywords and keywords[0] in special_chars:
-    #     special_char = keywords[0]
-    #     remaining = keywords[1:].strip()
-    #     # 将特殊字符后的内容按空格分割
-    #     return [special_char] + [k.lower() for k in remaining.split() if k.strip()]
-    
-    # 默认按空格分割
-    return [k.lower() for k in keywords.split() if k.strip()]
-
 # 保持原有的搜索相关函数不变
 def search_files(directories, keywords):
-    if not keywords:  # 添加空关键词检查
-        return {directory: [] for directory in directories}
-        
     matched_files = {}
-    
+    keywords_lower = [keyword.strip().lower() for keyword in keywords.split()]
+
     for directory in directories:
         matched_files[directory] = []
         for root, dirs, files in os.walk(directory):
             for dir_name in dirs:
                 if dir_name.endswith('.workflow'):
-                    handle_workflow_dir(root, dir_name, directory, keywords, matched_files)
+                    handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files)
             for name in files:
-                handle_file(root, name, directory, keywords, matched_files)
+                handle_file(root, name, directory, keywords_lower, matched_files)
     return matched_files
 
-def handle_workflow_dir(root, dir_name, directory, keywords, matched_files):  # 改为 keywords
+def handle_workflow_dir(root, dir_name, directory, keywords_lower, matched_files):
     workflow_path = os.path.join(root, dir_name)
-    if all(keyword in dir_name.lower() for keyword in keywords):
+    if all(keyword_lower in dir_name.lower() for keyword_lower in keywords_lower):
         matched_files[directory].append(os.path.relpath(workflow_path, directory))
         return
     try:
         wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
-        with open(wflow_path, 'r', encoding='utf-8') as file:
+        with open(wflow_path, 'r') as file:
             content = file.read().lower()
-        if all(keyword in content for keyword in keywords):
+        if all(keyword_lower in content for keyword_lower in keywords_lower):
             matched_files[directory].append(os.path.relpath(workflow_path, directory))
     except Exception as e:
         print(f"Error reading {wflow_path}: {e}")
 
-def handle_file(root, name, directory, keywords, matched_files):  # 改为 keywords
+def handle_file(root, name, directory, keywords_lower, matched_files):
     item_path = os.path.join(root, name)
-    
-    # 检查文件名
-    name_lower = name.lower()
-    if all(keyword in name_lower for keyword in keywords):
+    if all(keyword_lower in name.lower() for keyword_lower in keywords_lower):
         matched_files[directory].append(os.path.relpath(item_path, directory))
         return
-        
-    # 检查文件内容
-    if item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md')):
-        try:
-            with open(item_path, 'r', encoding='utf-8') as file:
-                content = file.read().lower()
-            if all(keyword in content for keyword in keywords):
-                matched_files[directory].append(os.path.relpath(item_path, directory))
-        except Exception as e:
-            print(f"Error reading {item_path}: {e}")
-    elif item_path.endswith('.scpt'):
+    if item_path.endswith('.scpt'):
         try:
             content = subprocess.check_output(['osadecompile', item_path], text=True).lower()
-            if all(keyword in content for keyword in keywords):
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
                 matched_files[directory].append(os.path.relpath(item_path, directory))
         except Exception as e:
             print(f"Error decompiling {item_path}: {e}")
+    elif item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md')):
+        try:
+            with open(item_path, 'r') as file:
+                content = file.read().lower()
+            if all(keyword_lower in content for keyword_lower in keywords_lower):
+                matched_files[directory].append(os.path.relpath(item_path, directory))
+        except Exception as e:
+            print(f"Error reading {item_path}: {e}")
 
 def read_file_content(path):
     if path.endswith('.scpt'):

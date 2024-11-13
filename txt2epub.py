@@ -163,7 +163,52 @@ def process_all_files(directory):
     print(f"跳过处理: {skipped} 个文件")
     print(f"转换失败: {failed} 个文件")
 
+def move_cnh_file(source_dir):
+    """
+    移动第一个找到的TodayCNH_文件到backup目录
+    
+    Args:
+        source_dir (str): 源目录路径
+        
+    Returns:
+        bool: 移动是否成功
+    """
+    try:
+        # 构建源文件搜索模式
+        cnh_pattern = os.path.join(source_dir, "TodayCNH_*.txt")
+        cnh_files = glob.glob(cnh_pattern)
+        
+        if not cnh_files:
+            print("没有找到TodayCNH_开头的文件")
+            return False
+            
+        # 获取第一个匹配的文件
+        source_file = cnh_files[0]
+        
+        # 构建目标目录路径
+        backup_dir = os.path.join(source_dir, "backup", "backup")
+        
+        # 确保目标目录存在
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # 构建目标文件路径
+        target_file = os.path.join(backup_dir, os.path.basename(source_file))
+        
+        # 移动文件
+        os.rename(source_file, target_file)
+        print(f"成功移动文件: {os.path.basename(source_file)} -> {backup_dir}")
+        return True
+        
+    except Exception as e:
+        print(f"移动文件时出错: {str(e)}")
+        return False
+
 if __name__ == "__main__":
     news_directory = "/Users/yanzhang/Documents/News/"
     # news_directory = "/Users/yanzhang/Documents"
+    
+    # 处理epub转换
     process_all_files(news_directory)
+    
+    # 移动TodayCNH_文件
+    move_cnh_file(news_directory)

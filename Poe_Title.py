@@ -7,6 +7,44 @@ import pyperclip
 sys.path.append('/Users/yanzhang/Documents/python_code/Modules')
 from Rename_segment import rename_first_segment_file
 
+def process_content_with_empty_lines(text):
+    """
+    处理含有多个空行的文本内容
+    - 如果有超过5个空行，进行特殊处理
+    - 合并没有空行分隔的句子
+    - 保持有空行分隔的句子之间只有一个换行符
+    """
+    # 将文本分割成行
+    lines = text.splitlines()
+    
+    # 计算空行数量
+    empty_line_count = sum(1 for line in lines if not line.strip())
+    
+    # 如果空行少于5个，直接返回原始文本
+    if empty_line_count <= 5:
+        return text
+    
+    # 处理多空行情况
+    result = []
+    current_segment = []
+    
+    for line in lines:
+        if line.strip():  # 非空行
+            current_segment.append(line)
+        else:  # 空行
+            if current_segment:  # 如果当前段落有内容
+                # 将当前段落合并为一行
+                result.append(' '.join(current_segment))
+                current_segment = []
+            if result and not result[-1] == '':  # 确保只添加一个空行
+                result.append('')
+    
+    # 处理最后一个段落
+    if current_segment:
+        result.append(' '.join(current_segment))
+    
+    return '\n'.join(result)
+
 def count_non_empty_lines(content):
     return sum(1 for line in content.splitlines() if line.strip())
 
@@ -25,7 +63,10 @@ def NewsTitle_File(clipboard_content, file_path):
     """处理剪贴板内容并写入文件."""
     print("执行函数 NewsTitle_File")
     
-    # 移除剪贴板内容中的空行
+    # 先处理多空行情况
+    clipboard_content = process_content_with_empty_lines(clipboard_content)
+    
+    # 再移除所有空行
     clipboard_content = remove_empty_lines(clipboard_content)
     
     # 如果文件为空，直接写入内容并添加换行符。如果文件不为空且最后一个字符不是换行符，添加一个换行符后再写入新内容，否则直接写入新内容。

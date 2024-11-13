@@ -1,5 +1,12 @@
-# 各种前置导入
+# 从剪贴板读取内容
+clipboard_content = pyperclip.paste()
+# 处理内容
+clipboard_content1 = process_content_with_empty_lines(clipboard_content)
+# 将处理后的内容写回剪贴板
+pyperclip.copy(clipboard_content1)
 
+#————————————————————————————————————————————————————————————————————————————————————————
+# 各种前置导入
 import csv
 import datetime
 from time import sleep

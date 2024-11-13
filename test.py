@@ -1,78 +1,46 @@
-import os
-from pathlib import Path
-from typing import Set, Dict
-from collections import defaultdict
+import pyperclip
 
-def compare_directories(dir1: str, dir2: str) -> Dict[str, Set[str]]:
+def process_content_with_empty_lines(text):
     """
-    比较两个目录的文件差异
+    处理含有多个空行的文本内容
+    - 如果有超过5个空行，进行特殊处理
+    - 合并没有空行分隔的句子
+    - 保持有空行分隔的句子之间只有一个换行符
+    """
+    # 将文本分割成行
+    lines = text.splitlines()
     
-    Args:
-        dir1: 第一个目录的路径
-        dir2: 第二个目录的路径
-        
-    Returns:
-        包含差异信息的字典，键为差异类型，值为文件集合
-    """
-    try:
-        # 获取两个目录中的所有文件（使用 Path 对象使代码更现代化）
-        files1 = {f.name for f in Path(dir1).rglob('*') if f.is_file()}
-        files2 = {f.name for f in Path(dir2).rglob('*') if f.is_file()}
-        
-        # 计算差异
-        differences = {
-            'only_in_dir1': files1 - files2,
-            'only_in_dir2': files2 - files1,
-            'common': files1 & files2
-        }
-        
-        return differences
-        
-    except Exception as e:
-        print(f"发生错误: {str(e)}")
-        return {}
+    # 计算空行数量
+    empty_line_count = sum(1 for line in lines if not line.strip())
+    
+    # 如果空行少于5个，直接返回原始文本
+    if empty_line_count <= 5:
+        return text
+    
+    # 处理多空行情况
+    result = []
+    current_segment = []
+    
+    for line in lines:
+        if line.strip():  # 非空行
+            current_segment.append(line)
+        else:  # 空行
+            if current_segment:  # 如果当前段落有内容
+                # 将当前段落合并为一行
+                result.append(' '.join(current_segment))
+                current_segment = []
+            if result and not result[-1] == '':  # 确保只添加一个空行
+                result.append('')
+    
+    # 处理最后一个段落
+    if current_segment:
+        result.append(' '.join(current_segment))
+    
+    return '\n'.join(result)
 
-def print_comparison_results(results: Dict[str, Set[str]], dir1: str, dir2: str):
-    """
-    打印比较结果
-    
-    Args:
-        results: 比较结果字典
-        dir1: 第一个目录路径
-        dir2: 第二个目录路径
-    """
-    if not results:
-        print("比较过程出现错误")
-        return
-        
-    print(f"\n目录比较结果:")
-    print(f"目录1: {dir1}")
-    print(f"目录2: {dir2}")
-    print("-" * 50)
-    
-    print(f"\n仅在目录1中存在的文件 ({len(results['only_in_dir1'])}个):")
-    for file in sorted(results['only_in_dir1']):
-        print(f"  - {file}")
-        
-    print(f"\n仅在目录2中存在的文件 ({len(results['only_in_dir2'])}个):")
-    for file in sorted(results['only_in_dir2']):
-        print(f"  - {file}")
-        
-    print(f"\n两个目录共有的文件 ({len(results['common'])}个):")
-    for file in sorted(results['common']):
-        print(f"  - {file}")
-
-def main():
-    # 示例使用
-    dir1 = '/Users/yanzhang/Downloads/backup/TXT/Done/'
-    dir2 = '/Users/yanzhang/Documents/Books/mp3/'
-    
-    if not os.path.exists(dir1) or not os.path.exists(dir2):
-        print("错误：一个或两个目录路径不存在")
-        return
-        
-    results = compare_directories(dir1, dir2)
-    print_comparison_results(results, dir1, dir2)
-
-if __name__ == "__main__":
-    main()
+# 从剪贴板读取内容
+clipboard_content = pyperclip.paste()
+# 处理内容
+clipboard_content1 = process_content_with_empty_lines(clipboard_content)
+# 将处理后的内容写回剪贴板
+pyperclip.copy(clipboard_content1)

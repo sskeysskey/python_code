@@ -82,6 +82,7 @@ try:
 
             if ('podcasts' not in title_text and 
                 "film" not in title_text and 
+                "FT News Briefing." not in title_text and 
                 title_text != "opinion content." and
                 title_text != "FT Series." and
                 title_text != "Review." and

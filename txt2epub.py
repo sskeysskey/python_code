@@ -175,7 +175,7 @@ def move_cnh_file(source_dir):
     """
     try:
         # 构建源文件搜索模式
-        cnh_pattern = os.path.join(source_dir, "TodayCNH_*.txt")
+        cnh_pattern = os.path.join(source_dir, "TodayCNH_*.html")
         cnh_files = glob.glob(cnh_pattern)
         
         if not cnh_files:

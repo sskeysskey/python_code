@@ -61,11 +61,6 @@ def find_min_segment_file(directory):
 
 def NewsTitle_File(clipboard_content, file_path):
     """处理剪贴板内容并写入文件."""
-    print("执行函数 NewsTitle_File")
-    
-    # 先处理多空行情况
-    clipboard_content = process_content_with_empty_lines(clipboard_content)
-    
     # 再移除所有空行
     clipboard_content = remove_empty_lines(clipboard_content)
     
@@ -92,6 +87,8 @@ def main():
     try:
         # 获取剪贴板内容并计算非空行数
         clipboard_content = pyperclip.paste()
+        # 先处理多空行情况
+        clipboard_content = process_content_with_empty_lines(clipboard_content)
         clipboard_lines = count_non_empty_lines(clipboard_content)
         
         if clipboard_lines == 0:

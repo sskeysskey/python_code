@@ -23,11 +23,29 @@ SEGMENT_TO_HTML_FILE = {
     "wsj": "wsj.html"
 }
 
+# def get_clipboard_content():
+#     content = pyperclip.paste()
+#     if content:
+#         return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
+#     return ""
+
 def get_clipboard_content():
     content = pyperclip.paste()
-    if content:
-        return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
-    return ""
+    if not content:
+        return ""
+    
+    # 分割成行并去除空白行
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    
+    # 如果行数小于3，直接返回原内容
+    if len(lines) < 3:
+        return "\n".join(lines)
+    
+    # 移除第一行和最后一行
+    filtered_lines = lines[1:-1]
+    
+    # 重新组合文本
+    return "\n".join(filtered_lines)
 
 def read_file(file_path):
     with open(file_path, 'r', encoding='utf-8-sig') as file:

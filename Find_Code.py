@@ -170,8 +170,8 @@ class MainWindow(QMainWindow):
 def process_keywords(keywords):
     """
     智能关键词处理函数:
-    1. 如果有引号，提取引号中的内容作为完整短语
-    2. 如果第一个字符是特殊字符(如=)，将剩余部分按空格分割
+    1. 如果有成对引号，提取引号中的内容作为完整短语
+    2. 如果是不成对的引号，保留原始输入（包含引号）
     3. 否则按空格分割所有内容
     """
     keywords = keywords.strip()
@@ -179,31 +179,55 @@ def process_keywords(keywords):
     # 处理空输入
     if not keywords:
         return []
-        
-    # 处理带引号的情况
-    if '"' in keywords:
-        phrases = []
-        # 提取所有引号中的内容
-        parts = keywords.split('"')
-        # 处理引号外的内容
-        for i in range(0, len(parts), 2):
-            if parts[i].strip():
-                phrases.extend([k.lower() for k in parts[i].strip().split()])
-        # 处理引号内的内容
-        for i in range(1, len(parts), 2):
-            if parts[i].strip():
-                phrases.append(parts[i].strip().lower())
-        return phrases if phrases else []
 
-    # # 特殊字符列表
-    # special_chars = '=<>+-*/()[]{}!@#$%^&'
+    # 计算引号数量    
+    quote_count = keywords.count('"')
     
-    # # 如果以特殊字符开头
-    # if keywords and keywords[0] in special_chars:
-    #     special_char = keywords[0]
-    #     remaining = keywords[1:].strip()
-    #     # 将特殊字符后的内容按空格分割
-    #     return [special_char] + [k.lower() for k in remaining.split() if k.strip()]
+    # 如果引号不成对，将整个字符串（包含引号）作为一个关键词
+    if quote_count % 2 != 0:
+        return [keywords.lower()]
+        
+    # 如果有成对引号
+    if quote_count > 0:
+        phrases = []
+        in_quotes = False
+        current_phrase = []
+        
+        # 逐字符处理
+        for char in keywords:
+            if char == '"':
+                if in_quotes:
+                    # 引号结束，保存当前短语
+                    if current_phrase:
+                        phrases.append(''.join(current_phrase).strip().lower())
+                    current_phrase = []
+                in_quotes = not in_quotes
+            else:
+                if in_quotes:
+                    current_phrase.append(char)
+                else:
+                    if char.isspace():
+                        if current_phrase:
+                            phrases.append(''.join(current_phrase).strip().lower())
+                            current_phrase = []
+                    else:
+                        current_phrase.append(char)
+        
+        # 处理最后一个短语
+        if current_phrase:
+            phrases.append(''.join(current_phrase).strip().lower())
+            
+        return [phrase for phrase in phrases if phrase]
+
+        # # 特殊字符列表
+        # special_chars = '=<>+-*/()[]{}!@#$%^&'
+        
+        # # 如果以特殊字符开头
+        # if keywords and keywords[0] in special_chars:
+        #     special_char = keywords[0]
+        #     remaining = keywords[1:].strip()
+        #     # 将特殊字符后的内容按空格分割
+        #     return [special_char] + [k.lower() for k in remaining.split() if k.strip()]
     
     # 默认按空格分割
     return [k.lower() for k in keywords.split() if k.strip()]

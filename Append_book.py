@@ -30,7 +30,24 @@ def find_image_on_screen(template, threshold=0.9):
     else:
         return None, None
 
-# 主函数
+def get_clipboard_content():
+    content = pyperclip.paste()
+    if not content:
+        return ""
+    
+    # 分割成行并去除空白行
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    
+    # 如果行数小于3，直接返回原内容
+    if len(lines) < 3:
+        return "\n".join(lines)
+    
+    # 移除第一行和最后一行
+    filtered_lines = lines[:-1]
+    
+    # 重新组合文本
+    return "\n".join(filtered_lines)
+
 def main():
     # 定义模板路径字典
     template_paths = {
@@ -130,7 +147,7 @@ def main():
             break  # 找到第一个txt文件后停止循环
 
     # 读取剪贴板内容
-    clipboard_content = pyperclip.paste()
+    clipboard_content = get_clipboard_content()
 
     # 检查clipboard_content是否为None或者是否是一个字符串
     if clipboard_content:

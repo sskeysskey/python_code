@@ -8,13 +8,14 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_name, clickValue=False, Opposite=False, x_offset=None, y_offset=None):
+    def __init__(self, template_name, clickValue=False, Opposite=False, x_offset=None, y_offset=None, nth_match=1):
         self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
         self.template = self.load_template()
         self.clickValue = clickValue
         self.Opposite = Opposite
         self.x_offset = x_offset
         self.y_offset = y_offset
+        self.nth_match = max(1, nth_match)  # 确保至少为1
 
     def load_template(self):
         # 在初始化时加载模板图片
@@ -30,16 +31,41 @@ class ScreenDetector:
         screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         return screenshot
 
+    # def find_image_on_screen(self, threshold=0.9):
+    #     screen = self.capture_screen()
+    #     result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
+    #     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    #     # 释放截图和模板图像以节省内存
+    #     del screen
+    #     if max_val >= threshold:
+    #         return max_loc, self.template.shape
+    #     else:
+    #         return None, None
+
     def find_image_on_screen(self, threshold=0.9):
         screen = self.capture_screen()
         result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-        # 释放截图和模板图像以节省内存
+        
+        # 找到所有匹配位置
+        locations = np.where(result >= threshold)
+        locations = list(zip(*locations[::-1]))  # 转换坐标格式
+        
+        # 按匹配度排序
+        matches = []
+        for loc in locations:
+            match_value = result[loc[1]][loc[0]]
+            matches.append((loc, match_value))
+        
+        matches.sort(key=lambda x: x[1], reverse=True)  # 按匹配度降序排序
+        
+        # 释放内存
         del screen
-        if max_val >= threshold:
-            return max_loc, self.template.shape
-        else:
-            return None, None
+        del result
+        
+        # 如果找到足够的匹配且指定的第n个存在
+        if len(matches) >= self.nth_match:
+            return matches[self.nth_match - 1][0], self.template.shape
+        return None, None
 
     def run1(self):
         found = False
@@ -82,9 +108,9 @@ class ScreenDetector:
                 found = False
 
 if __name__ == '__main__':
-    # 检查参数数量
+    # 检查基本参数数量
     if len(sys.argv) < 4:
-        print("Usage: python a.py <image_name> <clickValue> <Opposite> [x_offset] [y_offset]")
+        print("Usage: python a.py <image_name> <clickValue> <Opposite> [x_offset] [y_offset] [nth_match]")
         sys.exit(1)
 
     # 基本参数
@@ -92,20 +118,42 @@ if __name__ == '__main__':
     clickValue = sys.argv[2].lower() == 'true'
     Opposite = sys.argv[3].lower() == 'true'
 
-    # 判断传入的参数数量，如果有6个参数则解析x_offset和y_offset
-    if len(sys.argv) >= 6:
-        x_offset = sys.argv[4] if sys.argv[4] != "" else None
-        y_offset = sys.argv[5] if sys.argv[5] != "" else None
+    # 初始化可选参数
+    x_offset = None
+    y_offset = None
+    nth_match = 1  # 默认值为1
 
-        # 将字符串转换为整数
-        x_offset = int(x_offset) if x_offset is not None else None
-        y_offset = int(y_offset) if y_offset is not None else None
-    else:
-        # 如果没有传递x_offset和y_offset，则设置为None
-        x_offset = None
-        y_offset = None
+    remaining_args = sys.argv[4:]
+    
+    if remaining_args:
+        # 场景1: 只有一个额外参数，认为是 nth_match
+        if len(remaining_args) == 1:
+            try:
+                nth_match = int(remaining_args[0])
+            except ValueError:
+                print("Invalid nth_match value")
+                sys.exit(1)
+        
+        # 场景2: 有两个额外参数，认为是 x_offset 和 y_offset
+        elif len(remaining_args) == 2:
+            try:
+                x_offset = int(remaining_args[0]) if remaining_args[0] and remaining_args[0] != "" else None
+                y_offset = int(remaining_args[1]) if remaining_args[1] and remaining_args[1] != "" else None
+            except ValueError:
+                print("Invalid offset values")
+                sys.exit(1)
+        
+        # 场景3: 有三个额外参数，认为是 x_offset, y_offset 和 nth_match
+        elif len(remaining_args) == 3:
+            try:
+                x_offset = int(remaining_args[0]) if remaining_args[0] and remaining_args[0] != "" else None
+                y_offset = int(remaining_args[1]) if remaining_args[1] and remaining_args[1] != "" else None
+                nth_match = int(remaining_args[2]) if remaining_args[2] and remaining_args[2] != "" else 1
+            except ValueError:
+                print("Invalid parameter values")
+                sys.exit(1)
 
-    detector = ScreenDetector(image_name, clickValue, Opposite, x_offset, y_offset)
+    detector = ScreenDetector(image_name, clickValue, Opposite, x_offset, y_offset, nth_match)
 
     if Opposite:
         detector.run2()

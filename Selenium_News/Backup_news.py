@@ -13,7 +13,7 @@ target_files = [
     "nytimes.html",
     "bloomberg.html",
     "hbr.html",
-    "technologyreview.html"
+    "technologyreview.html",
 ]
 
 # 定义CSS样式

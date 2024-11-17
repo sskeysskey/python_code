@@ -42,7 +42,7 @@ def get_clipboard_content():
         return "\n".join(lines)
     
     # 移除第一行和最后一行
-    filtered_lines = lines[1:-1]
+    filtered_lines = lines[:-1]
     
     # 重新组合文本
     return "\n".join(filtered_lines)

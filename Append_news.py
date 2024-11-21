@@ -29,6 +29,24 @@ def find_image_on_screen(template, threshold=0.9):
     else:
         return None, None
 
+def get_clipboard_content():
+    content = pyperclip.paste()
+    if not content:
+        return ""
+    
+    # 分割成行并去除空白行
+    lines = [line.strip() for line in content.splitlines() if line.strip()]
+    
+    # 如果行数小于3，直接返回原内容
+    if len(lines) < 3:
+        return "\n".join(lines)
+    
+    # 移除第一行和最后一行
+    filtered_lines = lines[:-1]
+    
+    # 重新组合文本
+    return "\n".join(filtered_lines)
+
 def append_to_html(html_file_path, segment_content, modified_content):
     # 获取当前的系统时间，并格式化为字符串
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -184,7 +202,7 @@ def main():
         sys.exit()
 
     # 读取剪贴板内容
-    clipboard_content = pyperclip.paste()
+    clipboard_content = get_clipboard_content()
 
     # 检查clipboard_content是否为None或者是否是一个字符串
     if clipboard_content:

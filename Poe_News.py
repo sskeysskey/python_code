@@ -1,4 +1,6 @@
 import os
+import re
+import sys
 import html
 import pyperclip
 import subprocess
@@ -23,11 +25,33 @@ SEGMENT_TO_HTML_FILE = {
     "wsj": "wsj.html"
 }
 
-# def get_clipboard_content():
-#     content = pyperclip.paste()
-#     if content:
-#         return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
-#     return ""
+def is_english_char(char):
+    return bool(re.match(r'[a-zA-Z]', char))
+
+def check_english_ratio():
+    # 获取剪贴板内容
+    text = pyperclip.paste()
+    
+    if not text:
+        return False
+    
+    # 计算英文字符数量
+    english_chars = sum(1 for char in text if is_english_char(char))
+    
+    # 计算总字符数（排除空白字符）
+    total_chars = sum(1 for char in text if not char.isspace())
+    
+    # 计算英文字符占比
+    if total_chars == 0:
+        return False
+        
+    english_ratio = english_chars / total_chars
+    
+    # 写入结果到临时文件
+    with open('/tmp/english_ratio_result.txt', 'w') as f:
+        f.write('true' if english_ratio > 0.5 else 'false')
+    
+    return english_ratio > 0.5
 
 def get_clipboard_content():
     content = pyperclip.paste()
@@ -101,6 +125,35 @@ def close_html_skeleton(file_path):
         """)
 
 def main():
+    check_english_ratio()
+    sleep(0.5)
+    # 添加对english_ratio结果的检查和条件执行
+    try:
+        ratio_file = '/tmp/english_ratio_result.txt'
+        with open(ratio_file, 'r') as f:
+            is_english = f.read().strip().lower() == 'true'
+        
+        # 读取完成后立即删除文件
+        try:
+            os.remove(ratio_file)
+        except OSError as e:
+            print(f"Error removing {ratio_file}: {e}")
+
+        if is_english:
+            try:
+                # 获取当前脚本所在目录
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                poe_auto_path = os.path.join(current_dir, 'Poe_auto.py')
+                
+                # 执行Poe_auto.py，带参数"short"
+                subprocess.run([sys.executable, poe_auto_path, 'short'], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Error executing Poe_auto.py: {e}")
+            except Exception as e:
+                print(f"Unexpected error running Poe_auto.py: {e}")
+    except Exception as e:
+        print(f"Error reading english_ratio_result.txt: {e}")
+
     clipboard_content = get_clipboard_content()
     segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)

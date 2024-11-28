@@ -89,16 +89,7 @@ def main(mode):
             location, shape = find_image_on_screen(templates["noconnect"])
             if location:
                 print("找到poe_noconnect图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=574)
-                time.sleep(0.5)
-                script = '''
-                tell application "System Events"
-                    key code 15 using command down
-                end tell
-                '''
-                subprocess.run(['osascript', '-e', script], check=True)
-                # 给系统一点时间来完成复制操作
-                time.sleep(0.5)
+                sys.exit()
         else:
             print("Stop图片没有了...")
             found_stop = False
@@ -117,16 +108,7 @@ def main(mode):
                 location, shape = find_image_on_screen(templates["noconnect"])
                 if location:
                     print("找到poe_noconnect图片，执行页面刷新操作...")
-                    pyautogui.click(x=591, y=574)
-                    time.sleep(0.5)
-                    script = '''
-                    tell application "System Events"
-                        key code 15 using command down
-                    end tell
-                    '''
-                    subprocess.run(['osascript', '-e', script], check=True)
-                    # 给系统一点时间来完成复制操作
-                    time.sleep(0.5)
+                    sys.exit()
                 time.sleep(1)
 
         if time.time() > timeout_thumb:
@@ -182,16 +164,7 @@ def main(mode):
                 location, shape = find_image_on_screen(templates["noconnect"])
                 if location:
                     print("找到poe_noconnect图片，执行页面刷新操作...")
-                    pyautogui.click(x=591, y=574)
-                    time.sleep(0.5)
-                    script = '''
-                    tell application "System Events"
-                        key code 15 using command down
-                    end tell
-                    '''
-                    subprocess.run(['osascript', '-e', script], check=True)
-                    # 给系统一点时间来完成复制操作
-                    time.sleep(0.5)
+                    sys.exit()
                 time.sleep(0.5)
 
     time.sleep(0.5)

@@ -24,6 +24,15 @@ def process_clipboard_content():
     
     return processed_content
 
+def save_content_to_file(content, filepath):
+    """将内容保存到指定文件"""
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"文件已创建：{filepath}")
+    except IOError as e:
+        print(f"创建文件时出错：{e}")
+
 def count_words_and_create_file():
     # 处理剪贴板内容
     processed_content = process_clipboard_content()
@@ -31,17 +40,13 @@ def count_words_and_create_file():
     # 计算英文单词数量
     num_english_words = len(re.findall(r'\b[A-Za-z]+\b', processed_content))
     
-    # 判断是否超过2200个单词
+    # 判断条件并创建相应文件
     if num_english_words > 2200:
-        file_path = '/tmp/longarticle.txt'
-        try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(processed_content)
-            print(f"文件已创建：{file_path}")
-        except IOError as e:
-            print(f"创建文件时出错：{e}")
+        save_content_to_file(processed_content, '/tmp/longarticle.txt')
+    elif num_english_words < 250:
+        save_content_to_file(processed_content, '/tmp/shortarticle.txt')
     else:
-        print(f"单词数量（{num_english_words}）不超过2200，不创建文件。")
+        print(f"单词数量（{num_english_words}）在250-2200之间，不创建文件。")
 
 if __name__ == '__main__':
     count_words_and_create_file()

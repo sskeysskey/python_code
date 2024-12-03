@@ -6,18 +6,28 @@ def process_clipboard_content():
     # 获取剪贴板内容
     clipboard_content = pyperclip.paste()
     
-    # 查找只包含"Close"的行，并删除该行及其之前的所有内容
-    pattern = r'^.*\n.*?\bClose\b\s*$'
-    match = re.search(pattern, clipboard_content, re.MULTILINE | re.DOTALL)
+    # 修改匹配模式,使用更精确的模式来匹配Close及其之前的内容
+    pattern = r'(?s).*?Close\s*\n'  # (?s)让.也匹配换行符
+    match = re.search(pattern, clipboard_content, re.MULTILINE)
     
     if match:
         processed_content = clipboard_content[match.end():].strip()
     else:
         processed_content = clipboard_content
     
-    # 删除类似URL格式的字段，匹配 https://*.com、https://*.com/ 和 http://*.com 等格式
-    url_pattern = r'https?://\S+\.com(?:/\S*)?'
+    # # 删除类似URL格式的字段，匹配 https://*.com、https://*.com/ 和 http://*.com 等格式
+    # url_pattern = r'https?://\S+\.com(?:/\S*)?'
+    
+    # 删除URL
+    url_pattern = r'https?://[^\s<>"]+?(?:\.[^\s<>"]+)+(?:/[^\s<>"]*)?'
     processed_content = re.sub(url_pattern, '', processed_content)
+    
+    # 删除Copyright及其后的所有内容
+    copyright_pattern = r'Copyright ©.*$.*'
+    processed_content = re.sub(copyright_pattern, '', processed_content, flags=re.MULTILINE | re.DOTALL)
+    
+    # 清理结果(移除多余空行并确保末尾只有一个换行)
+    processed_content = re.sub(r'\n\s*\n', '\n\n', processed_content).strip() + '\n'
     
     # 将处理后的内容写回剪贴板
     pyperclip.copy(processed_content)

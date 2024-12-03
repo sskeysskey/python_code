@@ -137,25 +137,71 @@ def is_time_format(text):
         return False
 
 def write_html(file_path, new_rows, old_content):
-    with open(file_path, 'w', encoding='utf-8') as html_file:
-        html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-        for row in new_rows + old_content:
-            clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
-            html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
-        html_file.write("</table></body></html>")
+    # with open(file_path, 'w', encoding='utf-8') as html_file:
+    #     html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
+    #     for row in new_rows + old_content:
+    #         clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+    #         html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+    #     html_file.write("</table></body></html>")
+    try:
+        with open(file_path, 'w', encoding='utf-8') as html_file:
+            html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
+            for row in new_rows + old_content:
+                clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+                html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
+            html_file.write("</table></body></html>")
+            html_file.flush()
+            os.fsync(html_file.fileno())
+            
+        # 验证文件完整性    
+        with open(file_path, 'r', encoding='utf-8') as verify_file:
+            content = verify_file.read()
+            if not content.endswith("</table></body></html>"):
+                raise IOError("File writing verification failed")
+                
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+        raise
 
 def append_to_today_html(today_html_path, new_rows1):
     append_content = ''.join([f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n" for row in new_rows1])
-    if os.path.exists(today_html_path):
-        with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-            content = html_file.read()
-            insertion_point = content.rindex("</table></body></html>")
-            html_file.seek(insertion_point)
-            html_file.write(append_content + "</table></body></html>")
-    else:
-        with open(today_html_path, 'w', encoding='utf-8') as html_file:
-            html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-            html_file.write(append_content + "</table></body></html>")
+    # if os.path.exists(today_html_path):
+    #     with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+    #         content = html_file.read()
+    #         insertion_point = content.rindex("</table></body></html>")
+    #         html_file.seek(insertion_point)
+    #         html_file.write(append_content + "</table></body></html>")
+    # else:
+    #     with open(today_html_path, 'w', encoding='utf-8') as html_file:
+    #         html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
+    #         html_file.write(append_content + "</table></body></html>")
+    try:
+        if os.path.exists(today_html_path):
+            with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+                content = html_file.read()
+                insertion_point = content.rindex("</table></body></html>")
+                html_file.seek(insertion_point)
+                html_file.write(append_content + "</table></body></html>")
+                # 确保数据写入磁盘
+                html_file.flush()
+                os.fsync(html_file.fileno())
+        else:
+            with open(today_html_path, 'w', encoding='utf-8') as html_file:
+                html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
+                html_file.write(append_content + "</table></body></html>")
+                # 确保数据写入磁盘  
+                html_file.flush()
+                os.fsync(html_file.fileno())
+                
+        # 额外的安全措施:验证文件完整性
+        with open(today_html_path, 'r', encoding='utf-8') as verify_file:
+            content = verify_file.read()
+            if not content.endswith("</table></body></html>"):
+                raise IOError("File writing verification failed")
+                
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+        raise
 
 if __name__ == "__main__":
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")

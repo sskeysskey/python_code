@@ -135,30 +135,65 @@ if new_rows1:
     today_html_path = "/Users/yanzhang/Documents/News/today_wsjcn.html"
     file_exists = os.path.isfile(today_html_path)
 
-    # 准备要追加的内容
-    append_content = ""
-    for row in new_rows1:
-        clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
-        append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
+    # # 准备要追加的内容
+    # append_content = ""
+    # for row in new_rows1:
+    #     clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
+    #     append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
 
-    # 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
+    # # 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
+    # if file_exists:
+    #     with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+    #         # 移动到文件末尾的"</table></body></html>"前
+    #         html_file.seek(0, os.SEEK_END)
+    #         html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
+    #         # 追加新内容
+    #         html_file.write(append_content)
+    #         # 重新添加HTML结束标签
+    #         html_file.write("</table></body></html>")
+
+    # # 如果文件是新建的，添加新内容和HTML结束标签
+    # else:
+    #     with open(today_html_path, 'a', encoding='utf-8') as html_file:
+    #         html_file.write("<html><body><table border='1'>\n")
+    #         html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
+    #         html_file.write(append_content)
+    #         html_file.write("</table></body></html>")
+    #         html_file.flush()
+    #         os.fsync(html_file.fileno())
+    
+    # 格式化HTML内容，确保每行都有适当的换行和缩进
+    def format_html_row(row):
+        site, title, link = row
+        clickable_title = f'<a href="{link}" target="_blank">{title}</a>'
+        return f"<tr><td>{site}</td><td>{clickable_title}</td></tr>\n"
+
     if file_exists:
-        with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-            # 移动到文件末尾的"</table></body></html>"前
-            html_file.seek(0, os.SEEK_END)
-            html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
-            # 追加新内容
-            html_file.write(append_content)
-            # 重新添加HTML结束标签
-            html_file.write("</table></body></html>")
+        # 读取现有内容
+        with open(today_html_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+            # 移除结束标签
+            content = content.replace("</table></body></html>", "")
 
-    # 如果文件是新建的，添加新内容和HTML结束标签
+        # 追加新内容
+        with open(today_html_path, 'w', encoding='utf-8') as file:
+            file.write(content)
+            for row in new_rows1:
+                file.write(format_html_row(row))
+            file.write("</table>\n</body>\n</html>")
     else:
-        with open(today_html_path, 'a', encoding='utf-8') as html_file:
-            html_file.write("<html><body><table border='1'>\n")
-            html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
-            html_file.write(append_content)
-            html_file.write("</table></body></html>")
-            html_file.flush()
-            os.fsync(html_file.fileno())
+        # 创建新文件
+        with open(today_html_path, 'w', encoding='utf-8') as file:
+            file.write("<!DOCTYPE html>\n")
+            file.write("<html>\n<head>\n<meta charset='utf-8'>\n</head>\n<body>\n")
+            file.write("<table border='1'>\n")
+            file.write("<tr><th>site</th><th>Title</th></tr>\n")
+            for row in new_rows1:
+                file.write(format_html_row(row))
+            file.write("</table>\n</body>\n</html>")
+
+    # 确保文件写入完成
+    with open(today_html_path, 'r+', encoding='utf-8') as file:
+        file.flush()
+        os.fsync(file.fileno())
     time.sleep(1)  # 等待1秒

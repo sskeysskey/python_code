@@ -152,7 +152,7 @@ def main(mode):
 
                 # 调整坐标，假设你已经计算好了需要传递给AppleScript的坐标值
                 xCoord = center_x
-                yCoord = center_y - 50
+                yCoord = center_y - 100
 
                 # 使用pyautogui移动鼠标并进行右键点击
                 pyautogui.moveTo(xCoord, yCoord)

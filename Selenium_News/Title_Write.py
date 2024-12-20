@@ -161,33 +161,40 @@ except IndexError as e:
 # 定义文件路径
 wsj_file = '/Users/yanzhang/Documents/News/today_wsjcn.html'
 
-# 读取两个文件的内容
-with open(wsj_file, 'r', encoding='utf-8') as f:
-    wsj_html = f.read()
+if os.path.exists(wsj_file):
+    try:
+        # 读取两个文件的内容
+        with open(wsj_file, 'r', encoding='utf-8') as f:
+            wsj_html = f.read()
 
-with open(txt_file_path, 'r', encoding='utf-8') as f:
-    today_cnh_html = f.read()
+        with open(txt_file_path, 'r', encoding='utf-8') as f:
+            today_cnh_html = f.read()
 
-# 使用BeautifulSoup解析HTML
-soup_wsj = BeautifulSoup(wsj_html, 'html.parser')
-soup_today_cnh = BeautifulSoup(today_cnh_html, 'html.parser')
+        # 使用BeautifulSoup解析HTML
+        soup_wsj = BeautifulSoup(wsj_html, 'html.parser')
+        soup_today_cnh = BeautifulSoup(today_cnh_html, 'html.parser')
 
-# 找到两个文件中的表格
-table_wsj = soup_wsj.find('table')
-table_today_cnh = soup_today_cnh.find('table')
+        # 找到两个文件中的表格
+        table_wsj = soup_wsj.find('table')
+        table_today_cnh = soup_today_cnh.find('table')
 
-# 将wsj的表格内容加到today_cnh的表格末尾
-for row in table_wsj.find_all('tr')[1:]:  # 跳过表头
-    table_today_cnh.append(row)
+        # 将wsj的表格内容加到today_cnh的表格末尾
+        for row in table_wsj.find_all('tr')[1:]:  # 跳过表头
+            table_today_cnh.append(row)
 
-# 将合并后的内容保存到一个新文件中
-with open(txt_file_path, 'w', encoding='utf-8') as f:
-    f.write(str(soup_today_cnh))
+        # 将合并后的内容保存到一个新文件中
+        with open(txt_file_path, 'w', encoding='utf-8') as f:
+            f.write(str(soup_today_cnh))
 
-print(f"合并后的文件已保存为: {txt_file_path}")
+        print(f"合并后的文件已保存为: {txt_file_path}")
+        os.remove(wsj_file)
+    except Exception as e:
+        print(f"合并文件时发生错误: {e}")
+else:
+    print("未找到WSJ文件，继续执行其他操作。")
 
-if 'txt_file_path' in locals() and os.path.exists(txt_file_path):
-    os.remove(wsj_file)
+# 打开文件和调整大小
+if os.path.exists(txt_file_path):
     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     time.sleep(0.5)
     # 循环5次模拟按下Command + '='快捷键

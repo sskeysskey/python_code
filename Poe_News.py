@@ -126,7 +126,7 @@ def close_html_skeleton(file_path):
 
 def main():
     check_english_ratio()
-    sleep(0.5)
+    sleep(0.2)
     # 添加对english_ratio结果的检查和条件执行
     try:
         ratio_file = '/tmp/english_ratio_result.txt'

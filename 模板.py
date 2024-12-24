@@ -6,6 +6,20 @@ clipboard_content1 = process_content_with_empty_lines(clipboard_content)
 pyperclip.copy(clipboard_content1)
 
 #————————————————————————————————————————————————————————————————————————————————————————
+location, shape = find_image_on_screen(templates["no"])
+if location:
+    print("找到poe_no图片，执行页面刷新操作...")
+    pyautogui.click(x=591, y=574)
+    time.sleep(0.5)
+    script = '''
+    tell application "System Events"
+        key code 15 using command down
+    end tell
+    '''
+    subprocess.run(['osascript', '-e', script], check=True)
+    # 给系统一点时间来完成复制操作
+    time.sleep(0.5)
+#————————————————————————————————————————————————————————————————————————————————————————
 # 各种前置导入
 import csv
 import datetime

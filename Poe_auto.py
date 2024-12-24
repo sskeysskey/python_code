@@ -34,11 +34,10 @@ def main(mode):
         "stop": "/Users/yanzhang/Documents/python_code/Resource/poe_stop.png",
         "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
         "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
-        "failure": "/Users/yanzhang/Documents/python_code/Resource/poe_failure.png",
-        # "no": "/Users/yanzhang/Documents/python_code/Resource/poe_no.png",
+        # "failure": "/Users/yanzhang/Documents/python_code/Resource/poe_failure.png",
         "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/poe_copy.png",
-        "noconnect": "/Users/yanzhang/Documents/python_code/Resource/poe_noconnect.png"
+        "retry": "/Users/yanzhang/Documents/python_code/Resource/poe_retry.png"
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -59,22 +58,9 @@ def main(mode):
             found = True
         else:
             print("未找到图片，继续监控...")
-            location, shape = find_image_on_screen(templates["failure"])
-            if location:
-                print("找到poe_failure图片，执行页面刷新操作...")
-                pyautogui.click(x=591, y=574)
-                time.sleep(0.5)
-                script = '''
-                tell application "System Events"
-                    key code 15 using command down
-                end tell
-                '''
-                subprocess.run(['osascript', '-e', script], check=True)
-                # 给系统一点时间来完成复制操作
-                time.sleep(0.5)
-            # location, shape = find_image_on_screen(templates["no"])
+            # location, shape = find_image_on_screen(templates["failure"])
             # if location:
-            #     print("找到poe_no图片，执行页面刷新操作...")
+            #     print("找到poe_failure图片，执行页面刷新操作...")
             #     pyautogui.click(x=591, y=574)
             #     time.sleep(0.5)
             #     script = '''
@@ -95,9 +81,9 @@ def main(mode):
         if location:
             print("找到poe_stop图片，继续监控...")
             pyautogui.scroll(-120)
-            location, shape = find_image_on_screen(templates["noconnect"])
+            location, shape = find_image_on_screen(templates["retry"])
             if location:
-                print("找到poe_noconnect图片，执行页面刷新操作...")
+                print("找到poe_retry图片，执行页面刷新操作...")
                 pyautogui.click(x=591, y=574)
                 time.sleep(0.5)
                 script = '''
@@ -123,9 +109,9 @@ def main(mode):
             else:
                 print("未找到图片，继续监控...")
                 pyautogui.scroll(-80)
-                location, shape = find_image_on_screen(templates["noconnect"])
+                location, shape = find_image_on_screen(templates["retry"])
                 if location:
-                    print("找到poe_noconnect图片，执行页面刷新操作...")
+                    print("找到poe_retry图片，执行页面刷新操作...")
                     pyautogui.click(x=591, y=574)
                     time.sleep(0.5)
                     script = '''
@@ -188,9 +174,9 @@ def main(mode):
             else:
                 print(f"找到图片位置: {location}")
                 pyautogui.scroll(-80)
-                location, shape = find_image_on_screen(templates["noconnect"])
+                location, shape = find_image_on_screen(templates["retry"])
                 if location:
-                    print("找到poe_noconnect图片，执行页面刷新操作...")
+                    print("找到poe_retry图片，执行页面刷新操作...")
                     pyautogui.click(x=591, y=574)
                     time.sleep(0.5)
                     script = '''
@@ -221,7 +207,6 @@ def main(mode):
             print("未找到图片，继续监控...")
             time.sleep(1)
     
-    # 设置寻找poe_copy_success.png图片的超时时间为15秒
     time.sleep(1)
     found_success_image = False
     timeout_success = time.time() + 25

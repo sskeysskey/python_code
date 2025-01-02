@@ -54,14 +54,17 @@ def get_old_content(file_path, days_ago):
                 old_content.append([date_str, title, link])
     return old_content
 
-def fetch_content(driver, existing_links, formatted_datetime):
+def fetch_content(driver, existing_links, formatted_datetime, current_year):
     new_rows = []
     try:
-        css_selector = "a[href*='/2024']"
+        # 动态获取当前年份
+        css_selector = f"a[href*='/{current_year}/']"
+
+        # css_selector = "a[href*='/2025']"
+
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
-        # time.sleep(3)
-
+        
         new_rows = process_titles(titles_elements, existing_links, formatted_datetime)
     except Exception as e:
         print("抓取过程中出现错误:", e)
@@ -93,7 +96,7 @@ def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
         print("切换到US版并抓取内容时出现错误:", e)
         return []
 
-# 修改后的函数：处理标题并过滤掉包含 '/videos/2024' 的链接
+# 修改后的函数：处理标题并过滤掉包含 '/videos/2025' 的链接
 def process_titles(titles_elements, existing_links, formatted_datetime):
     new_rows = []
     for title_element in titles_elements:
@@ -104,8 +107,8 @@ def process_titles(titles_elements, existing_links, formatted_datetime):
         if title_text.startswith("Newsletter: "):
             title_text = title_text[11:]
 
-        # 新增过滤条件：跳过包含 '/videos/2024' 的链接
-        if '/videos/2024' in href:
+        # 新增过滤条件：跳过包含 '/videos/2025' 的链接
+        if '/videos/2025' in href:
             print(f"Skipped video link: {href}")  # 调试信息
             continue
 
@@ -205,6 +208,7 @@ def append_to_today_html(today_html_path, new_rows1):
 
 if __name__ == "__main__":
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
+    current_year = datetime.now().year
     chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
     timeout = 5  # 设置超时时间
     template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/Bloomberg_agree.png'
@@ -251,7 +255,7 @@ if __name__ == "__main__":
         print("Dismiss按钮未出现或未点击")
 
     # 第一次抓取（当前页面）
-    new_rows = fetch_content(driver, existing_links, current_datetime)
+    new_rows = fetch_content(driver, existing_links, current_datetime, current_year)
     
     # 更新existing_links以包含第一次抓取的结果
     existing_links.update(link for _, _, link in new_rows)

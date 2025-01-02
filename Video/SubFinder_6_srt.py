@@ -1,8 +1,8 @@
+import os
 import cv2
 import numpy as np
 import pytesseract
 from pytesseract import Output
-import os
 from imagehash import phash
 from difflib import SequenceMatcher
 import hashlib

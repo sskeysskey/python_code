@@ -54,13 +54,10 @@ def get_old_content(file_path, days_ago):
                 old_content.append([date_str, title, link])
     return old_content
 
-def fetch_content(driver, existing_links, formatted_datetime, current_year):
+def fetch_content(driver, existing_links, formatted_datetime):
     new_rows = []
     try:
-        # 动态获取当前年份
-        css_selector = f"a[href*='/{current_year}/']"
-
-        # css_selector = "a[href*='/2025']"
+        css_selector = "a[href*='/2025']"
 
         WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
@@ -208,7 +205,6 @@ def append_to_today_html(today_html_path, new_rows1):
 
 if __name__ == "__main__":
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
-    current_year = datetime.now().year
     chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
     timeout = 5  # 设置超时时间
     template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/Bloomberg_agree.png'
@@ -255,7 +251,7 @@ if __name__ == "__main__":
         print("Dismiss按钮未出现或未点击")
 
     # 第一次抓取（当前页面）
-    new_rows = fetch_content(driver, existing_links, current_datetime, current_year)
+    new_rows = fetch_content(driver, existing_links, current_datetime)
     
     # 更新existing_links以包含第一次抓取的结果
     existing_links.update(link for _, _, link in new_rows)

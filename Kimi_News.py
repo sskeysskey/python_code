@@ -53,11 +53,6 @@ def get_clipboard_content():
     if not content:  # 检查剪贴板是否为空
         return ""
     
-    # 去除开头的"Close"字样
-    content = content.strip()  # 先去除首尾空白字符
-    if content.startswith("Close"):
-        content = content[5:]  # 移除前5个字符("Close"的长度)
-    
     # 处理多行内容，去除空行和首尾空白
     return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
 

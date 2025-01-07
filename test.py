@@ -1,303 +1,75 @@
-import os
-import sys
-import pyperclip
-import subprocess
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QMainWindow, QAction
-from PyQt5.QtGui import QFont, QKeySequence
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
+import re
 
-# 保持原有的搜索目录列表
-searchFolders = [
-    "/Users/yanzhang/Documents/ScriptEditor/",
-    "/Users/yanzhang/Library/Services/",
-    "/Users/yanzhang/Documents/Financial_System",
-    "/Users/yanzhang/Documents/python_code",
-    "/Users/yanzhang/Documents/News/backup",
-    "/Users/yanzhang/Documents/sskeysskey.github.io",
-    # "/Users/yanzhang/Documents/LuxuryBox",
-    "/Users/yanzhang/Downloads/backup/TXT",
-    "/Users/yanzhang/Documents/Books",
-    # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
-]
-
-class CustomTextBrowser(QTextBrowser):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setOpenLinks(False)  # 禁止自动打开链接
-
-class SearchWorker(QThread):
-    finished = pyqtSignal(dict)
-
-    def __init__(self, directories, keywords):
-        super().__init__()
-        self.directories = directories
-        self.keywords = keywords
-
-    def run(self):
-        keywords_processed = process_keywords(self.keywords)
-        results = search_files(self.directories, keywords_processed)
-        self.finished.emit(results)
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("代码和文件搜索")
-        self.setGeometry(350, 200, 800, 600)
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.layout = QVBoxLayout(self.central_widget)
-
-        self.input_layout = QHBoxLayout()
-        self.input_field = QLineEdit()
-        self.input_field.setFixedHeight(30)
-        self.input_field.setFont(QFont("Arial", 18))
-        self.search_button = QPushButton("搜索")
-        self.search_button.setFixedSize(60, 30)
-        self.input_layout.addWidget(self.input_field, 7)
-        self.input_layout.addWidget(self.search_button, 1)
-        self.layout.addLayout(self.input_layout)
-
-        self.loading_label = QLabel("正在搜索...", self)
-        self.loading_label.setAlignment(Qt.AlignCenter)
-        self.loading_label.setFont(QFont("Arial", 14))
-        self.loading_label.hide()
-        self.layout.addWidget(self.loading_label)
-
-        self.result_area = CustomTextBrowser()
-        self.result_area.anchorClicked.connect(self.open_file)
-        self.result_area.setFont(QFont("Arial", 12))
-        self.layout.addWidget(self.result_area)
-
-        self.search_button.clicked.connect(self.start_search)
-        self.input_field.returnPressed.connect(self.start_search)
-
-        # 添加 ESC 键关闭窗口的功能
-        self.shortcut_close = QKeySequence("Esc")
-        self.quit_action = QAction("Quit", self)
-        self.quit_action.setShortcut(self.shortcut_close)
-        self.quit_action.triggered.connect(self.close)
-        self.addAction(self.quit_action)
-
-    def start_search(self):
-        keywords = self.input_field.text()
-        self.loading_label.show()
-        self.result_area.clear()
-        self.result_area.setEnabled(False)
-        self.search_button.setEnabled(False)
-        self.input_field.setEnabled(False)
-        self.worker = SearchWorker(searchFolders, keywords)
-        self.worker.finished.connect(self.show_results)
-        self.worker.start()
-
-    def show_results(self, results):
-        self.loading_label.hide()
-        self.result_area.setEnabled(True)
-        self.search_button.setEnabled(True)
-        self.input_field.setEnabled(True)
-        
-        html_content = ""
-
-        for directory, files in results.items():
-            if files:
-                html_content += f"<h2 style='color: yellow; font-size: 18px;'>{directory}</h2>"
-                for file in files:
-                    # 确保使用绝对路径
-                    file_path = os.path.abspath(os.path.join(directory, file))
-                    # 确保路径格式正确
-                    file_path = file_path.replace('\\', '/')
-                    # 对路径进行编码
-                    from urllib.parse import quote
-                    encoded_path = quote(file_path)
-                    file_url = f"file://{encoded_path}"
-                    display_name = os.path.basename(file)
-                    html_content += f"<p><a href='{file_url}' style='color: orange; text-decoration: underline; font-size: 18px;'>{display_name}</a></p>"
-
-        self.result_area.setHtml(html_content)
-        self.result_area.verticalScrollBar().setValue(0)
-
-    def open_file(self, url):
-        try:
-            # 获取文件路径并处理可能的编码问题
-            file_path = url.toLocalFile()
-            if not file_path:
-                file_path = url.toString().replace('file://', '')
-                
-            # URL解码处理
-            from urllib.parse import unquote
-            file_path = unquote(file_path).strip()
-            
-            # 确保路径是绝对路径
-            abs_path = os.path.abspath(os.path.expanduser(file_path))
-            
-            print(f"调试信息:")
-            print(f"原始URL: {url.toString()}")
-            print(f"处理后路径: {abs_path}")
-            print(f"文件是否存在: {os.path.exists(abs_path)}")
-            
-            if not os.path.exists(abs_path):
-                raise Exception(f"文件不存在: {abs_path}")
-                
-            # 阻止事件进一步传播
-            url.setUrl("")
-            
-            if abs_path.endswith('.workflow'):
-                print("检测到workflow文件，尝试打开...")
-                subprocess.run(['open', '-a', 'Automator', abs_path], 
-                            check=True,
-                            capture_output=True,
-                            text=True)
-            else:
-                # macOS 系统使用 open 命令
-                if sys.platform == 'darwin':  # macOS
-                    subprocess.run(['open', abs_path], 
-                                check=True,
-                                capture_output=True,
-                                text=True)
-                elif sys.platform == 'win32':  # Windows
-                    os.startfile(abs_path)
-                else:  # Linux 和其他系统
-                    subprocess.run(['xdg-open', abs_path], 
-                                check=True,
-                                capture_output=True,
-                                text=True)
-                        
-        except Exception as e:
-            error_msg = f"无法打开文件\n路径: {abs_path}\n错误: {str(e)}"
-            print(error_msg)
-            from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "错误", error_msg)
-
-def process_keywords(keywords):
+def clean_article_text(text):
     """
-    智能关键词处理函数:
-    1. 如果有引号，提取引号中的内容作为完整短语
-    2. 如果第一个字符是特殊字符(如=)，将剩余部分按空格分割
-    3. 否则按空格分割所有内容
+    清理文章文本，只保留中文新闻内容部分
+    
+    Args:
+        text (str): 原始文本
+    Returns:
+        str: 清理后的文本
     """
-    keywords = keywords.strip()
-    
-    # 处理空输入
-    if not keywords:
-        return []
-        
-    # 处理带引号的情况
-    if '"' in keywords:
-        phrases = []
-        # 提取所有引号中的内容
-        parts = keywords.split('"')
-        # 处理引号外的内容
-        for i in range(0, len(parts), 2):
-            if parts[i].strip():
-                phrases.extend([k.lower() for k in parts[i].strip().split()])
-        # 处理引号内的内容
-        for i in range(1, len(parts), 2):
-            if parts[i].strip():
-                phrases.append(parts[i].strip().lower())
-        return phrases if phrases else []
-
-    # # 特殊字符列表
-    # special_chars = '=<>+-*/()[]{}!@#$%^&'
-    
-    # # 如果以特殊字符开头
-    # if keywords and keywords[0] in special_chars:
-    #     special_char = keywords[0]
-    #     remaining = keywords[1:].strip()
-    #     # 将特殊字符后的内容按空格分割
-    #     return [special_char] + [k.lower() for k in remaining.split() if k.strip()]
-    
-    # 默认按空格分割
-    return [k.lower() for k in keywords.split() if k.strip()]
-
-# 保持原有的搜索相关函数不变
-def search_files(directories, keywords):
-    if not keywords:  # 添加空关键词检查
-        return {directory: [] for directory in directories}
-        
-    matched_files = {}
-    
-    for directory in directories:
-        matched_files[directory] = []
-        for root, dirs, files in os.walk(directory):
-            for dir_name in dirs:
-                if dir_name.endswith('.workflow'):
-                    handle_workflow_dir(root, dir_name, directory, keywords, matched_files)
-            for name in files:
-                handle_file(root, name, directory, keywords, matched_files)
-    return matched_files
-
-def handle_workflow_dir(root, dir_name, directory, keywords, matched_files):  # 改为 keywords
-    workflow_path = os.path.join(root, dir_name)
-    if all(keyword in dir_name.lower() for keyword in keywords):
-        matched_files[directory].append(os.path.relpath(workflow_path, directory))
-        return
     try:
-        wflow_path = os.path.join(workflow_path, 'contents/document.wflow')
-        with open(wflow_path, 'r', encoding='utf-8') as file:
-            content = file.read().lower()
-        if all(keyword in content for keyword in keywords):
-            matched_files[directory].append(os.path.relpath(workflow_path, directory))
+        # 删除从Close开始到WSJ链接结束的所有内容
+        pattern_url = r'Close.*?https://cn\.wsj\.com.*?\n'
+        text = re.sub(pattern_url, '', text, flags=re.DOTALL)
+        
+        # 删除版权信息及之后的所有内容
+        pattern_end = r'Copyright ©.*$'
+        text = re.sub(pattern_end, '', text, flags=re.DOTALL)
+        
+        # 清理多余的空行
+        text = re.sub(r'\n{3,}', '\n\n', text.strip())
+        
+        return text
+        
     except Exception as e:
-        print(f"Error reading {wflow_path}: {e}")
+        print(f"处理文本时发生错误: {str(e)}")
+        return None
 
-def handle_file(root, name, directory, keywords, matched_files):  # 改为 keywords
-    item_path = os.path.join(root, name)
-    
-    # 检查文件名
-    name_lower = name.lower()
-    if all(keyword in name_lower for keyword in keywords):
-        matched_files[directory].append(os.path.relpath(item_path, directory))
-        return
-        
-    # 检查文件内容
-    if item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md')):
-        try:
-            with open(item_path, 'r', encoding='utf-8') as file:
-                content = file.read().lower()
-            if all(keyword in content for keyword in keywords):
-                matched_files[directory].append(os.path.relpath(item_path, directory))
-        except Exception as e:
-            print(f"Error reading {item_path}: {e}")
-    elif item_path.endswith('.scpt'):
-        try:
-            content = subprocess.check_output(['osadecompile', item_path], text=True).lower()
-            if all(keyword in content for keyword in keywords):
-                matched_files[directory].append(os.path.relpath(item_path, directory))
-        except Exception as e:
-            print(f"Error decompiling {item_path}: {e}")
-
-def read_file_content(path):
-    if path.endswith('.scpt'):
-        return subprocess.check_output(['osadecompile', path], text=True).lower()
-    with open(path, 'r') as file:
-        return file.read().lower()
-
+# 测试代码
 if __name__ == "__main__":
-    # 处理剪贴板警告
-    try:
-        from PyQt5.QtWidgets import QApplication
-        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    except AttributeError:
-        pass  # 较旧的 PyQt 版本可能没有这些属性
+    # 将文本内容存储在变量中
+    text = """Close
+美国失业白领更难找到新工作
+截至去年11月，超过700万美国人失业，这意味着他们没有工作并且正在找工作。根据美国劳工部的数据，在这些失业者中，有超过160万人已经求职至少六个月。自2022年底以来，找工作时间如此之长的求职者人数增加了50%以上。
 
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
+美国劳工部的数据显示，现在人们平均需要大约六个月的时间才能找到工作，这比2023年初疫情后招聘热潮期间大约长了一个月。求职难主要集中在高薪白领工作，包括科技、法律和媒体行业，这些行业在经济从疫情中复苏时快速增长，但现在对新员工的需求减少。
 
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
-        if arg == "input":
-            # 显示窗口，让用户输入
-            pass
-        elif arg == "paste":
-            # 使用剪贴板内容进行搜索
-            clipboard_content = pyperclip.paste()
-            if clipboard_content:
-                window.input_field.setText(clipboard_content)
-                window.start_search()
-            else:
-                print("剪贴板为空，请复制一些文本后再试。")
-    else:
-        print("请提供参数 input 或 paste")
+新闻报道中的就业市场看起来很健康，但实际上却比看起来要疲软。目前美国失业率为4.2%，仍远低于疫情暴发之前十年的平均水平。但现在职位空缺与失业人数之比大约只有1：1，低于2022年初的2：1。强劲的招聘已仅限于少数几个行业。美国政府将于周五发布的月度就业报告将提供劳动力市场健康状况的最新概况。
 
-    sys.exit(app.exec_())
+“我的生活完全停滞了，”奥利维娅·帕拉克(Olivia Palak)说。她在一家新公司工作了三个月后于去年5月份被解雇。现年32岁、来自芝加哥的帕拉克在科技公司和管理咨询公司从事招聘工作已有大约十年时间。她找到了一些兼职合同工作，但在过去八个月的大部分时间里，她都在寻找全职工作。美国劳工部的数据显示，由于工作时间被缩短，或者找不到全职工作，像帕拉克这样被迫做兼职的美国工人超过了400万。
+
+对于那些寻找服务类体力工作的人来说，仍然有很多工作机会，包括在医疗健康和酒店行业。办公室工作则更加难找，因为老板们的目标是精简人员，在某些情况下，他们还用人工智能(AI)取代了员工。
+
+42岁的乔希·麦克拉蒂(Josh McLarty)来自亚特兰大，曾在一家机器人初创公司担任测试经理，于去年4月被解雇。他已经投了近500份简历，并参加了六次面试，但没有收到任何录用通知。
+
+在朋友和家人的建议下，麦克拉蒂申请了工资较低的时薪工作，包括在Publix超市工作，但也没有成功。他担心自己的简历会让按小时计酬的雇主觉得他不会长期干下去。一份微薄的薪水将使他失去领取食品券和医疗补助(Medicaid)的资格，却不足以支付他的房贷。
+
+“你陷入了这种奇怪的两难困境，”他说。
+
+越来越多领取失业救济金的人需要更长时间依靠公共援助。美国劳工部上周公布的新数据显示，截至去年12月底，有180万人继续申领此前获批的失业救济金，接近疫情后的高点。
+
+工资同比增幅已从本十年初招聘热潮高峰期的约6%降至4%。这表明许多雇主不必再费力地吸引员工。
+
+36岁的威尔·威金斯三世(Will Wiggins III)是得克萨斯州奥斯汀的一名视觉设计师，自2019年以来一直断断续续地做自由职业者，此前他在一家教育非营利组织的职位被取消。但自去年4月以来，他一直没有工作。他现在每周花大约40个小时找工作，已经申请了数百个全职职位，有时还要腾出一只手抱着他还在襁褓中的女儿。
+
+“有时你会在凌晨1点提交申请，然后在凌晨3点收到通知说申请被拒，”威金斯说。“根本不可能有人看过我的资料。”
+
+到目前为止，劳动力市场疲软主要是由于招聘减少，而不是大范围裁员。但花旗集团(Citigroup)经济学家韦罗妮卡·克拉克(Veronica Clark)表示，一旦企业决定裁员，裁员规模往往会像滚雪球般增大，这可能会导致失业率更快上升。
+
+“从悲观的角度来看，招聘疲软的原因是企业正试图降低劳动力成本。如果是这个原因，为什么我们不在某个时候进入裁员阶段？”克拉克说。
+
+世界大型企业研究会(Conference Board)去年12月对消费者进行的一项调查显示，37%的受访者表示工作岗位充足，低于2022年年中时的57%。担心失去工资收入的家庭倾向于收紧预算，这对一直推动美国经济增长的稳定消费支出构成威胁。
+
+自去年9月以来，就业市场疲软和工资增长放缓已促使美联储将基准利率累计下调了整整一个百分点，而通胀率尚未回落至该央行的目标水平。
+
+招聘网站Indeed的经济学家科里·斯塔勒(Cory Stahle)说，去年年底，该网站上软件开发、数据科学和营销岗位的招聘信息都比疫情前水平低了至少20%。政府数据显示，信息行业的招聘率比疫情前下降30%，金融行业的招聘率下降28%。
+
+相比之下，采矿业、制造业和运输业的招聘情况依然保持韧性。在过去12个月里，仅医疗健康和政府工作这两个行业就占了新增就业岗位总数的一半以上。
+
+为了找到工作，越来越多的人被迫转行。招聘网站ZipRecruiter经济学家茱莉娅·波拉克(Julia Pollack)援引该公司的调查称，在过去六个月里，超过半数新员工表示，他们转行是为了获得新工作，而通常这一比例约为40%。"""  # 这里放入完整的文本内容
+    
+    cleaned_text = clean_article_text(text)
+    if cleaned_text:
+        print(cleaned_text)

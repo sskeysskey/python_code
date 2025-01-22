@@ -1,11 +1,14 @@
+# o1优化后代码
+
+import html
 import os
 import re
-import sys
-import html
-import pyperclip
 import subprocess
-from time import sleep
+import sys
 from datetime import datetime
+from time import sleep
+
+import pyperclip
 
 # 常量定义
 TXT_DIRECTORY = '/Users/yanzhang/Documents/News'
@@ -13,6 +16,7 @@ HTML_DIRECTORY = '/Users/yanzhang/Documents/sskeysskey.github.io/news'
 SCRIPT_PATH = '/Users/yanzhang/Documents/ScriptEditor/Close_Tab_News.scpt'
 SEGMENT_FILE_PATH = '/tmp/segment.txt'
 SITE_FILE_PATH = '/tmp/site.txt'
+RATIO_FILE_PATH = '/tmp/english_ratio_result.txt'
 
 SEGMENT_TO_HTML_FILE = {
     "technologyreview": "technologyreview.html",
@@ -25,59 +29,69 @@ SEGMENT_TO_HTML_FILE = {
     "wsj": "wsj.html"
 }
 
-def is_english_char(char):
+
+def is_english_char(char: str) -> bool:
+    """
+    判断字符是否为英文字母（包含大小写）。
+    """
     return bool(re.match(r'[a-zA-Z]', char))
 
-def check_english_ratio():
-    # 获取剪贴板内容
+
+def check_english_ratio() -> bool:
+    """
+    从剪贴板获取文本，计算其中英文字母占比并将结果写入 /tmp/english_ratio_result.txt。
+    返回英文字母占比是否大于 0.5。
+    """
     text = pyperclip.paste()
-    
     if not text:
         return False
     
-    # 计算英文字符数量
     english_chars = sum(1 for char in text if is_english_char(char))
-    
-    # 计算总字符数（排除空白字符）
     total_chars = sum(1 for char in text if not char.isspace())
     
-    # 计算英文字符占比
     if total_chars == 0:
         return False
-        
+    
     english_ratio = english_chars / total_chars
     
-    # 写入结果到临时文件
-    with open('/tmp/english_ratio_result.txt', 'w') as f:
+    with open(RATIO_FILE_PATH, 'w') as f:
         f.write('true' if english_ratio > 0.5 else 'false')
     
     return english_ratio > 0.5
 
-def get_clipboard_content():
+
+def get_clipboard_content() -> str:
+    """
+    获取剪贴板内容，去除空白行。
+    如果行数小于 3，直接返回原内容，否则去掉第一行和最后一行后再返回。
+    """
     content = pyperclip.paste()
     if not content:
         return ""
     
-    # 分割成行并去除空白行
     lines = [line.strip() for line in content.splitlines() if line.strip()]
-    
-    # 如果行数小于3，直接返回原内容
     if len(lines) < 3:
         return "\n".join(lines)
     
-    # 移除第一行和最后一行
+    # 移除最后一行
     filtered_lines = lines[:-1]
-    
-    # 重新组合文本
     return "\n".join(filtered_lines)
 
-def read_file(file_path):
-    with open(file_path, 'r', encoding='utf-8-sig') as file:
-        return file.read().strip()
 
-def write_html_skeleton(file_path, title):
-    with open(file_path, 'w', encoding='utf-8-sig') as file:
-        file.write(f"""
+def read_file(file_path: str) -> str:
+    """
+    读取指定文件并返回其内容（去除首尾空白）。
+    """
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
+        return f.read().strip()
+
+
+def write_html_skeleton(file_path: str, title: str) -> None:
+    """
+    创建并写入 HTML 骨架。
+    """
+    with open(file_path, 'w', encoding='utf-8-sig') as f:
+        f.write(f"""
         <!DOCTYPE html>
         <html lang="zh-CN">
         <head>
@@ -101,51 +115,71 @@ def write_html_skeleton(file_path, title):
                 </tr>
         """)
 
-def append_to_html(file_path, current_time, content):
-    with open(file_path, 'r+', encoding='utf-8-sig') as file:
-        content = html.escape(content).replace('\n', '<br>\n')
-        html_content = file.read()
+
+def append_to_html(file_path: str, current_time: str, content: str) -> None:
+    """
+    将新的条目（时间和内容）以行的形式插入到指定的 HTML 文件第一行记录之后。
+    """
+    with open(file_path, 'r+', encoding='utf-8-sig') as f:
+        escaped_content = html.escape(content).replace('\n', '<br>\n')
+        html_content = f.read()
         insert_position = html_content.find("</tr>") + 5
         new_row = f"""
             <tr>
                 <td>{current_time}</td>
-                <td>{content}</td>
+                <td>{escaped_content}</td>
             </tr>
         """
         updated_content = html_content[:insert_position] + new_row + html_content[insert_position:]
-        file.seek(0)
-        file.write(updated_content)
+        f.seek(0)
+        f.write(updated_content)
 
-def close_html_skeleton(file_path):
-    with open(file_path, 'a', encoding='utf-8-sig') as file:
-        file.write("""
+
+def close_html_skeleton(file_path: str) -> None:
+    """
+    在 HTML 文件末尾补充关闭标签。
+    """
+    with open(file_path, 'a', encoding='utf-8-sig') as f:
+        f.write("""
             </table>
         </body>
         </html>
         """)
 
-def main():
+
+def remove_file(file_path: str) -> None:
+    """
+    安全地删除文件，如果文件不存在则忽略错误并打印提示。
+    """
+    try:
+        os.remove(file_path)
+    except OSError as e:
+        print(f"Error removing {file_path}: {e}")
+
+
+def main() -> None:
+    """
+    主流程：
+    1. 检查剪贴板中英文字符占比并写入临时文件。
+    2. 读取结果判断是否执行 Poe_auto.py。
+    3. 读取 segment.txt 和 site.txt，并生成最终文本写入 TXT。
+    4. 在对应的 HTML 中追加记录并关闭 HTML 标签。
+    5. 执行关闭新闻 Tab 的 AppleScript 脚本。
+    6. 删除临时文件。
+    """
     check_english_ratio()
     sleep(0.2)
-    # 添加对english_ratio结果的检查和条件执行
+    
     try:
-        ratio_file = '/tmp/english_ratio_result.txt'
-        with open(ratio_file, 'r') as f:
-            is_english = f.read().strip().lower() == 'true'
+        with open(RATIO_FILE_PATH, 'r') as f:
+            is_english = (f.read().strip().lower() == 'true')
+        remove_file(RATIO_FILE_PATH)
         
-        # 读取完成后立即删除文件
-        try:
-            os.remove(ratio_file)
-        except OSError as e:
-            print(f"Error removing {ratio_file}: {e}")
-
         if is_english:
             try:
-                # 获取当前脚本所在目录
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 poe_auto_path = os.path.join(current_dir, 'Poe_auto.py')
-                
-                # 执行Poe_auto.py，带参数"short"
+                # 执行 Poe_auto.py，带参数"short"
                 subprocess.run([sys.executable, poe_auto_path, 'short'], check=True)
             except subprocess.CalledProcessError as e:
                 print(f"Error executing Poe_auto.py: {e}")
@@ -153,21 +187,23 @@ def main():
                 print(f"Unexpected error running Poe_auto.py: {e}")
     except Exception as e:
         print(f"Error reading english_ratio_result.txt: {e}")
-
+    
+    # 拼接最终内容
     clipboard_content = get_clipboard_content()
     segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)
-    site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
     
+    site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
     final_content = f"{segment_content}\n{site_content_with_tags}\n\n{clipboard_content}"
     
+    # 写入 TXT 文件
     now = datetime.now()
     txt_file_name = f"News_{now.strftime('%y_%m_%d')}.txt"
     txt_file_path = os.path.join(TXT_DIRECTORY, txt_file_name)
-    
     with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
         txt_file.write(final_content + '\n\n')
     
+    # 写入 HTML 文件
     html_file_name = SEGMENT_TO_HTML_FILE.get(segment_content.lower(), "other.html")
     html_file_path = os.path.join(HTML_DIRECTORY, html_file_name)
     
@@ -179,6 +215,7 @@ def main():
     if os.path.isfile(html_file_path):
         close_html_skeleton(html_file_path)
     
+    # 执行 AppleScript
     try:
         result = subprocess.run(['osascript', SCRIPT_PATH], check=True, text=True, stdout=subprocess.PIPE)
         print(result.stdout.strip())
@@ -186,8 +223,10 @@ def main():
         print(f"Error running AppleScript: {e}")
     
     sleep(1)
-    os.remove(SEGMENT_FILE_PATH)
-    os.remove(SITE_FILE_PATH)
+    # 删除临时文件
+    remove_file(SEGMENT_FILE_PATH)
+    remove_file(SITE_FILE_PATH)
+
 
 if __name__ == '__main__':
     main()

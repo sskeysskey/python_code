@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "FT Article Copier",
+  "version": "1.0",
+  "description": "Copy FT and Bloomberg article content to clipboard",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.ft.com/*",
+    "*://*.bloomberg.com/*"
+  ],
+  "action": {
+    "default_title": "Copy Article"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

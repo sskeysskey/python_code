@@ -53,8 +53,8 @@ function extractAndCopy() {
     // Bloomberg.com 的内容提取逻辑
     const bodyContent = document.querySelector('.body-content');
     if (bodyContent) {
-      // 修改选择器以更准确地匹配目标段落
-      const paragraphs = bodyContent.querySelectorAll('p[class*="media-ui-Paragraph_text"][class*="paywall"]');
+      // 修改选择器以匹配所有相关段落
+      const paragraphs = bodyContent.querySelectorAll('p[class*="media-ui-Paragraph_text"]');
 
       textContent = Array.from(paragraphs)
         .map(p => p.textContent.trim())

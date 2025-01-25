@@ -11,7 +11,9 @@
   "host_permissions": [
     "*://*.ft.com/*",
     "*://*.bloomberg.com/*",
-    "*://*.wsj.com/*"
+    "*://*.wsj.com/*",
+    "*://*.economist.com/*",
+    "*://*.technologyreview.com/*"
   ],
   "action": {
     "default_title": "Copy Article"

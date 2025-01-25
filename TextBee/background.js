@@ -1,5 +1,7 @@
 chrome.action.onClicked.addListener(async (tab) => {
-  if (tab.url.includes("ft.com") || tab.url.includes("bloomberg.com")) {
+  if (tab.url.includes("ft.com") || tab.url.includes("bloomberg.com") ||
+    tab.url.includes("wsj.com") || tab.url.includes("economist.com") ||
+    tab.url.includes("technologyreview.com")) {
     try {
       // 执行提取与复制操作
       const [result] = await chrome.scripting.executeScript({
@@ -68,6 +70,185 @@ function extractAndCopy() {
         .join('\n\n');
     }
   }
+  else if (window.location.hostname.includes("wsj.com")) {
+    // WSJ.com 的内容提取逻辑
+    const article = document.querySelector('article');
+    if (article) {
+      // 定义可能的段落选择器
+      const possibleSelectors = [
+        // 第一种样式
+        'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
+        // 第二种样式
+        'p[class*="css-k3zb61-Paragraph"]',
+        // 备用选择器
+        'p[data-type="paragraph"]',
+        '.paywall p[data-type="paragraph"]',
+        'article p[data-type="paragraph"]',
+        // 添加新的选择器以提高兼容性
+        'p[class*="Paragraph"]',
+        '.paywall p'
+      ];
+
+      // 合并所有找到的段落
+      let allParagraphs = [];
+      possibleSelectors.forEach(selector => {
+        const paragraphs = article.querySelectorAll(selector);
+        allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
+      });
+
+      // 去重
+      allParagraphs = [...new Set(allParagraphs)];
+
+      textContent = allParagraphs
+        .map(p => {
+          // 获取段落的纯文本内容
+          let text = p.textContent.trim();
+
+          // 处理特殊字符和HTML注释
+          text = text
+            .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+            .replace(/[•∞@]/g, '') // 移除特殊字符
+            .replace(/\s+/g, ' ') // 规范化空白
+            .replace(/&nbsp;/g, ' ') // 处理HTML空格
+            .replace(/≤\/p>/g, '') // 处理HTML标签碎片
+            .replace(/\[.*?\]/g, '') // 处理方括号内容
+            .trim();
+
+          return text;
+        })
+        .filter(text => {
+          // 增强过滤条件
+          return text &&
+            text.length > 1 &&
+            !['@', '•', '∞', 'flex'].includes(text) &&
+            !/^\s*$/.test(text) &&
+            !/^Advertisement$/i.test(text) &&
+            !/^.$/.test(text); // 过滤单个字符
+        })
+        .join('\n\n');
+    }
+  }
+
+  else if (window.location.hostname.includes("economist.com")) {
+    // Economist.com 的内容提取逻辑
+    const article = document.querySelector('article');
+    if (article) {
+      const paragraphs = article.querySelectorAll('p[data-component="paragraph"][class*="css-1f0x4sl"]');
+
+      textContent = Array.from(paragraphs)
+        .map(p => {
+          // 获取段落的纯文本内容
+          let text = p.textContent.trim();
+
+          // 处理特殊字符和清理文本
+          text = text
+            .replace(/\s+/g, ' ') // 规范化空白
+            .replace(/[•∞@]/g, '') // 移除特殊字符
+            .replace(/&nbsp;/g, ' ') // 处理HTML空格
+            .trim();
+
+          return text;
+        })
+        .filter(text => {
+          // 过滤条件
+          return text &&
+            text.length > 1 &&
+            !['@', '•', '∞', 'flex'].includes(text) &&
+            !/^\s*$/.test(text) &&
+            !/^.$/.test(text); // 过滤单个字符
+        })
+        .join('\n\n');
+    }
+  }
+
+  else if (window.location.hostname.includes("technologyreview.com")) {
+    console.log('Debug: Detected Technology Review website'); // 调试日志
+
+    // 更新 Technology Review 的内容提取逻辑
+    const contentBody = document.querySelector('#content--body');
+    console.log('Debug: Content body found:', !!contentBody); // 调试日志
+
+    if (contentBody) {
+      // 尝试多个可能的选择器
+      let paragraphs = [];
+
+      // 选择器列表
+      const selectors = [
+        // 新的选择器
+        'div[class*="gutenbergContent"] p',
+        '.html_0 p, .html_2 p, .html_8 p',
+        '.contentBody_content--42a60b56e419a26d9c3638a9dab52f55 p',
+        // 备用选择器
+        '#content--body p',
+        'article p',
+        '.contentBody_wrapper p'
+      ];
+
+      // 依次尝试每个选择器
+      for (const selector of selectors) {
+        const elements = contentBody.querySelectorAll(selector);
+        if (elements && elements.length > 0) {
+          paragraphs = elements;
+          console.log(`Debug: Found ${elements.length} paragraphs using selector: ${selector}`);
+          break;
+        }
+      }
+
+      // 如果还是没找到，使用最基础的选择器
+      if (!paragraphs.length) {
+        paragraphs = contentBody.getElementsByTagName('p');
+        console.log('Debug: Using basic p tag selector, found:', paragraphs.length);
+      }
+
+      textContent = Array.from(paragraphs)
+        .map(p => {
+          let text = p.textContent.trim();
+
+          // 增强的文本清理
+          text = text
+            .replace(/\s+/g, ' ') // 规范化空白
+            .replace(/[\u200B-\u200D\uFEFF]/g, '') // 移除零宽字符
+            .replace(/&nbsp;/g, ' ') // 处理HTML空格
+            .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+            .replace(/\[.*?\]/g, '') // 移除方括号内容
+            .trim();
+
+          return text;
+        })
+        .filter(text => {
+          // 增强的过滤条件
+          const invalidTexts = [
+            'flex',
+            'Skip to Content',
+            'You need to enable JavaScript',
+            '@',
+            '•',
+            '∞',
+            '.',
+            'Advertisement'
+          ];
+
+          return text &&
+            text.length > 10 && // 增加最小长度要求
+            !invalidTexts.includes(text) &&
+            !/^\s*$/.test(text) &&
+            !/^Update:/.test(text) &&
+            !/^Related Story/.test(text) &&
+            !/^[\.•@∞]+$/.test(text);
+        })
+        .join('\n\n');
+
+      // 调试信息
+      console.log('Debug: Final extracted text length:', textContent.length);
+      if (!textContent) {
+        console.log('Debug: No content extracted after filtering');
+      } else {
+        console.log('Debug: Content successfully extracted');
+        // 输出前100个字符用于验证
+        console.log('Debug: First 100 chars:', textContent.substring(0, 100));
+      }
+    }
+  }
 
   if (textContent) {
     // 创建一个隐藏的 textarea 元素以复制文本
@@ -98,8 +279,8 @@ function showNotification(message) {
     .copy-notification {
     position: fixed;
     top: 20px;
-      left: 50%;         /* 修改：从right改为left:50% */
-      transform: translateX(-50%) translateY(-20px); /* 修改：添加translateX实现水平居中 */
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
     background-color: rgba(76, 175, 80, 0.9);
     color: white;
     padding: 12px 24px;
@@ -129,13 +310,13 @@ function showNotification(message) {
   // 触发动画
   requestAnimationFrame(() => {
     notification.style.opacity = '1';
-    notification.style.transform = 'translateX(-50%) translateY(0)'; // 修改：保持水平居中的同时添加垂直动画
+    notification.style.transform = 'translateX(-50%) translateY(0)';
   });
 
   // 3秒后淡出
   setTimeout(() => {
     notification.style.opacity = '0';
-    notification.style.transform = 'translateX(-50%) translateY(-20px)'; // 修改：保持水平居中的同时添加淡出动画
+    notification.style.transform = 'translateX(-50%) translateY(-20px)';
     setTimeout(() => {
       notification.remove();
       style.remove();

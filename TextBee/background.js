@@ -51,25 +51,69 @@ function extractAndCopy() {
         .join('\n\n');
     }
   }
+
   else if (window.location.hostname.includes("bloomberg.com")) {
     // Bloomberg.com 的内容提取逻辑
-    const bodyContent = document.querySelector('.body-content');
-    if (bodyContent) {
-      // 修改选择器以匹配所有相关段落
-      const paragraphs = bodyContent.querySelectorAll('p[class*="media-ui-Paragraph_text"]');
+    let paragraphs = [];
 
-      textContent = Array.from(paragraphs)
-        .map(p => p.textContent.trim())
-        .filter(text => {
-          // 增强过滤条件
-          return text &&
-            text.length > 1 &&
-            !['@', '•', '∞', '.'].includes(text) &&
-            !/^\s*$/.test(text); // 过滤纯空白内容
-        })
-        .join('\n\n');
+    // 定义多个可能的选择器组合
+    const selectors = [
+      // 原有的选择器
+      '.body-content p[class*="media-ui-Paragraph_text"]',
+      // 新页面的选择器
+      'p.copy-width',
+      // 其他可能的选择器
+      'main p',
+      'article p',
+      '.dvz-content p',
+      // 更通用的选择器，用于捕获可能的段落
+      'p[class*="Paragraph"]',
+      'p[class*="paragraph"]',
+      'p[class*="copy"]'
+    ];
+
+    // 尝试所有选择器
+    for (const selector of selectors) {
+      const elements = document.querySelectorAll(selector);
+      if (elements && elements.length > 0) {
+        paragraphs = [...paragraphs, ...Array.from(elements)];
+      }
     }
+
+    // 去重并清理内容
+    textContent = [...new Set(paragraphs)]
+      .map(p => {
+        let text = p.textContent.trim();
+
+        // 增强的文本清理
+        text = text
+          .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+          .replace(/[•∞@]/g, '') // 移除特殊字符
+          .replace(/\s+/g, ' ') // 规范化空白
+          .replace(/&nbsp;/g, ' ') // 处理HTML空格
+          .replace(/==\s*\$\d+/g, '') // 移除调试标记
+          .replace(/<![-—]{2,}>/g, '') // 移除HTML注释标记
+          .replace(/<\/?[^>]+(>|$)/g, '') // 移除HTML标签
+          .trim();
+
+        return text;
+      })
+      .filter(text => {
+        // 增强过滤条件
+        return text &&
+          text.length > 10 && // 增加最小长度要求
+          !/^[@•∞]/.test(text) && // 不以特殊字符开头
+          !/^\s*$/.test(text) && // 不是纯空白
+          !['flex', 'Advertisement'].includes(text) && // 排除特定词语
+          !/^[.\s]*$/.test(text) && // 不是纯点号或空格
+          !/^You are using an/.test(text) && // 排除浏览器升级提示
+          text !== '@' &&
+          text !== '•' &&
+          text !== '∞';
+      })
+      .join('\n\n');
   }
+
   else if (window.location.hostname.includes("wsj.com")) {
     // WSJ.com 的内容提取逻辑
     const article = document.querySelector('article');
@@ -130,18 +174,43 @@ function extractAndCopy() {
   }
 
   else if (window.location.hostname.includes("economist.com")) {
-    // Economist.com 的内容提取逻辑
-    const article = document.querySelector('article');
+    const article = document.querySelector('[data-test-id="Article"]');
     if (article) {
-      const paragraphs = article.querySelectorAll('p[data-component="paragraph"][class*="css-1f0x4sl"]');
+      const paragraphs = article.querySelectorAll('p[data-component="paragraph"]');
 
       textContent = Array.from(paragraphs)
         .map(p => {
-          // 获取段落的纯文本内容
-          let text = p.textContent.trim();
+          // 递归获取所有文本内容的函数
+          function getAllText(node) {
+            let text = '';
 
-          // 处理特殊字符和清理文本
-          text = text
+            // 处理所有子节点
+            Array.from(node.childNodes).forEach(child => {
+              if (child.nodeType === Node.TEXT_NODE) {
+                text += child.textContent;
+              } else if (child.nodeType === Node.ELEMENT_NODE) {
+                // 特殊处理大写字母开头
+                if (child.tagName === 'SPAN' && child.getAttribute('data-caps') === 'initial') {
+                  text += child.textContent;
+                }
+                // 处理small标签，保持大写
+                else if (child.tagName === 'SMALL') {
+                  text += child.textContent;
+                }
+                // 处理链接和其他元素
+                else if (child.tagName === 'A' || child.children.length > 0) {
+                  text += getAllText(child);
+                }
+                else {
+                  text += child.textContent;
+                }
+              }
+            });
+            return text;
+          }
+
+          // 获取并清理文本
+          let text = getAllText(p)
             .replace(/\s+/g, ' ') // 规范化空白
             .replace(/[•∞@]/g, '') // 移除特殊字符
             .replace(/&nbsp;/g, ' ') // 处理HTML空格
@@ -150,12 +219,12 @@ function extractAndCopy() {
           return text;
         })
         .filter(text => {
-          // 过滤条件
           return text &&
-            text.length > 1 &&
+            text.length > 5 &&
             !['@', '•', '∞', 'flex'].includes(text) &&
             !/^\s*$/.test(text) &&
-            !/^.$/.test(text); // 过滤单个字符
+            !/^[.\s]*$/.test(text) &&
+            !/^By\s/.test(text);
         })
         .join('\n\n');
     }
@@ -281,7 +350,7 @@ function showNotification(message) {
     top: 20px;
       left: 50%;
       transform: translateX(-50%) translateY(-20px);
-    background-color: rgba(76, 175, 80, 0.9);
+    background-color: #4CAF50;  /* 相同的绿色，使用十六进制表示 */
     color: white;
     padding: 12px 24px;
     border-radius: 4px;
@@ -313,7 +382,7 @@ function showNotification(message) {
     notification.style.transform = 'translateX(-50%) translateY(0)';
   });
 
-  // 3秒后淡出
+  // 7秒后淡出
   setTimeout(() => {
     notification.style.opacity = '0';
     notification.style.transform = 'translateX(-50%) translateY(-20px)';
@@ -321,5 +390,5 @@ function showNotification(message) {
       notification.remove();
       style.remove();
     }, 300);
-  }, 3000);
+  }, 7000);
 }

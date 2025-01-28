@@ -51,9 +51,7 @@ def main():
     
     # 定义模板路径字典
     template_paths = {
-        "failure": "/Users/yanzhang/Documents/python_code/Resource/copier_failure.png",
-        "success": "/Users/yanzhang/Documents/python_code/Resource/copier_success.png",
-        "test": "/Users/yanzhang/Documents/python_code/Resource/test.png"
+        "failure": "/Users/yanzhang/Documents/python_code/Resource/copier_failure.png"
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -64,16 +62,11 @@ def main():
             raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
         templates[key] = template
 
-    location_test, shape_test = find_image_on_screen(templates["test"])
-    if location_test:
-        print(f"找到图片位置: {location_test}")
+    location_failure, shape_failure = find_image_on_screen(templates["failure"])
+    if location_failure:
+        print(f"找到图片位置: {location_failure}")
+        # 在这里添加写入文件的操作
         write_to_file(url)
-    else:
-        # location_failure, shape_failure = find_image_on_screen(templates["failure"])
-        # if location_failure:
-        print(f"找到图片位置: {location_test}")
-            # 在这里添加写入文件的操作
-        
 
 if __name__ == '__main__':
     main()

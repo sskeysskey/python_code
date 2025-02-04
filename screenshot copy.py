@@ -8,28 +8,20 @@ from time import sleep
 from PIL import ImageGrab
 
 class ScreenDetector:
-    def __init__(self, template_names, clickValue=False, Opposite=False, x_offset=None, y_offset=None, nth_match=1):
-        self.templates = []
-        # 支持单个字符串或字符串列表
-        if isinstance(template_names, str):
-            template_names = [name.strip() for name in template_names.split(',')]  # 添加strip()去除空白字符
-        
-        # 加载所有模板
-        for template_name in template_names:
-            template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
-            template = self.load_template(template_path)
-            self.templates.append((template_name, template))
-            
+    def __init__(self, template_name, clickValue=False, Opposite=False, x_offset=None, y_offset=None, nth_match=1):
+        self.template_path = f'/Users/yanzhang/Documents/python_code/Resource/{template_name}'
+        self.template = self.load_template()
         self.clickValue = clickValue
         self.Opposite = Opposite
         self.x_offset = x_offset
         self.y_offset = y_offset
         self.nth_match = max(1, nth_match)  # 确保至少为1
 
-    def load_template(self, template_path):
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+    def load_template(self):
+        # 在初始化时加载模板图片
+        template = cv2.imread(self.template_path, cv2.IMREAD_COLOR)
         if template is None:
-            raise FileNotFoundError(f"模板图片未能正确读取于路径 {template_path}")
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {self.template_path}")
         return template
 
     def capture_screen(self):
@@ -39,31 +31,47 @@ class ScreenDetector:
         screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         return screenshot
 
-    def find_images_on_screen(self, threshold=0.9):
+    # def find_image_on_screen(self, threshold=0.9):
+    #     screen = self.capture_screen()
+    #     result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
+    #     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+    #     # 释放截图和模板图像以节省内存
+    #     del screen
+    #     if max_val >= threshold:
+    #         return max_loc, self.template.shape
+    #     else:
+    #         return None, None
+
+    def find_image_on_screen(self, threshold=0.9):
         screen = self.capture_screen()
-        for template_name, template in self.templates:
-            result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-            locations = np.where(result >= threshold)
-            locations = list(zip(*locations[::-1]))
-            
-            if locations:  # 如果找到匹配
-                matches = []
-                for loc in locations:
-                    match_value = result[loc[1]][loc[0]]
-                    matches.append((loc, match_value))
-                
-                matches.sort(key=lambda x: x[1], reverse=True)
-                
-                if len(matches) >= self.nth_match:
-                    return template_name, matches[self.nth_match - 1][0], template.shape
-                    
-        return None, None, None
+        result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
+        
+        # 找到所有匹配位置
+        locations = np.where(result >= threshold)
+        locations = list(zip(*locations[::-1]))  # 转换坐标格式
+        
+        # 按匹配度排序
+        matches = []
+        for loc in locations:
+            match_value = result[loc[1]][loc[0]]
+            matches.append((loc, match_value))
+        
+        matches.sort(key=lambda x: x[1], reverse=True)  # 按匹配度降序排序
+        
+        # 释放内存
+        del screen
+        del result
+        
+        # 如果找到足够的匹配且指定的第n个存在
+        if len(matches) >= self.nth_match:
+            return matches[self.nth_match - 1][0], self.template.shape
+        return None, None
 
     def run1(self):
         found = False
         timeout = time.time() + 590
         while not found and time.time() < timeout:
-            template_name, location, shape = self.find_images_on_screen()
+            location, shape = self.find_image_on_screen()
             if location:
                 if self.clickValue:
                     # 计算中心坐标
@@ -78,22 +86,22 @@ class ScreenDetector:
                     # 鼠标点击中心坐标或偏移后的坐标
                     pyautogui.click(center_x, center_y)
                 found = True
-                print(f"找到图片 {template_name} 位置: {location}")
+                print(f"找到图片位置: {location}")
             else:
-                print("未找到任何目标图片，继续监控...")
+                print("未找到图片，继续监控...")
                 sleep(1)
         
         if time.time() > timeout:
-            print("在590秒内未找到图片，退出程序。")
+            print("在60秒内未找到图片，退出程序。")
             webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     
     def run2(self):
         found = True
         while found:
-            template_name, location, shape = self.find_images_on_screen()
+            location, shape = self.find_image_on_screen()
             if location:
                 pyautogui.scroll(-120)
-                print(f"找到图片 {template_name} 位置: {location}")
+                print(f"找到图片位置: {location}")
                 sleep(1)
             else:
                 print("未找到图片，继续监控...")
@@ -102,11 +110,11 @@ class ScreenDetector:
 if __name__ == '__main__':
     # 检查基本参数数量
     if len(sys.argv) < 4:
-        print("Usage: python a.py <image_name1[,image_name2]> <clickValue> <Opposite> [x_offset] [y_offset] [nth_match]")
+        print("Usage: python a.py <image_name> <clickValue> <Opposite> [x_offset] [y_offset] [nth_match]")
         sys.exit(1)
 
-    # 支持多个图片名称，用逗号分隔，并清理空白字符
-    image_names = [name.strip() for name in sys.argv[1].split(',')]
+    # 基本参数
+    image_name = sys.argv[1]
     clickValue = sys.argv[2].lower() == 'true'
     Opposite = sys.argv[3].lower() == 'true'
 
@@ -117,7 +125,6 @@ if __name__ == '__main__':
 
     remaining_args = sys.argv[4:]
     
-    # 处理剩余参数的逻辑保持不变
     if remaining_args:
         # 场景1: 只有一个额外参数，认为是 nth_match
         if len(remaining_args) == 1:
@@ -146,7 +153,7 @@ if __name__ == '__main__':
                 print("Invalid parameter values")
                 sys.exit(1)
 
-    detector = ScreenDetector(image_names, clickValue, Opposite, x_offset, y_offset, nth_match)
+    detector = ScreenDetector(image_name, clickValue, Opposite, x_offset, y_offset, nth_match)
 
     if Opposite:
         detector.run2()

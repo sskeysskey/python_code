@@ -1,3 +1,15 @@
+def find_image_on_screen(self, threshold=0.9):
+        screen = self.capture_screen()
+        result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        # 释放截图和模板图像以节省内存
+        del screen
+        if max_val >= threshold:
+            return max_loc, self.template.shape
+        else:
+            return None, None
+#————————————————————————————————————————————————————————————————————————————————————————
+
 # 从剪贴板读取内容
 clipboard_content = pyperclip.paste()
 # 处理内容

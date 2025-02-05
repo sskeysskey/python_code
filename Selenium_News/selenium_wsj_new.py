@@ -111,6 +111,10 @@ with sync_playwright() as p:
 
         for title_element in titles_elements:
             href = title_element.get_attribute('href')
+            # 跳过包含 livecoverage 的链接
+            if 'livecoverage' in href.lower():
+                continue
+            
             title_text = title_element.inner_text().strip()
 
             # 移除阅读时间标记或其他不必要的内容

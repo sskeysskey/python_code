@@ -124,9 +124,9 @@ def main(mode):
                 print("未找到thumb图片，继续监控...")
                 pyautogui.scroll(SCROLL_AMOUNT)
                 # 如果retry出现则刷新
-                location_retry, shape_retry = find_image_on_screen(templates["retry"])
-                if location_retry:
-                    click_retry_and_refresh()
+                # location_retry, shape_retry = find_image_on_screen(templates["retry"])
+                # if location_retry:
+                #     click_retry_and_refresh()
                 time.sleep(1)
 
         if time.time() > timeout_thumb:
@@ -174,9 +174,9 @@ def main(mode):
             else:
                 print(f"找到thumb图片位置: {location}")
                 pyautogui.scroll(SCROLL_AMOUNT)
-                location_retry, shape_retry = find_image_on_screen(templates["retry"])
-                if location_retry:
-                    click_retry_and_refresh()
+                # location_retry, shape_retry = find_image_on_screen(templates["retry"])
+                # if location_retry:
+                #     click_retry_and_refresh()
                 time.sleep(0.5)
 
     # 找 copy 图片，点击它

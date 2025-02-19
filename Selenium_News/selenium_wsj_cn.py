@@ -71,14 +71,33 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    css_selector = "//span[contains(@class, 'WSJTheme--headline')]/parent::a"
-    titles_elements = driver.find_elements(By.XPATH, css_selector)
+    # 使用多个选择器来匹配不同类型的文章标题
+    selectors = [
+        # 匹配中等大小的头条新闻
+        "//a[contains(@class, 'css-g4pnb7')]",
+        # 匹配常规新闻标题
+        "//a[contains(@class, 'css-1rznr30-CardLink')]",
+        # 匹配其他可能的新闻标题格式
+        "//div[contains(@class, 'css-wxquvv-HeadlineTextBlock')]/parent::a",
+        "//div[contains(@class, 'css-18mqv2f-HeadlineTextBlock')]/parent::a"
+    ]
+    
+    titles_elements = []
+    for selector in selectors:
+        elements = driver.find_elements(By.XPATH, selector)
+        titles_elements.extend(elements)
 
     print(f"找到 {len(titles_elements)} 个标题元素。")
 
     for title_element in titles_elements:
         href = title_element.get_attribute('href')
+        # 对于某些元素，文本可能在子元素中
         title_text = title_element.text.strip()
+        if not title_text:
+            # 尝试从子元素获取文本
+            title_spans = title_element.find_elements(By.XPATH, ".//span[contains(@class, 'css-nj7t9y')] | .//div[contains(@class, 'css-wxquvv-HeadlineTextBlock')] | .//div[contains(@class, 'css-18mqv2f-HeadlineTextBlock')]")
+            if title_spans:
+                title_text = title_spans[0].text.strip()
         
         # 此处添加移除阅读时间标记的逻辑
         title_text = re.sub(r'\d+ min read', '', title_text).strip()

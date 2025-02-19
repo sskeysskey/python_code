@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "FT Article Copier",
+  "name": "Article Copier",
   "version": "1.0",
-  "description": "Copy FT Bloomberg WSJ article content to clipboard",
+  "description": "Copy FT Bloomberg WSJ Economist technologyreview content to clipboard",
   "permissions": [
     "activeTab",
     "clipboardWrite",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   "host_permissions": [
     "*://*.ft.com/*",

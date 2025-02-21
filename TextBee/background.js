@@ -1,3 +1,6 @@
+// 保存 WSJ 页面待完成下载的图片下载ID，key 为 tabId
+let wsjDownloadsPending = {};
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (
     tab.url.includes("ft.com") ||
@@ -14,14 +17,14 @@ chrome.action.onClicked.addListener(async (tab) => {
       });
 
       if (result.result) {
-        // 显示成功通知
+        // 显示文本复制成功通知
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           function: showNotification,
           args: ['已成功复制到剪贴板']
         });
       } else {
-        // 显示失败通知
+        // 显示复制失败通知
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           function: showNotification,
@@ -40,15 +43,59 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
-// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-//   if (request.action === 'downloadImage') {
-//     chrome.downloads.download({
-//       url: request.url,
-//       filename: request.filename,
-//       saveAs: false // 直接下载，不显示保存对话框
-//     });
-//   }
-// });
+// 修改后的下载图片消息监听器，增加下载完成跟踪逻辑
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'downloadImage') {
+    const tabId = sender.tab ? sender.tab.id : null;
+    if (tabId !== null) {
+      // 初始化该 tab 的下载队列
+      if (!wsjDownloadsPending[tabId]) {
+        wsjDownloadsPending[tabId] = [];
+      }
+    }
+    chrome.downloads.download({
+      url: request.url,
+      filename: request.filename,
+      saveAs: false // 直接下载，不显示保存对话框
+    }, (downloadId) => {
+      if (downloadId && tabId !== null) {
+        // 将下载任务ID加入跟踪队列中
+        wsjDownloadsPending[tabId].push(downloadId);
+      }
+    });
+  }
+});
+
+// 新增监听器：检测下载完成后弹出通知
+chrome.downloads.onChanged.addListener((delta) => {
+  if (delta.state && delta.state.current === "complete") {
+    chrome.downloads.search({ id: delta.id }, (results) => {
+      if (results && results.length > 0) {
+        const downloadItem = results[0];
+        const downloadId = downloadItem.id;
+        // 遍历所有 wsj 页面的 tabId
+        for (const tabId in wsjDownloadsPending) {
+          const index = wsjDownloadsPending[tabId].indexOf(downloadId);
+          if (index !== -1) {
+            // 移除该下载任务ID
+            wsjDownloadsPending[tabId].splice(index, 1);
+            // 如果该 tab 下所有图片都下载完成，则弹出通知
+            if (wsjDownloadsPending[tabId].length === 0) {
+              chrome.scripting.executeScript({
+                target: { tabId: parseInt(tabId) },
+                function: showNotification,
+                args: ['所有图片下载完成']
+              });
+              // 清理该 tab 对应的数据
+              delete wsjDownloadsPending[tabId];
+            }
+            break;
+          }
+        }
+      }
+    });
+  }
+});
 
 function extractAndCopy() {
   let textContent = '';
@@ -58,11 +105,73 @@ function extractAndCopy() {
     const articleBody = document.getElementById('article-body');
 
     if (articleBody) {
+      // 文本提取逻辑保持不变
       const paragraphs = articleBody.getElementsByTagName('p');
       textContent = Array.from(paragraphs)
         .map(p => p.textContent.trim())
         .filter(text => text && text !== '@' && text !== '•' && text !== '».' && text.length > 1)
         .join('\n\n');
+
+      // 如果成功提取到文本，则处理图片下载
+      if (textContent) {
+        // 查找所有图片容器
+        const figures = document.querySelectorAll('figure.n-content-image');
+
+        figures.forEach(figure => {
+          const picture = figure.querySelector('picture');
+          if (picture) {
+            // 获取最高分辨率的图片URL
+            const desktopSource = picture.querySelector('source[media="(min-width: 700px)"]');
+            const img = picture.querySelector('img');
+
+            if (desktopSource && desktopSource.srcset) {
+              // 从srcset中提取最高分辨率的URL
+              const srcsetUrls = desktopSource.srcset.split(',')
+                .map(src => src.trim().split(' ')[0])
+                .filter(url => url);
+
+              if (srcsetUrls.length > 0) {
+                // 使用最后一个URL（通常是最高分辨率的）
+                const highResUrl = srcsetUrls[srcsetUrls.length - 1];
+
+                // 生成文件名
+                let filename;
+                if (img && img.alt) {
+                  // 使用图片alt文本作为文件名
+                  filename = `ft-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`;
+                } else {
+                  // 如果没有alt文本，使用时间戳
+                  const timestamp = new Date().getTime();
+                  filename = `ft-image-${timestamp}.jpg`;
+                }
+
+                // 确保文件名不会太长
+                if (filename.length > 100) {
+                  filename = filename.substring(0, 96) + '.jpg';
+                }
+
+                // 发送下载消息到background script
+                chrome.runtime.sendMessage({
+                  action: 'downloadImage',
+                  url: highResUrl,
+                  filename: filename
+                });
+              }
+            } else if (img && img.src) {
+              // 如果没有source标签，使用img的src
+              const filename = img.alt
+                ? `ft-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
+                : `ft-image-${new Date().getTime()}.jpg`;
+
+              chrome.runtime.sendMessage({
+                action: 'downloadImage',
+                url: img.src,
+                filename: filename
+              });
+            }
+          }
+        });
+      }
     }
   }
 
@@ -127,207 +236,193 @@ function extractAndCopy() {
           !/^[@•∞]/.test(text) && // 不以特殊字符开头
           !/^\s*$/.test(text) && // 不是纯空白
           !['flex', 'Advertisement'].includes(text) && // 排除特定词语
-          !/^[.\s]*$/.test(text) && // 不是纯点号或空格
+          !/^[.\s]*$/.test(text) && // 不是纯点号或空白
           !/^Up Next:/.test(text) && // 排除"Up Next"开头的文本
           !/^You are using an/.test(text); // 排除浏览器升级提示
       })
       .join('\n\n');
+
+    // 如果提取到了有效文本，则进行图片下载
+    if (textContent) {
+      // 查找所有类型的图片容器
+      const articleImages = document.querySelectorAll('figure[data-component="article-image"]');
+
+      articleImages.forEach(figure => {
+        const img = figure.querySelector('img.ui-image.high-res-img');
+        if (img) {
+          let highestResUrl = img.src; // 默认使用src
+
+          // 如果有srcset，解析并找出最高分辨率的图片
+          if (img.srcset) {
+            const srcsetEntries = img.srcset.split(',')
+              .map(entry => {
+                // 提取URL和宽度
+                const parts = entry.trim().split(' ');
+                const url = parts[0].trim();
+                // 从类似 "1200w" 的字符串中提取数字
+                const width = parseInt(parts[parts.length - 1]) || 0;
+                return { url, width };
+              })
+              .filter(entry => entry.width > 0) // 只保留有效的宽度值
+              .sort((a, b) => b.width - a.width); // 按宽度降序排序
+
+            // 使用最高分辨率的URL
+            if (srcsetEntries.length > 0) {
+              highestResUrl = srcsetEntries[0].url;
+            }
+          }
+
+          // 清理URL（移除多余的空格和换行）
+          highestResUrl = highestResUrl.replace(/\s+/g, '');
+
+          // 获取文件扩展名
+          const extension = highestResUrl.toLowerCase().includes('.png') ? 'png' : 'webp';
+
+          // 生成文件名
+          let filename;
+          if (img.alt) {
+            // 使用alt文本作为文件名
+            filename = `bloomberg-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
+          } else {
+            // 如果没有alt文本，使用时间戳
+            const timestamp = new Date().getTime();
+            filename = `bloomberg-image-${timestamp}.${extension}`;
+          }
+
+          // 确保文件名不会太长
+          if (filename.length > 100) {
+            filename = filename.substring(0, 96) + '.' + extension;
+          }
+
+          // 发送下载消息到background script
+          chrome.runtime.sendMessage({
+            action: 'downloadImage',
+            url: highestResUrl,
+            filename: filename
+          });
+        }
+      });
+    }
   }
 
   else if (window.location.hostname.includes("wsj.com")) {
-    // WSJ.com 的内容提取逻辑
     const article = document.querySelector('article');
+
     if (article) {
-      // 定义可能的段落选择器
+      // 【1】先提取文本，而不进行图片下载
       const possibleSelectors = [
-        // 第一种样式
         'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
-        // 第二种样式
         'p[class*="css-k3zb61-Paragraph"]',
-        // 备用选择器
         'p[data-type="paragraph"]',
         '.paywall p[data-type="paragraph"]',
         'article p[data-type="paragraph"]',
-        // 添加新的选择器以提高兼容性
         'p[class*="Paragraph"]',
         '.paywall p'
       ];
 
-      // 合并所有找到的段落
       let allParagraphs = [];
       possibleSelectors.forEach(selector => {
         const paragraphs = article.querySelectorAll(selector);
         allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
       });
 
-      // 去重
+      // 找到第一个 h3 标签的索引，将其之后的段落排除掉
+      let h3Index = -1;
+      for (let i = 0; i < allParagraphs.length; i++) {
+        const prevElement = allParagraphs[i].previousElementSibling;
+        if (prevElement && prevElement.matches('h3[data-type="hed"]')) {
+          h3Index = i;
+          break;
+        }
+      }
+
+      // 如果找到 h3 标签，只保留之前的段落
+      if (h3Index !== -1) {
+        allParagraphs = allParagraphs.slice(0, h3Index);
+      }
+      // 去重后生成最终文本内容
       allParagraphs = [...new Set(allParagraphs)];
 
       textContent = allParagraphs
         .map(p => {
-          // 获取段落的纯文本内容
-          let text = p.textContent.trim();
+          // 过滤掉带有特定class的段落
+          if (
+            p.querySelector('strong[data-type="emphasis"]') ||
+            p.className.includes('g-pstyle') ||  // 添加这个条件
+            p.closest('.ai2html_export') ||      // 添加这个条件
+            p.closest('[data-block="dynamic-inset"]') // 添加这个条件
+          ) {
+            return '';
+          }
 
-          // 处理特殊字符和HTML注释
-          text = text
-            .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
-            .replace(/[•∞@]/g, '') // 移除特殊字符
-            .replace(/\s+/g, ' ') // 规范化空白
-            .replace(/&nbsp;/g, ' ') // 处理HTML空格
-            .replace(/≤\/p>/g, '') // 处理HTML标签碎片
-            .replace(/\[.*?\]/g, '') // 处理方括号内容
+          let text = p.textContent.trim()
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .replace(/[•∞@]/g, '')
+            .replace(/\s+/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/≤\/p>/g, '')
+            .replace(/\[.*?\]/g, '')
             .trim();
 
           return text;
         })
         .filter(text => {
-          // 增强过滤条件
           return text &&
             text.length > 1 &&
             !['@', '•', '∞', 'flex'].includes(text) &&
             !/^\s*$/.test(text) &&
             !/^Advertisement$/i.test(text) &&
-            !/^.$/.test(text); // 过滤单个字符
+            !/^.$/.test(text) &&
+            !text.includes("Newsletter Sign-up") &&
+            !text.includes("Catch up on the headlines, understand the news and make better decisions, free in your inbox daily. Enjoy a free article in every edition.") &&
+            !text.includes("News and analysis of the New York City mayor's case") &&
+            !text.includes("Latest news and key analysis, selected by editors") &&
+            !text.includes("广告");
         })
         .join('\n\n');
+
+      // 【2】只有当文本提取成功后，再进行图片下载
+      if (textContent) {
+        const pictures = article.querySelectorAll('picture.css-u314cv');
+        pictures.forEach(picture => {
+          const img = picture.querySelector('img');
+          if (img && img.src && img.alt) {
+            // 从 srcset 中获取最高分辨率的图片URL
+            let highestResUrl = img.src; // 默认使用 src 作为备选
+
+            if (img.srcset) {
+              const srcsetEntries = img.srcset.split(',').map(entry => {
+                const [url, width] = entry.trim().split(' ');
+                return {
+                  url: url.trim(),
+                  width: parseInt(width) || 0
+                };
+              });
+
+              // 找出最大宽度的图片URL
+              const highestResSrc = srcsetEntries.reduce((prev, current) => {
+                return (current.width > prev.width) ? current : prev;
+              }, srcsetEntries[0]);
+
+              if (highestResSrc) {
+                highestResUrl = highestResSrc.url;
+              }
+            }
+
+            // 尝试构建最高分辨率版本的URL
+            const baseUrl = highestResUrl.split('?')[0];
+            const highResUrl = `${baseUrl}?width=700&size=1.5042117930204573&pixel_ratio=2`;
+
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: highResUrl,
+              filename: `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
+            });
+          }
+        });
+      }
     }
   }
-
-  // else if (window.location.hostname.includes("wsj.com")) {
-  //   const article = document.querySelector('article');
-  //   let content = [];
-
-  //   if (article) {
-  //     // 提取图片
-  //     const pictures = article.querySelectorAll('picture.css-u314cv');
-  //     pictures.forEach(picture => {
-  //       const img = picture.querySelector('img');
-  //       if (img) {
-  //         const imageInfo = {
-  //           type: 'image',
-  //           alt: img.alt || '',
-  //           src: img.src || ''
-  //         };
-  //         content.push(imageInfo);
-  //       }
-  //     });
-
-  //     // 提取文字段落 (原有的段落提取逻辑)
-  //     const possibleSelectors = [
-  //       'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
-  //       'p[class*="css-k3zb61-Paragraph"]',
-  //       'p[data-type="paragraph"]',
-  //       '.paywall p[data-type="paragraph"]',
-  //       'article p[data-type="paragraph"]',
-  //       'p[class*="Paragraph"]',
-  //       '.paywall p'
-  //     ];
-
-  //     let allParagraphs = [];
-  //     possibleSelectors.forEach(selector => {
-  //       const paragraphs = article.querySelectorAll(selector);
-  //       allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
-  //     });
-
-  //     allParagraphs = [...new Set(allParagraphs)];
-
-  //     const textParagraphs = allParagraphs
-  //       .map(p => {
-  //         let text = p.textContent.trim()
-  //           .replace(/<!--[\s\S]*?-->/g, '')
-  //           .replace(/[•∞@]/g, '')
-  //           .replace(/\s+/g, ' ')
-  //           .replace(/&nbsp;/g, ' ')
-  //           .replace(/≤\/p>/g, '')
-  //           .replace(/\[.*?\]/g, '')
-  //           .trim();
-
-  //         return text;
-  //       })
-  //       .filter(text => {
-  //         return text &&
-  //           text.length > 1 &&
-  //           !['@', '•', '∞', 'flex'].includes(text) &&
-  //           !/^\s*$/.test(text) &&
-  //           !/^Advertisement$/i.test(text) &&
-  //           !/^.$/.test(text);
-  //       });
-
-  //     // 合并图片和文字内容
-  //     textContent = content.map(item => {
-  //       if (item.type === 'image') {
-  //         return `描述: ${item.alt}\n链接: ${item.src}\n`;
-  //       }
-  //       return item;
-  //     }).join('\n\n');
-
-  //     // 添加文字内容
-  //     textContent += '\n\n' + textParagraphs.join('\n\n');
-  //   }
-  // }
-
-  // else if (window.location.hostname.includes("wsj.com")) {
-  //   const article = document.querySelector('article');
-  //   let textParagraphs = '';
-
-  //   if (article) {
-  //     // 处理图片下载
-  //     const pictures = article.querySelectorAll('picture.css-u314cv');
-  //     pictures.forEach(picture => {
-  //       const img = picture.querySelector('img');
-  //       if (img && img.src && img.alt) {
-  //         // 使用 chrome.downloads API 下载图片
-  //         chrome.runtime.sendMessage({
-  //           action: 'downloadImage',
-  //           url: img.src,
-  //           filename: `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg` // 替换非法文件名字符
-  //         });
-  //       }
-  //     });
-
-  //     // 提取文字段落
-  //     const possibleSelectors = [
-  //       'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
-  //       'p[class*="css-k3zb61-Paragraph"]',
-  //       'p[data-type="paragraph"]',
-  //       '.paywall p[data-type="paragraph"]',
-  //       'article p[data-type="paragraph"]',
-  //       'p[class*="Paragraph"]',
-  //       '.paywall p'
-  //     ];
-
-  //     let allParagraphs = [];
-  //     possibleSelectors.forEach(selector => {
-  //       const paragraphs = article.querySelectorAll(selector);
-  //       allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
-  //     });
-
-  //     allParagraphs = [...new Set(allParagraphs)];
-
-  //     textContent = allParagraphs
-  //       .map(p => {
-  //         let text = p.textContent.trim()
-  //           .replace(/<!--[\s\S]*?-->/g, '')
-  //           .replace(/[•∞@]/g, '')
-  //           .replace(/\s+/g, ' ')
-  //           .replace(/&nbsp;/g, ' ')
-  //           .replace(/≤\/p>/g, '')
-  //           .replace(/\[.*?\]/g, '')
-  //           .trim();
-
-  //         return text;
-  //       })
-  //       .filter(text => {
-  //         return text &&
-  //           text.length > 1 &&
-  //           !['@', '•', '∞', 'flex'].includes(text) &&
-  //           !/^\s*$/.test(text) &&
-  //           !/^Advertisement$/i.test(text) &&
-  //           !/^.$/.test(text);
-  //       })
-  //       .join('\n\n');
-  //   }
-  // }
 
   else if (window.location.hostname.includes("economist.com")) {
     const article = document.querySelector('[data-test-id="Article"]');
@@ -349,7 +444,7 @@ function extractAndCopy() {
                 if (child.tagName === 'SPAN' && child.getAttribute('data-caps') === 'initial') {
                   text += child.textContent;
                 }
-                // 处理small标签，保持大写
+                // 处理 small 标签，保持大写
                 else if (child.tagName === 'SMALL') {
                   text += child.textContent;
                 }
@@ -462,16 +557,6 @@ function extractAndCopy() {
             !/^[\.•@∞]+$/.test(text);
         })
         .join('\n\n');
-
-      // 调试信息
-      console.log('Debug: Final extracted text length:', textContent.length);
-      if (!textContent) {
-        console.log('Debug: No content extracted after filtering');
-      } else {
-        console.log('Debug: Content successfully extracted');
-        // 输出前100个字符用于验证
-        console.log('Debug: First 100 chars:', textContent.substring(0, 100));
-      }
     }
   }
 
@@ -498,53 +583,54 @@ function extractAndCopy() {
 }
 
 function showNotification(message) {
-  // 创建通知样式
-  const style = document.createElement('style');
-  style.textContent = `
-    .copy-notification {
+  // 如果未添加通知相关的样式，则创建一次
+  if (!document.getElementById('notification-style')) {
+    const style = document.createElement('style');
+    style.id = 'notification-style';
+    style.textContent = `
+      #notification-container {
     position: fixed;
     top: 20px;
       left: 50%;
-      transform: translateX(-50%) translateY(-20px);
-    background-color: #4CAF50;  /* 相同的绿色，使用十六进制表示 */
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .copy-notification {
+        background-color: #4CAF50;
     color: white;
     padding: 12px 24px;
     border-radius: 4px;
-      z-index: 2147483647;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     font-size: 14px;
-    opacity: 0;
-    transition: all 0.3s ease;
     }
   `;
-  document.head.appendChild(style);
-
-  // 移除可能存在的旧通知
-  const existingNotification = document.querySelector('.copy-notification');
-  if (existingNotification) {
-    existingNotification.remove();
+    document.head.appendChild(style);
   }
 
-  // 创建新通知
+  // 创建通知容器（如果尚未创建）
+  let container = document.getElementById('notification-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'notification-container';
+    document.body.appendChild(container);
+  }
+
+  // 创建新的通知元素
   const notification = document.createElement('div');
   notification.className = 'copy-notification';
   notification.textContent = message;
-  document.body.appendChild(notification);
+  container.appendChild(notification);
 
-  // 触发动画
-  requestAnimationFrame(() => {
-    notification.style.opacity = '1';
-    notification.style.transform = 'translateX(-50%) translateY(0)';
-  });
-
-  // 7秒后淡出
+  // 持续显示7秒后直接移除通知
   setTimeout(() => {
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(-50%) translateY(-20px)';
-    setTimeout(() => {
-      notification.remove();
-      style.remove();
-    }, 300);
+    notification.remove();
+    // 如果容器内没有其他通知则移除容器
+    if (container.children.length === 0) {
+      container.remove();
+    }
   }, 7000);
 }

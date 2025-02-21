@@ -40,15 +40,15 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'downloadImage') {
-    chrome.downloads.download({
-      url: request.url,
-      filename: request.filename,
-      saveAs: false // 直接下载，不显示保存对话框
-    });
-  }
-});
+// chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+//   if (request.action === 'downloadImage') {
+//     chrome.downloads.download({
+//       url: request.url,
+//       filename: request.filename,
+//       saveAs: false // 直接下载，不显示保存对话框
+//     });
+//   }
+// });
 
 function extractAndCopy() {
   let textContent = '';
@@ -134,64 +134,64 @@ function extractAndCopy() {
       .join('\n\n');
   }
 
-  // else if (window.location.hostname.includes("wsj.com")) {
-  //   // WSJ.com 的内容提取逻辑
-  //   const article = document.querySelector('article');
-  //   if (article) {
-  //     // 定义可能的段落选择器
-  //     const possibleSelectors = [
-  //       // 第一种样式
-  //       'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
-  //       // 第二种样式
-  //       'p[class*="css-k3zb61-Paragraph"]',
-  //       // 备用选择器
-  //       'p[data-type="paragraph"]',
-  //       '.paywall p[data-type="paragraph"]',
-  //       'article p[data-type="paragraph"]',
-  //       // 添加新的选择器以提高兼容性
-  //       'p[class*="Paragraph"]',
-  //       '.paywall p'
-  //     ];
+  else if (window.location.hostname.includes("wsj.com")) {
+    // WSJ.com 的内容提取逻辑
+    const article = document.querySelector('article');
+    if (article) {
+      // 定义可能的段落选择器
+      const possibleSelectors = [
+        // 第一种样式
+        'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
+        // 第二种样式
+        'p[class*="css-k3zb61-Paragraph"]',
+        // 备用选择器
+        'p[data-type="paragraph"]',
+        '.paywall p[data-type="paragraph"]',
+        'article p[data-type="paragraph"]',
+        // 添加新的选择器以提高兼容性
+        'p[class*="Paragraph"]',
+        '.paywall p'
+      ];
 
-  //     // 合并所有找到的段落
-  //     let allParagraphs = [];
-  //     possibleSelectors.forEach(selector => {
-  //       const paragraphs = article.querySelectorAll(selector);
-  //       allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
-  //     });
+      // 合并所有找到的段落
+      let allParagraphs = [];
+      possibleSelectors.forEach(selector => {
+        const paragraphs = article.querySelectorAll(selector);
+        allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
+      });
 
-  //     // 去重
-  //     allParagraphs = [...new Set(allParagraphs)];
+      // 去重
+      allParagraphs = [...new Set(allParagraphs)];
 
-  //     textContent = allParagraphs
-  //       .map(p => {
-  //         // 获取段落的纯文本内容
-  //         let text = p.textContent.trim();
+      textContent = allParagraphs
+        .map(p => {
+          // 获取段落的纯文本内容
+          let text = p.textContent.trim();
 
-  //         // 处理特殊字符和HTML注释
-  //         text = text
-  //           .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
-  //           .replace(/[•∞@]/g, '') // 移除特殊字符
-  //           .replace(/\s+/g, ' ') // 规范化空白
-  //           .replace(/&nbsp;/g, ' ') // 处理HTML空格
-  //           .replace(/≤\/p>/g, '') // 处理HTML标签碎片
-  //           .replace(/\[.*?\]/g, '') // 处理方括号内容
-  //           .trim();
+          // 处理特殊字符和HTML注释
+          text = text
+            .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+            .replace(/[•∞@]/g, '') // 移除特殊字符
+            .replace(/\s+/g, ' ') // 规范化空白
+            .replace(/&nbsp;/g, ' ') // 处理HTML空格
+            .replace(/≤\/p>/g, '') // 处理HTML标签碎片
+            .replace(/\[.*?\]/g, '') // 处理方括号内容
+            .trim();
 
-  //         return text;
-  //       })
-  //       .filter(text => {
-  //         // 增强过滤条件
-  //         return text &&
-  //           text.length > 1 &&
-  //           !['@', '•', '∞', 'flex'].includes(text) &&
-  //           !/^\s*$/.test(text) &&
-  //           !/^Advertisement$/i.test(text) &&
-  //           !/^.$/.test(text); // 过滤单个字符
-  //       })
-  //       .join('\n\n');
-  //   }
-  // }
+          return text;
+        })
+        .filter(text => {
+          // 增强过滤条件
+          return text &&
+            text.length > 1 &&
+            !['@', '•', '∞', 'flex'].includes(text) &&
+            !/^\s*$/.test(text) &&
+            !/^Advertisement$/i.test(text) &&
+            !/^.$/.test(text); // 过滤单个字符
+        })
+        .join('\n\n');
+    }
+  }
 
   // else if (window.location.hostname.includes("wsj.com")) {
   //   const article = document.querySelector('article');
@@ -266,68 +266,68 @@ function extractAndCopy() {
   //   }
   // }
 
-  else if (window.location.hostname.includes("wsj.com")) {
-    const article = document.querySelector('article');
-    let textParagraphs = '';
+  // else if (window.location.hostname.includes("wsj.com")) {
+  //   const article = document.querySelector('article');
+  //   let textParagraphs = '';
 
-    if (article) {
-      // 处理图片下载
-      const pictures = article.querySelectorAll('picture.css-u314cv');
-      pictures.forEach(picture => {
-        const img = picture.querySelector('img');
-        if (img && img.src && img.alt) {
-          // 使用 chrome.downloads API 下载图片
-          chrome.runtime.sendMessage({
-            action: 'downloadImage',
-            url: img.src,
-            filename: `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg` // 替换非法文件名字符
-          });
-        }
-      });
+  //   if (article) {
+  //     // 处理图片下载
+  //     const pictures = article.querySelectorAll('picture.css-u314cv');
+  //     pictures.forEach(picture => {
+  //       const img = picture.querySelector('img');
+  //       if (img && img.src && img.alt) {
+  //         // 使用 chrome.downloads API 下载图片
+  //         chrome.runtime.sendMessage({
+  //           action: 'downloadImage',
+  //           url: img.src,
+  //           filename: `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg` // 替换非法文件名字符
+  //         });
+  //       }
+  //     });
 
-      // 提取文字段落
-      const possibleSelectors = [
-        'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
-        'p[class*="css-k3zb61-Paragraph"]',
-        'p[data-type="paragraph"]',
-        '.paywall p[data-type="paragraph"]',
-        'article p[data-type="paragraph"]',
-        'p[class*="Paragraph"]',
-        '.paywall p'
-      ];
+  //     // 提取文字段落
+  //     const possibleSelectors = [
+  //       'p[class*="emoc1hq1"][class*="css-1jdwmf4-StyledNewsKitParagraph"][font-size="17"]',
+  //       'p[class*="css-k3zb61-Paragraph"]',
+  //       'p[data-type="paragraph"]',
+  //       '.paywall p[data-type="paragraph"]',
+  //       'article p[data-type="paragraph"]',
+  //       'p[class*="Paragraph"]',
+  //       '.paywall p'
+  //     ];
 
-      let allParagraphs = [];
-      possibleSelectors.forEach(selector => {
-        const paragraphs = article.querySelectorAll(selector);
-        allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
-      });
+  //     let allParagraphs = [];
+  //     possibleSelectors.forEach(selector => {
+  //       const paragraphs = article.querySelectorAll(selector);
+  //       allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
+  //     });
 
-      allParagraphs = [...new Set(allParagraphs)];
+  //     allParagraphs = [...new Set(allParagraphs)];
 
-      textContent = allParagraphs
-        .map(p => {
-          let text = p.textContent.trim()
-            .replace(/<!--[\s\S]*?-->/g, '')
-            .replace(/[•∞@]/g, '')
-            .replace(/\s+/g, ' ')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/≤\/p>/g, '')
-            .replace(/\[.*?\]/g, '')
-            .trim();
+  //     textContent = allParagraphs
+  //       .map(p => {
+  //         let text = p.textContent.trim()
+  //           .replace(/<!--[\s\S]*?-->/g, '')
+  //           .replace(/[•∞@]/g, '')
+  //           .replace(/\s+/g, ' ')
+  //           .replace(/&nbsp;/g, ' ')
+  //           .replace(/≤\/p>/g, '')
+  //           .replace(/\[.*?\]/g, '')
+  //           .trim();
 
-          return text;
-        })
-        .filter(text => {
-          return text &&
-            text.length > 1 &&
-            !['@', '•', '∞', 'flex'].includes(text) &&
-            !/^\s*$/.test(text) &&
-            !/^Advertisement$/i.test(text) &&
-            !/^.$/.test(text);
-        })
-        .join('\n\n');
-    }
-  }
+  //         return text;
+  //       })
+  //       .filter(text => {
+  //         return text &&
+  //           text.length > 1 &&
+  //           !['@', '•', '∞', 'flex'].includes(text) &&
+  //           !/^\s*$/.test(text) &&
+  //           !/^Advertisement$/i.test(text) &&
+  //           !/^.$/.test(text);
+  //       })
+  //       .join('\n\n');
+  //   }
+  // }
 
   else if (window.location.hostname.includes("economist.com")) {
     const article = document.querySelector('[data-test-id="Article"]');

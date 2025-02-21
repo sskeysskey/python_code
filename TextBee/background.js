@@ -1,6 +1,7 @@
 // 保存 WSJ 页面待完成下载的图片下载ID，key 为 tabId
 let DownloadsPending = {};
 
+// 点击扩展图标时触发
 chrome.action.onClicked.addListener(async (tab) => {
   if (
     tab.url.includes("ft.com") ||
@@ -79,7 +80,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// 新增监听器：检测下载完成后弹出通知
+// 监听下载完成后弹出通知
 chrome.downloads.onChanged.addListener((delta) => {
   if (delta.state && delta.state.current === "complete") {
     chrome.downloads.search({ id: delta.id }, (results) => {
@@ -114,6 +115,7 @@ chrome.downloads.onChanged.addListener((delta) => {
 function extractAndCopy() {
   let textContent = '';
 
+  // 处理 FT.com
   if (window.location.hostname.includes("ft.com")) {
     // FT.com 的内容提取逻辑
     const articleBody = document.getElementById('article-body');
@@ -194,6 +196,7 @@ function extractAndCopy() {
     }
   }
 
+  // 处理 bloomberg.com
   else if (window.location.hostname.includes("bloomberg.com")) {
     // 定义主要内容选择器
     const mainSelectors = [
@@ -328,6 +331,7 @@ function extractAndCopy() {
     }
   }
 
+  // 处理 wsj.com
   else if (window.location.hostname.includes("wsj.com")) {
     const article = document.querySelector('article');
 
@@ -437,6 +441,7 @@ function extractAndCopy() {
     }
   }
 
+  // 处理 economist.com
   else if (window.location.hostname.includes("economist.com")) {
     const article = document.querySelector('[data-test-id="Article"]');
     if (article) {
@@ -559,6 +564,7 @@ function extractAndCopy() {
     }
   }
 
+  // 处理 technologyreview.com
   else if (window.location.hostname.includes("technologyreview.com")) {
     console.log('Debug: Detected Technology Review website'); // 调试日志
 
@@ -668,13 +674,6 @@ function extractAndCopy() {
                 filename += '.jpg';
               }
 
-              // 输出调试信息
-              console.log('Attempting to download:', {
-                url: highResUrl,
-                filename: filename
-              });
-
-              // 发送下载消息
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
                 url: highResUrl,

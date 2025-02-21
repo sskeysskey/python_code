@@ -478,6 +478,67 @@ function extractAndCopy() {
             !/^By\s/.test(text);
         })
         .join('\n\n');
+
+      // 如果成功提取到文本，则处理图片下载
+      if (textContent) {
+        // 查找所有图片，但排除特定区域的图片
+        const figures = Array.from(article.querySelectorAll('figure.css-3mn275'))
+          .filter(figure => {
+            // 检查父元素，排除相关文章区域的图片
+            return !figure.closest('[data-optimizely="related-articles-section"]') && // 排除相关文章区域
+              !figure.closest('[data-tracking-id="content-well-chapter-list"]') && // 排除章节列表
+              !figure.closest('.css-1qaigru') && // 排除水平布局区域
+              !figure.closest('.css-12lyffs'); // 排除推荐文章卡片
+          });
+
+        figures.forEach(figure => {
+          const img = figure.querySelector('img');
+          if (img) {
+            // 检查图片格式
+            let fileExtension = 'jpg';
+            const srcUrl = img.src || '';
+            if (srcUrl.includes('format=auto')) {
+              // 从原始URL中提取实际文件扩展名
+              const originalPath = srcUrl.split('/').pop().split('_')[1];
+              if (originalPath) {
+                const match = originalPath.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                if (match) {
+                  fileExtension = match[1].toLowerCase();
+                }
+              }
+            }
+
+            // 构建最高质量的图片URL
+            // 移除现有的width参数，使用1424作为最大宽度
+            const baseUrl = srcUrl.split('/content-assets/')[0] + '/content-assets/';
+            const imagePath = srcUrl.split('/content-assets/')[1].split('?')[0];
+            const highResUrl = `${baseUrl}${imagePath}?width=1424&quality=80&format=auto`;
+
+            // 生成文件名
+            let filename;
+            if (img.alt && img.alt.trim()) {
+              // 使用图片alt文本作为文件名，替换非法字符
+              filename = `economist-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+            } else {
+              // 如果没有alt文本，使用时间戳
+              const timestamp = new Date().getTime();
+              filename = `economist-image-${timestamp}.${fileExtension}`;
+            }
+
+            // 确保文件名不会太长
+            if (filename.length > 100) {
+              filename = filename.substring(0, 96) + '.' + fileExtension;
+            }
+
+            // 发送下载消息到background script
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: highResUrl,
+              filename: filename
+            });
+          }
+        });
+      }
     }
   }
 

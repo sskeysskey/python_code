@@ -618,6 +618,51 @@ function extractAndCopy() {
             !/^[\.•@∞]+$/.test(text);
         })
         .join('\n\n');
+
+      if (textContent) {
+        // 查找所有文章图片
+        const images = document.querySelectorAll('img[srcset]');
+
+        images.forEach(img => {
+          if (img && img.srcset) {
+            // 提取基础文件名
+            const baseFileName = "250218_globalelectricity";
+
+            // 直接构造最高质量的图片URL
+            const highResUrl = `https://wp.technologyreview.com/wp-content/uploads/2025/02/${baseFileName}.jpg?fit=2252,1266`;
+
+            // 生成文件名
+            let filename;
+            if (img.alt && img.alt.trim()) {
+              filename = `technologyreview-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
+            } else {
+              const timestamp = new Date().getTime();
+              filename = `technologyreview-image-${timestamp}`;
+            }
+
+            // 确保文件名不会太长且以.jpg结尾
+            if (filename.length > 90) {
+              filename = filename.substring(0, 90);
+            }
+            if (!filename.toLowerCase().endsWith('.jpg')) {
+              filename += '.jpg';
+            }
+
+            // 输出调试信息
+            console.log('Attempting to download:', {
+              url: highResUrl,
+              filename: filename
+            });
+
+            // 发送下载消息
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: highResUrl,
+              filename: filename
+            });
+          }
+        });
+      }
     }
   }
 

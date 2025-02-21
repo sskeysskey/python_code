@@ -326,20 +326,6 @@ function extractAndCopy() {
         allParagraphs = [...allParagraphs, ...Array.from(paragraphs)];
       });
 
-      // 找到第一个 h3 标签的索引，将其之后的段落排除掉
-      let h3Index = -1;
-      for (let i = 0; i < allParagraphs.length; i++) {
-        const prevElement = allParagraphs[i].previousElementSibling;
-        if (prevElement && prevElement.matches('h3[data-type="hed"]')) {
-          h3Index = i;
-          break;
-        }
-      }
-
-      // 如果找到 h3 标签，只保留之前的段落
-      if (h3Index !== -1) {
-        allParagraphs = allParagraphs.slice(0, h3Index);
-      }
       // 去重后生成最终文本内容
       allParagraphs = [...new Set(allParagraphs)];
 

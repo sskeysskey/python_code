@@ -195,9 +195,11 @@ def main():
     clipboard_content = get_clipboard_content()
     segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)
-    site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
+    # site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
+    site_content_with_tags = f'{site_content}'
     
-    final_content = f"{segment_content}\n{site_content_with_tags}\n\n{clipboard_content}"
+    # final_content = f"{segment_content}\n{site_content_with_tags}\n\n{clipboard_content}"
+    final_content = f"{site_content_with_tags}\n\n{clipboard_content}"
     
     now = datetime.now()
     txt_file_name = f"News_{now.strftime('%y_%m_%d')}.txt"

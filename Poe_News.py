@@ -14,7 +14,7 @@ import pyperclip
 TXT_DIRECTORY = '/Users/yanzhang/Documents/News'
 HTML_DIRECTORY = '/Users/yanzhang/Documents/sskeysskey.github.io/news'
 SCRIPT_PATH = '/Users/yanzhang/Documents/ScriptEditor/Close_Tab_News.scpt'
-# SEGMENT_FILE_PATH = '/tmp/segment.txt'
+SEGMENT_FILE_PATH = '/tmp/segment.txt'
 SITE_FILE_PATH = '/tmp/site.txt'
 RATIO_FILE_PATH = '/tmp/english_ratio_result.txt'
 
@@ -190,7 +190,7 @@ def main() -> None:
     
     # 拼接最终内容
     clipboard_content = get_clipboard_content()
-    # segment_content = read_file(SEGMENT_FILE_PATH)
+    segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)
     
     # site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'

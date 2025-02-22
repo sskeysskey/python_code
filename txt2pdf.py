@@ -320,7 +320,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                             desc_y -= desc_font_size + 2  # 行间距
                         
                         set_font()  # 恢复原来的字体大小
-                        y -= (img_height + 80)  # 增加间距以容纳描述文字
+                        y -= (img_height + 100)  # 增加间距以容纳描述文字
                         
                     except Exception as e:
                         print(f"处理图片时出错: {str(e)}")

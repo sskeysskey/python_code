@@ -566,11 +566,9 @@ function extractAndCopy() {
 
   // 处理 technologyreview.com
   else if (window.location.hostname.includes("technologyreview.com")) {
-    console.log('Debug: Detected Technology Review website'); // 调试日志
 
     // 更新 Technology Review 的内容提取逻辑
     const contentBody = document.querySelector('#content--body');
-    console.log('Debug: Content body found:', !!contentBody); // 调试日志
 
     if (contentBody) {
       // 尝试多个可能的选择器
@@ -643,20 +641,17 @@ function extractAndCopy() {
         .join('\n\n');
 
       if (textContent) {
-        // 查找所有文章图片
-        const images = document.querySelectorAll('img[srcset]');
+        // 简化图片查找逻辑
+        const images = contentBody.querySelectorAll('img');
 
         if (images.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });
         } else {
           images.forEach(img => {
-            if (img && img.srcset) {
-              // 提取基础文件名
-              const baseFileName = "250218_globalelectricity";
+            // 直接使用src属性
+            const imgUrl = img.src;
 
-              // 直接构造最高质量的图片URL
-              const highResUrl = `https://wp.technologyreview.com/wp-content/uploads/2025/02/${baseFileName}.jpg?fit=2252,1266`;
-
+            if (imgUrl && !imgUrl.includes('data:image')) { // 排除base64图片
               // 生成文件名
               let filename;
               if (img.alt && img.alt.trim()) {
@@ -674,9 +669,10 @@ function extractAndCopy() {
                 filename += '.jpg';
               }
 
+              console.log('Debug: Downloading image:', imgUrl);
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
-                url: highResUrl,
+                url: imgUrl,
                 filename: filename
               });
             }

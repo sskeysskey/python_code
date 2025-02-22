@@ -125,22 +125,46 @@ def distribute_images_in_content(content, url_images):
         url_line = next((line for line in lines if line.startswith('http')), '')
         content_lines = [line for line in lines if line != url_line and line.strip()]
         
-        new_content = [url_line]
+        # 确保至少有内容行
+        if not content_lines:
+            continue
+            
+        # 始终将第一张图片放在开头
+        new_content = [url_line] if url_line else []
         if images:
             new_content.append(f"--IMAGE_PLACEHOLDER_{images[0]}--")
         
-        remaining_images = images[1:] if images else []
-        if content_lines and remaining_images:
-            spacing = max(1, len(content_lines) // len(remaining_images))
+        # 处理剩余的图片
+        remaining_images = images[1:] if len(images) > 1 else []
+        
+        if remaining_images and content_lines:
+            # 根据剩余图片数量将内容均匀分段
+            segment_size = max(1, len(content_lines) // (len(remaining_images) + 1))
+            
+            current_segment = []
+            image_index = 0
             
             for i, line in enumerate(content_lines):
-                new_content.append(line)
-                if remaining_images and (i + 1) % spacing == 0:
-                    new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[0]}--")
-                    remaining_images = remaining_images[1:]
+                current_segment.append(line)
+                
+                # 当段落达到预期大小或是最后一行时插入图片
+                if (len(current_segment) >= segment_size or i == len(content_lines) - 1) and image_index < len(remaining_images):
+                    # 添加当前段落内容
+                    new_content.extend(current_segment)
+                    # 添加图片占位符
+                    new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
+                    # 重置当前段落
+                    current_segment = []
+                    image_index += 1
             
-            for img in remaining_images:
-                new_content.append(f"--IMAGE_PLACEHOLDER_{img}--")
+            # 添加剩余的段落内容
+            if current_segment:
+                new_content.extend(current_segment)
+            
+            # 如果还有未使用的图片，在末尾添加
+            while image_index < len(remaining_images):
+                new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
+                image_index += 1
         else:
             new_content.extend(content_lines)
         

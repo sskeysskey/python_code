@@ -2,6 +2,9 @@ import os
 import cv2
 import html
 import time
+import shutil
+import glob
+import sys
 import pyperclip
 import subprocess
 import pyautogui
@@ -110,6 +113,45 @@ def close_html_skeleton(file_path):
         """)
 
 def main():
+    # 获取传入的URL参数
+    url = sys.argv[1] if len(sys.argv) > 1 else "No URL provided"
+    
+    def move_and_record_images(url):
+        """
+        移动多种格式图片并记录到article_copier.txt
+        """
+        source_dir = "/Users/yanzhang/Downloads"
+        target_dir = "/Users/yanzhang/Downloads/news_image"
+        record_file = "/Users/yanzhang/Documents/News/article_copier.txt"
+        
+        # 支持的图片格式
+        image_formats = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.gif"]
+
+        # 确保目标目录存在
+        os.makedirs(target_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(record_file), exist_ok=True)
+
+        # 获取所有图片文件
+        image_files = []
+        for format in image_formats:
+            image_files.extend(glob.glob(os.path.join(source_dir, format)))
+        moved_files = []
+
+        # 移动文件
+        for image_file in image_files:
+            filename = os.path.basename(image_file)
+            target_path = os.path.join(target_dir, filename)
+            shutil.move(image_file, target_path)
+            moved_files.append(filename)
+
+        # 写入记录文件，无论是否有移动文件都写入URL
+        content = f"{url}\n\n"
+        if moved_files:
+            content += "\n".join(moved_files) + "\n\n"
+        
+        with open(record_file, 'a', encoding='utf-8') as f:
+            f.write(content)
+            
     template_paths = {
         "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
@@ -189,7 +231,7 @@ def main():
                     print(f"找到图片位置: {location}")
                     skip_to_clipboard = True  # 设置标志位，跳过后续部分
                     break  # 跳出循环
-    sleep(1)
+    sleep(0.3)
 
     # 跳转到clipboard_content处理部分
     clipboard_content = get_clipboard_content()
@@ -225,7 +267,8 @@ def main():
     except subprocess.CalledProcessError as e:
         print(f"Error running AppleScript: {e}")
     
-    sleep(1)
+    move_and_record_images(url)
+    sleep(0.3)
     os.remove(SEGMENT_FILE_PATH)
     os.remove(SITE_FILE_PATH)
 

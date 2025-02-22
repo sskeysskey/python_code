@@ -1,14 +1,14 @@
 # o1优化后代码
-
 import html
 import os
 import re
+import pyperclip
+import shutil
+import glob
 import subprocess
 import sys
 from datetime import datetime
 from time import sleep
-
-import pyperclip
 
 # 常量定义
 TXT_DIRECTORY = '/Users/yanzhang/Documents/News'
@@ -29,13 +29,11 @@ SEGMENT_TO_HTML_FILE = {
     "wsj": "wsj.html"
 }
 
-
 def is_english_char(char: str) -> bool:
     """
     判断字符是否为英文字母（包含大小写）。
     """
     return bool(re.match(r'[a-zA-Z]', char))
-
 
 def check_english_ratio() -> bool:
     """
@@ -59,7 +57,6 @@ def check_english_ratio() -> bool:
     
     return english_ratio > 0.5
 
-
 def get_clipboard_content() -> str:
     """
     获取剪贴板内容，去除空白行。
@@ -77,14 +74,12 @@ def get_clipboard_content() -> str:
     filtered_lines = lines[:-1]
     return "\n".join(filtered_lines)
 
-
 def read_file(file_path: str) -> str:
     """
     读取指定文件并返回其内容（去除首尾空白）。
     """
     with open(file_path, 'r', encoding='utf-8-sig') as f:
         return f.read().strip()
-
 
 def write_html_skeleton(file_path: str, title: str) -> None:
     """
@@ -115,7 +110,6 @@ def write_html_skeleton(file_path: str, title: str) -> None:
                 </tr>
         """)
 
-
 def append_to_html(file_path: str, current_time: str, content: str) -> None:
     """
     将新的条目（时间和内容）以行的形式插入到指定的 HTML 文件第一行记录之后。
@@ -134,7 +128,6 @@ def append_to_html(file_path: str, current_time: str, content: str) -> None:
         f.seek(0)
         f.write(updated_content)
 
-
 def close_html_skeleton(file_path: str) -> None:
     """
     在 HTML 文件末尾补充关闭标签。
@@ -146,7 +139,6 @@ def close_html_skeleton(file_path: str) -> None:
         </html>
         """)
 
-
 def remove_file(file_path: str) -> None:
     """
     安全地删除文件，如果文件不存在则忽略错误并打印提示。
@@ -155,7 +147,6 @@ def remove_file(file_path: str) -> None:
         os.remove(file_path)
     except OSError as e:
         print(f"Error removing {file_path}: {e}")
-
 
 def main() -> None:
     """
@@ -167,6 +158,45 @@ def main() -> None:
     5. 执行关闭新闻 Tab 的 AppleScript 脚本。
     6. 删除临时文件。
     """
+    # 获取传入的URL参数
+    url = sys.argv[1] if len(sys.argv) > 1 else "No URL provided"
+
+    def move_and_record_images(url):
+        """
+        移动多种格式图片并记录到article_copier.txt
+        """
+        source_dir = "/Users/yanzhang/Downloads"
+        target_dir = "/Users/yanzhang/Downloads/news_image"
+        record_file = "/Users/yanzhang/Documents/News/article_copier.txt"
+        
+        # 支持的图片格式
+        image_formats = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.gif"]
+
+        # 确保目标目录存在
+        os.makedirs(target_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(record_file), exist_ok=True)
+
+        # 获取所有图片文件
+        image_files = []
+        for format in image_formats:
+            image_files.extend(glob.glob(os.path.join(source_dir, format)))
+        moved_files = []
+
+        # 移动文件
+        for image_file in image_files:
+            filename = os.path.basename(image_file)
+            target_path = os.path.join(target_dir, filename)
+            shutil.move(image_file, target_path)
+            moved_files.append(filename)
+
+        # 写入记录文件，无论是否有移动文件都写入URL
+        content = f"{url}\n\n"
+        if moved_files:
+            content += "\n".join(moved_files) + "\n\n"
+        
+        with open(record_file, 'a', encoding='utf-8') as f:
+            f.write(content)
+
     check_english_ratio()
     sleep(0.2)
     
@@ -224,11 +254,11 @@ def main() -> None:
     except subprocess.CalledProcessError as e:
         print(f"Error running AppleScript: {e}")
     
-    sleep(1)
+    move_and_record_images(url)
+    sleep(0.3)
     # 删除临时文件
     remove_file(SEGMENT_FILE_PATH)
     remove_file(SITE_FILE_PATH)
-
 
 if __name__ == '__main__':
     main()

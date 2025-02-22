@@ -232,6 +232,13 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         c = canvas.Canvas(pdf_path, pagesize=A4)
         width, height = A4
         
+        def draw_black_background():
+            # 绘制黑色背景
+            c.setFillColor(colors.black)
+            c.rect(0, 0, width, height, fill=1)
+            # 重置填充颜色为白色用于文本
+            c.setFillColor(colors.white)
+        
         # 设置中文字体
         try:
             pdfmetrics.registerFont(TTFont('PingFang', '/Users/yanzhang/Library/Fonts/FangZhengHeiTiJianTi-1.ttf'))
@@ -244,7 +251,9 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
             
         def set_font():
             c.setFont(font_name, font_size)
+            c.setFillColor(colors.white)  # 设置文字颜色为白色
             
+        draw_black_background()  # 初始页面绘制黑色背景
         set_font()  # 初始设置字体
         
         x = 20  # 减小左边距，原来是50
@@ -272,6 +281,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         # 如果当前页空间不足，新建页面
                         if y < img_height + 80:  # 增加空间以容纳描述文字
                             c.showPage()
+                            draw_black_background()  # 新页面时重新绘制黑色背景
                             set_font()
                             y = height - 30
                             
@@ -282,6 +292,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         # 处理图片描述文字
                         description = os.path.splitext(img_filename)[0]  # 移除文件扩展名
                         c.setFont(font_name, font_size * 0.6)
+                        c.setFillColor(colors.white)  # 确保描述文字为白色
                         
                         # 计算描述文字的行数和位置
                         desc_font_size = font_size * 0.6
@@ -338,6 +349,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                     # 检查是否需要换页
                     if y < 30:  # 减小底部边距，原来是50
                         c.showPage()
+                        draw_black_background()  # 新页面时重新绘制黑色背景
                         set_font()  # 新页面重新设置字体
                         y = height - 40
                     

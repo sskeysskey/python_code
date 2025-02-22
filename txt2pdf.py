@@ -281,10 +281,10 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         
                         # 处理图片描述文字
                         description = os.path.splitext(img_filename)[0]  # 移除文件扩展名
-                        c.setFont(font_name, font_size * 0.4)
+                        c.setFont(font_name, font_size * 0.6)
                         
                         # 计算描述文字的行数和位置
-                        desc_font_size = font_size * 0.4
+                        desc_font_size = font_size * 0.6
                         max_desc_width = width - 60  # 留出左右边距
                         desc_words = []
                         current_line = ""

@@ -121,67 +121,167 @@ function extractAndCopy() {
     const articleBody = document.getElementById('article-body');
 
     if (articleBody) {
-      // 文本提取逻辑保持不变
+      // 改进的文本提取逻辑
       const paragraphs = articleBody.getElementsByTagName('p');
       textContent = Array.from(paragraphs)
+        .filter(p => {
+          // 获取段落的纯文本内容
+          const text = p.textContent.trim();
+
+          // 排除条件：
+          // 1. 空段落或只包含特殊字符
+          if (!text || text === '@' || text === '•' || text === '».' || text.length <= 1) {
+            return false;
+          }
+
+          // 2. 包含作者信息的段落
+          if (text.includes('is the author of') || text.toLowerCase().includes('follow ft weekend')) {
+            return false;
+          }
+
+          // 3. 包含旅行细节信息的段落
+          // if (text.includes('was a guest of') || text.includes('start from $')) {
+          //   return false;
+          // }
+
+          // 4. 包含编辑说明的段落
+          if (text.toLowerCase().includes('change has been made') ||
+            text.toLowerCase().includes('story was originally published')) {
+            return false;
+          }
+
+          // 5. 包含社交媒体链接的段落
+          if (text.toLowerCase().includes('follow') &&
+            (text.includes('instagram') || text.includes('twitter'))) {
+            return false;
+          }
+
+          // 6. 排除包含订阅信息的段落
+          if (text.toLowerCase().includes('subscribe') || text.toLowerCase().includes('newsletter')) {
+            return false;
+          }
+
+          // 7. 检查段落是否主要由em标签组成
+          const emTags = p.getElementsByTagName('em');
+          if (emTags.length > 0 && emTags[0].textContent.length > text.length / 2) {
+            return false;
+          }
+
+          // 8. 检查是否包含大量链接
+          const links = p.getElementsByTagName('a');
+          if (links.length > 2) {
+            return false;
+          }
+
+          // 通过所有检查，保留这个段落
+          return true;
+        })
         .map(p => p.textContent.trim())
-        .filter(text => text && text !== '@' && text !== '•' && text !== '».' && text.length > 1)
         .join('\n\n');
 
-      // 如果成功提取到文本，则处理图片下载
       if (textContent) {
-        // 查找所有图片容器
-        const figures = document.querySelectorAll('figure.n-content-image');
+        // 收集所有需要处理的图片容器
+        const imageContainers = [
+          ...document.querySelectorAll('figure.n-content-image'),
+          ...document.querySelectorAll('figure.n-content-picture'),
+          ...document.querySelectorAll('figure.o-topper_visual'),
+          ...document.querySelectorAll('.main-image')
+        ];
 
-        if (figures.length === 0) {
-          // 如果没有找到任何图片，发送无图片消息
+        if (imageContainers.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });
         } else {
-          figures.forEach(figure => {
-            const picture = figure.querySelector('picture');
+          imageContainers.forEach((container, index) => {
+            // 处理picture元素
+            const picture = container.querySelector('picture');
             if (picture) {
-              // 获取最高分辨率的图片URL
-              const desktopSource = picture.querySelector('source[media="(min-width: 700px)"]');
+              // 尝试获取所有可能的图片源
+              const sources = picture.querySelectorAll('source');
               const img = picture.querySelector('img');
 
-              if (desktopSource && desktopSource.srcset) {
-                // 从srcset中提取最高分辨率的URL
-                const srcsetUrls = desktopSource.srcset.split(',')
-                  .map(src => src.trim().split(' ')[0])
-                  .filter(url => url);
+              let highResUrl = '';
+              let imageAlt = '';
 
-                if (srcsetUrls.length > 0) {
-                  // 使用最后一个URL（通常是最高分辨率的）
-                  const highResUrl = srcsetUrls[srcsetUrls.length - 1];
+              // 获取最高分辨率的图片URL
+              if (sources.length > 0) {
+                // 遍历所有source标签找到最高分辨率的图片
+                sources.forEach(source => {
+                  const srcset = source.srcset;
+                  if (srcset) {
+                    const urls = srcset.split(',')
+                      .map(src => src.trim().split(' ')[0])
+                      .filter(url => url);
 
-                  // 生成文件名
-                  let filename;
-                  if (img && img.alt) {
-                    // 使用图片alt文本作为文件名
-                    filename = `ft-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`;
-                  } else {
-                    // 如果没有alt文本，使用时间戳
-                    const timestamp = new Date().getTime();
-                    filename = `ft-image-${timestamp}.jpg`;
+                    if (urls.length > 0) {
+                      // 使用最后一个URL（通常是最高分辨率的）
+                      const possibleUrl = urls[urls.length - 1];
+                      if (possibleUrl.length > highResUrl.length) {
+                        highResUrl = possibleUrl;
+                      }
+                    }
                   }
+                });
+              }
 
-                  // 确保文件名不会太长
-                  if (filename.length > 100) {
-                    filename = filename.substring(0, 96) + '.jpg';
+              // 如果source中没找到，使用img标签的src
+              if (!highResUrl && img && img.src) {
+                highResUrl = img.src;
+              }
+
+              // 获取alt文本
+              if (img && img.alt) {
+                imageAlt = img.alt;
+              }
+
+              if (highResUrl) {
+                // 生成文件名
+                let filename;
+                if (imageAlt) {
+                  // 清理alt文本中的非法字符，但保留更多描述性文本
+                  const cleanedAlt = imageAlt
+                    .replace(/[/\\?%*:|"<>]/g, '-')  // 替换非法字符
+                    .replace(/\s+/g, ' ')            // 将多个空格替换为单个空格
+                    .trim();                         // 去除首尾空格
+
+                  filename = `ft-${cleanedAlt}.jpg`;
+
+                  // 如果文件名超过200个字符，截取前196个字符
+                  if (filename.length > 200) {
+                    // 保留前196个字符，然后加上.jpg
+                    filename = filename.substring(0, 196) + '.jpg';
                   }
-
-                  // 发送下载消息到background script
-                  chrome.runtime.sendMessage({
-                    action: 'downloadImage',
-                    url: highResUrl,
-                    filename: filename
-                  });
+                } else {
+                  const timestamp = new Date().getTime();
+                  filename = `ft-image-${timestamp}-${index}.jpg`;
                 }
-              } else if (img && img.src) {
-                // 如果没有source标签，使用img的src
-                const filename = img.alt
-                  ? `ft-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
-                  : `ft-image-${new Date().getTime()}.jpg`;
+
+                // 发送下载消息
+                chrome.runtime.sendMessage({
+                  action: 'downloadImage',
+                  url: highResUrl,
+                  filename: filename
+                });
+              }
+            } else {
+              // 处理单独的img标签
+              const img = container.querySelector('img');
+              if (img && img.src) {
+                let filename;
+                if (img.alt) {
+                  // 对单独img标签的alt文本进行同样的处理
+                  const cleanedAlt = img.alt
+                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                  filename = `ft-${cleanedAlt}.jpg`;
+
+                  if (filename.length > 200) {
+                    filename = filename.substring(0, 196) + '.jpg';
+                  }
+                } else {
+                  filename = `ft-image-${new Date().getTime()}-${index}.jpg`;
+                }
 
                 chrome.runtime.sendMessage({
                   action: 'downloadImage',

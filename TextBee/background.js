@@ -415,8 +415,8 @@ function extractAndCopy() {
             }
 
             // 确保文件名不会太长
-            if (filename.length > 100) {
-              filename = filename.substring(0, 96) + '.' + extension;
+            if (filename.length > 200) {
+              filename = filename.substring(0, 196) + '.' + extension;
             }
 
             // 发送下载消息到background script
@@ -647,8 +647,8 @@ function extractAndCopy() {
               }
 
               // 确保文件名不会太长
-              if (filename.length > 100) {
-                filename = filename.substring(0, 96) + '.' + fileExtension;
+              if (filename.length > 200) {
+                filename = filename.substring(0, 196) + '.' + fileExtension;
               }
 
               // 发送下载消息到background script

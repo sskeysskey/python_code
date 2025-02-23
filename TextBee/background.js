@@ -188,11 +188,34 @@ function extractAndCopy() {
           ...document.querySelectorAll('.main-image')
         ];
 
+        // 创建Set来存储已处理的URL和文件名
+        const processedUrls = new Set();
+        const processedFilenames = new Set();
+
         if (imageContainers.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });
         } else {
           imageContainers.forEach((container, index) => {
-            // 处理picture元素
+            // 首先尝试获取图片描述
+            let imageDescription = '';
+
+            // 尝试获取可能包含描述的元素
+            const possibleDescriptionElements = [
+              container.querySelector('figcaption'), // 尝试figcaption
+              container.querySelector('.n-content-picture__caption'), // 特定的caption类
+              container.querySelector('.article__image-caption'), // 另一个可能的caption类
+              container.closest('figure')?.querySelector('.o-topper__visual-caption'), // 顶部图片的caption
+              // 如果有其他可能包含描述的元素，可以继续添加
+            ];
+
+            // 遍历所有可能的描述元素
+            for (const element of possibleDescriptionElements) {
+              if (element && element.textContent.trim()) {
+                imageDescription = element.textContent.trim();
+                break;
+              }
+            }
+
             const picture = container.querySelector('picture');
             if (picture) {
               // 尝试获取所有可能的图片源
@@ -228,20 +251,29 @@ function extractAndCopy() {
                 highResUrl = img.src;
               }
 
-              // 获取alt文本
-              if (img && img.alt) {
-                imageAlt = img.alt;
-              }
+              // 检查URL是否已经处理过
+              if (highResUrl && !processedUrls.has(highResUrl)) {
+                processedUrls.add(highResUrl);
 
-              if (highResUrl) {
-                // 生成文件名
                 let filename;
-                if (imageAlt) {
-                  // 清理alt文本中的非法字符，但保留更多描述性文本
-                  const cleanedAlt = imageAlt
-                    .replace(/[/\\?%*:|"<>]/g, '-')  // 替换非法字符
-                    .replace(/\s+/g, ' ')            // 将多个空格替换为单个空格
-                    .trim();                         // 去除首尾空格
+                if (imageDescription) {
+                  // 使用找到的描述作为文件名
+                  const cleanedDescription = imageDescription
+                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                  filename = `ft-${cleanedDescription}.jpg`;
+
+                  if (filename.length > 200) {
+                    filename = filename.substring(0, 196) + '.jpg';
+                  }
+                } else if (img && img.alt) {
+                  // 如果没有找到描述，退回到使用alt文本
+                  const cleanedAlt = img.alt
+                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/\s+/g, ' ')
+                    .trim();
 
                   filename = `ft-${cleanedAlt}.jpg`;
 
@@ -251,23 +283,40 @@ function extractAndCopy() {
                     filename = filename.substring(0, 196) + '.jpg';
                   }
                 } else {
+                  // 如果既没有描述也没有alt文本，使用时间戳
                   const timestamp = new Date().getTime();
                   filename = `ft-image-${timestamp}-${index}.jpg`;
                 }
 
-                // 发送下载消息
-                chrome.runtime.sendMessage({
-                  action: 'downloadImage',
-                  url: highResUrl,
-                  filename: filename
-                });
+                // 检查文件名是否已经使用过
+                if (!processedFilenames.has(filename)) {
+                  processedFilenames.add(filename);
+                  chrome.runtime.sendMessage({
+                    action: 'downloadImage',
+                    url: highResUrl,
+                    filename: filename
+                  });
+                }
               }
             } else {
               // 处理单独的img标签
               const img = container.querySelector('img');
-              if (img && img.src) {
+              if (img && img.src && !processedUrls.has(img.src)) {
+                processedUrls.add(img.src);
+
                 let filename;
-                if (img.alt) {
+                if (imageDescription) {
+                  const cleanedDescription = imageDescription
+                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                  filename = `ft-${cleanedDescription}.jpg`;
+
+                  if (filename.length > 200) {
+                    filename = filename.substring(0, 196) + '.jpg';
+                  }
+                } else if (img.alt) {
                   // 对单独img标签的alt文本进行同样的处理
                   const cleanedAlt = img.alt
                     .replace(/[/\\?%*:|"<>]/g, '-')
@@ -283,11 +332,15 @@ function extractAndCopy() {
                   filename = `ft-image-${new Date().getTime()}-${index}.jpg`;
                 }
 
-                chrome.runtime.sendMessage({
-                  action: 'downloadImage',
-                  url: img.src,
-                  filename: filename
-                });
+                // 检查文件名是否已经使用过
+                if (!processedFilenames.has(filename)) {
+                  processedFilenames.add(filename);
+                  chrome.runtime.sendMessage({
+                    action: 'downloadImage',
+                    url: img.src,
+                    filename: filename
+                  });
+                }
               }
             }
           });

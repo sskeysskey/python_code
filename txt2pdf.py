@@ -298,16 +298,19 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         desc_font_size = font_size * 0.6
                         max_desc_width = width - 60  # 留出左右边距
                         desc_words = []
-                        current_line = ""
                         
-                        # 将描述文字分行
-                        for char in description:
-                            test_line = current_line + char
+                        # 将描述文字按空格分割成单词
+                        words = description.split()
+                        current_line = words[0] if words else ""
+                        
+                        # 将描述文字分行，保持单词完整
+                        for word in words[1:]:
+                            test_line = current_line + " " + word
                             if c.stringWidth(test_line, font_name, desc_font_size) <= max_desc_width:
                                 current_line = test_line
                             else:
                                 desc_words.append(current_line)
-                                current_line = char
+                                current_line = word
                         if current_line:
                             desc_words.append(current_line)
                         
@@ -320,7 +323,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                             desc_y -= desc_font_size + 2  # 行间距
                         
                         set_font()  # 恢复原来的字体大小
-                        y -= (img_height + 100)  # 增加间距以容纳描述文字
+                        y -= (img_height + 130)  # 增加间距以容纳描述文字
                         
                     except Exception as e:
                         print(f"处理图片时出错: {str(e)}")

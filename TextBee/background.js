@@ -211,11 +211,14 @@ function extractAndCopy() {
             // 遍历所有可能的描述元素
             for (const element of possibleDescriptionElements) {
               if (element && element.textContent.trim()) {
-                imageDescription = element.textContent.trim();
+                imageDescription = element.textContent
+                  .replace(/©[^]*/g, '') // 移除版权信息
+                  .trim();
                 break;
               }
             }
 
+            // 处理picture元素
             const picture = container.querySelector('picture');
             if (picture) {
               // 尝试获取所有可能的图片源
@@ -223,7 +226,6 @@ function extractAndCopy() {
               const img = picture.querySelector('img');
 
               let highResUrl = '';
-              let imageAlt = '';
 
               // 获取最高分辨率的图片URL
               if (sources.length > 0) {

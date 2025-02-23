@@ -9,6 +9,7 @@ import os
 import glob
 import shutil
 import io
+import math
 
 def find_all_news_files(directory):
     pattern = os.path.join(directory, "News_*.txt")
@@ -19,7 +20,7 @@ def get_pdf_path(txt_path):
     filename = os.path.basename(txt_path)
     pdf_filename = os.path.splitext(filename)[0] + '.pdf'
     return os.path.join(directory, pdf_filename)
-
+    
 def needs_conversion(txt_path, pdf_path):
     if not os.path.exists(pdf_path):
         return True
@@ -51,6 +52,7 @@ def move_cnh_file(source_dir):
 def parse_article_copier(file_path):
     url_images = {}
     current_url = None
+    valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif')
     
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -63,7 +65,7 @@ def parse_article_copier(file_path):
         if line.startswith('http'):
             current_url = line
             url_images[current_url] = []
-        elif line.endswith('.jpg') and current_url:
+        elif any(line.lower().endswith(ext) for ext in valid_extensions) and current_url:
             url_images[current_url].append(line)
     
     print("解析到的URL和图片映射:")
@@ -299,20 +301,45 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         max_desc_width = width - 60  # 留出左右边距
                         desc_words = []
                         
-                        # 将描述文字按空格分割成单词
-                        words = description.split()
-                        current_line = words[0] if words else ""
-                        
-                        # 将描述文字分行，保持单词完整
-                        for word in words[1:]:
-                            test_line = current_line + " " + word
-                            if c.stringWidth(test_line, font_name, desc_font_size) <= max_desc_width:
-                                current_line = test_line
-                            else:
+                        # 检查文本是否包含英文单词
+                        has_english = bool(re.search(r'[a-zA-Z]', description))
+
+                        if has_english:
+                            # 英文处理：按单词分割
+                            words = description.split()
+                            current_line = words[0] if words else ""
+                            
+                            for word in words[1:]:
+                                test_line = current_line + " " + word
+                                if c.stringWidth(test_line, font_name, desc_font_size) < max_desc_width:
+                                    current_line = test_line
+                                else:
+                                    desc_words.append(current_line)
+                                    current_line = word
+                            if current_line:
                                 desc_words.append(current_line)
-                                current_line = word
-                        if current_line:
-                            desc_words.append(current_line)
+                        else:
+                            # 中文处理：按字符分割
+                            text = description
+                            while text:
+                                line = ''
+                                i = 0
+                                while i < len(text):
+                                    if c.stringWidth(line + text[i], font_name, desc_font_size) < max_desc_width:
+                                        line += text[i]
+                                        i += 1
+                                    else:
+                                        break
+                                
+                                if not line:
+                                    line = text[0]
+                                    i = 1
+                                
+                                desc_words.append(line)
+                                text = text[i:]
+
+                        # 计算描述文字实际占用的总高度
+                        desc_total_height = len(desc_words) * (desc_font_size + 2)  # 每行文字高度加行间距
                         
                         # 绘制描述文字
                         desc_y = y - img_height - 10
@@ -323,7 +350,17 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                             desc_y -= desc_font_size + 2  # 行间距
                         
                         set_font()  # 恢复原来的字体大小
-                        y -= (img_height + 130)  # 增加间距以容纳描述文字
+                        # 动态计算需要的间距
+                        min_spacing = 50  # 最小间距
+                        # 使用对数函数来计算额外间距，这样行数越多，每行增加的间距越小
+                        if len(desc_words) > 1:
+                            extra_spacing = 10 * math.log2(len(desc_words))  # 可以调整这个系数(10)来控制间距增长速度
+                        else:
+                            extra_spacing = 0
+                        total_spacing = min_spacing + desc_total_height + extra_spacing
+
+                        # 更新y坐标
+                        y -= (img_height + total_spacing)
                         
                     except Exception as e:
                         print(f"处理图片时出错: {str(e)}")

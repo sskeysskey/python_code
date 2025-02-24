@@ -1,3 +1,15 @@
+
+// ——————————————————————————————————————————————————————————————
+const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
+const altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+
+// 发送下载请求
+chrome.runtime.sendMessage({
+    action: 'downloadImage',
+    url: finalUrl,
+    filename: `${altText.replace(/[/\\?*:|"<>]/g, '-')}.jpg`
+});
+
 // ——————————————————————————————————————————————————————————————
 else if (window.location.hostname.includes("wsj.com")) {
     // WSJ.com 的内容提取逻辑

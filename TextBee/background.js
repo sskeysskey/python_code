@@ -139,11 +139,6 @@ function extractAndCopy() {
             return false;
           }
 
-          // 3. 包含旅行细节信息的段落
-          // if (text.includes('was a guest of') || text.includes('start from $')) {
-          //   return false;
-          // }
-
           // 4. 包含编辑说明的段落
           if (text.toLowerCase().includes('change has been made') ||
             text.toLowerCase().includes('story was originally published')) {
@@ -553,12 +548,21 @@ function extractAndCopy() {
 
       // 【2】只有当文本提取成功后，再进行图片下载
       if (textContent) {
-        const pictures = article.querySelectorAll('picture.css-u314cv');
-        if (pictures.length === 0) {
+        // 扩展图片查找范围
+        const allImages = [
+          ...Array.from(article.querySelectorAll('picture.css-u314cv img')), // 原有的选择器
+          ...Array.from(article.querySelectorAll('.origami-item img')), // 新增：origami布局中的图片
+          ...Array.from(article.querySelectorAll('[data-type="inset"] img')), // 新增：inset中的图片
+          ...Array.from(article.querySelectorAll('figure img')) // 新增：figure中的图片
+        ];
+
+        if (allImages.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });
         } else {
-          pictures.forEach(picture => {
-            const img = picture.querySelector('img');
+          // 用于跟踪已处理的图片URL
+          const processedUrls = new Set();
+
+          allImages.forEach(img => {
             if (img) {
               // 清理和标准化srcset字符串
               let highestResUrl = img.src; // 默认使用src
@@ -571,7 +575,7 @@ function extractAndCopy() {
                 const srcsetEntries = cleanSrcset.split(',').map(entry => {
                   const [url, width] = entry.trim().split(/\s+/);
                   // 从width字符串中提取数字
-                  const widthNum = parseInt(width.replace(/[^\d]/g, '')) || 0;
+                  const widthNum = parseInt(width?.replace(/[^\d]/g, '') || '0');
                   return {
                     url: url.trim(),
                     width: widthNum
@@ -588,46 +592,52 @@ function extractAndCopy() {
                 }
               }
 
-              // 构建最终的URL
+              // 获取基础URL（移除查询参数）
               const baseUrl = highestResUrl.split('?')[0];
               const finalUrl = `${baseUrl}?width=700&size=1.2610340479192939&pixel_ratio=2`;
 
-              // 获取图片描述
-              // const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
-              // const altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+              // 检查是否已处理过该图片
+              if (!processedUrls.has(baseUrl)) {
+                // 将基础URL添加到已处理集合中
+                processedUrls.add(baseUrl);
 
-              // // 发送下载请求
-              // chrome.runtime.sendMessage({
-              //   action: 'downloadImage',
-              //   url: finalUrl,
-              //   filename: `${altText.replace(/[/\\?*:|"<>]/g, '-')}.jpg`
-              // });
+                // 获取图片描述
+                let altText = '';
 
-              // 在获取图片描述的部分
-              const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
-              let altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+                // 尝试多种方式获取图片描述
+                const origamiCaption = img.closest('.origami-wrapper')?.querySelector('.origami-caption');
+                const creditSpan = img.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
 
-              // 文件名处理函数
-              const processFileName = (text) => {
-                // 移除或替换特殊字符
-                text = text.replace(/[/\\?*:|"<>]/g, '-')
-                  .replace(/\s+/g, ' ')
-                  .trim();
-
-                // 如果文本超过250个字符，在最接近的单词边界处截断
-                if (text.length > 250) {
-                  text = text.substr(0, 250).split(' ').slice(0, -1).join(' ');
+                if (origamiCaption) {
+                  altText = origamiCaption.textContent;
+                } else if (creditSpan) {
+                  altText = creditSpan.textContent;
+                } else {
+                  altText = img.alt || 'wsj_image';
                 }
 
-                return `${text}.jpg`;
-              };
+                // 文件名处理函数
+                const processFileName = (text) => {
+                  // 移除或替换特殊字符
+                  text = text.replace(/[/\\?*:|"<>]/g, '-')
+                    .replace(/\s+/g, ' ')
+                    .trim();
 
-              // 发送下载请求
-              chrome.runtime.sendMessage({
-                action: 'downloadImage',
-                url: finalUrl,
-                filename: processFileName(altText)
-              });
+                  // 如果文本超过250个字符，在最接近的单词边界处截断
+                  if (text.length > 250) {
+                    text = text.substr(0, 250).split(' ').slice(0, -1).join(' ');
+                  }
+
+                  return `${text}.jpg`;
+                };
+
+                // 只有未处理过的图片才发送下载请求
+                chrome.runtime.sendMessage({
+                  action: 'downloadImage',
+                  url: finalUrl,
+                  filename: processFileName(altText)
+                });
+              }
             }
           });
         }

@@ -606,10 +606,26 @@ function extractAndCopy() {
 
                 // 尝试多种方式获取图片描述
                 const origamiCaption = img.closest('.origami-wrapper')?.querySelector('.origami-caption');
+
+                // 新增：如果图片在 <figure> 内，提取其邻近的 <figcaption> 内指定的 caption
+                const figureEl = img.closest('figure');
+                let captionSpan;
+                if (figureEl) {
+                  const figcaptionEl = figureEl.nextElementSibling;
+                  if (figcaptionEl && figcaptionEl.tagName.toLowerCase() === 'figcaption') {
+                    // 获取包含正确描述的 <span>
+                    captionSpan = figcaptionEl.querySelector('.css-426zcb-CaptionSpan');
+                  }
+                }
+
+                // 原代码中查找 credit 作为备用
                 const creditSpan = img.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
 
                 if (origamiCaption) {
                   altText = origamiCaption.textContent;
+                } else if (captionSpan) {
+                  // 优先采用 <figcaption> 里的 caption 内容
+                  altText = captionSpan.textContent;
                 } else if (creditSpan) {
                   altText = creditSpan.textContent;
                 } else {

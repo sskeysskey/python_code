@@ -7,27 +7,58 @@ def clean_and_format_text(txt_path):
     try:
         with open(txt_path, 'r', encoding='utf-8') as f:
             content = f.read()
-            
-        # 使用正则表达式匹配并转换为HTML超链接格式
-        def replace_with_link(match):
-            source = match.group(1)  # 获取来源(wsj/bloomberg等)
-            url = re.search(r'<document>(.*?)</document>', match.group(0))
-            if url:
-                # 创建HTML超链接
-                return f'<a href="{url.group(1)}">{source}</a>'
-            return source
 
-        # 应用替换规则
-        cleaned_content = re.sub(
-            r'(wsj|bloomberg|ft|economist|hbr|technologyreview)\s*\n*<document>(.*?)</document>.*?(?=\n|$)',
-            replace_with_link,
-            content
-        )
+        # 按行分割内容
+        lines = content.split('\n')
+        cleaned_lines = []
+        current_text = []
+        
+        for line in lines:
+            # 跳过空行
+            if not line.strip():
+                if current_text:
+                    cleaned_lines.append('\n'.join(current_text))
+                    current_text = []
+                continue
+                
+            # 如果是URL行
+            if line.startswith('http'):
+                # 处理不同格式的URL
+                source = None
+                if 'cn.wsj.com' in line:
+                    source = 'CN.WSJ'
+                elif 'www.ft.com' in line:
+                    source = 'FT'
+                elif 'www.wsj.com' in line:
+                    source = 'WSJ'
+                elif 'www.economist.com' in line:
+                    source = 'ECONOMIST'
+                elif 'ww.bloomberg.com' in line:
+                    source = 'BLOOMBERG'
+                elif 'www.technologyreview.com' in line:
+                    source = 'TechnologyReview'
+                
+                if source:
+                    if current_text:
+                        cleaned_lines.append('\n'.join(current_text))
+                        current_text = []
+                    current_text.append(source.upper())  # 转换为大写
+                continue
+            
+            # 普通文本行
+            current_text.append(line)
+        
+        # 添加最后一段文本
+        if current_text:
+            cleaned_lines.append('\n'.join(current_text))
+        
+        # 合并所有处理后的内容
+        final_content = '\n\n'.join(cleaned_lines)
         
         # 确保段落之间的空行得以保留
-        cleaned_content = re.sub(r'\n{3,}', '\n\n', cleaned_content)
+        final_content = re.sub(r'\n{3,}', '\n\n', final_content)
         
-        return cleaned_content.strip()
+        return final_content.strip()
         
     except Exception as e:
         print(f"处理文本时出现错误: {str(e)}")

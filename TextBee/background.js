@@ -557,16 +557,22 @@ function extractAndCopy() {
         } else {
           pictures.forEach(picture => {
             const img = picture.querySelector('img');
-            if (img && img.src && img.alt) {
-              // 从 srcset 中获取最高分辨率的图片URL
-              let highestResUrl = img.src; // 默认使用 src 作为备选
+            if (img) {
+              // 清理和标准化srcset字符串
+              let highestResUrl = img.src; // 默认使用src
 
               if (img.srcset) {
-                const srcsetEntries = img.srcset.split(',').map(entry => {
-                  const [url, width] = entry.trim().split(' ');
+                // 清理srcset字符串，移除多余的空格和换行符
+                const cleanSrcset = img.srcset.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+                // 解析srcset
+                const srcsetEntries = cleanSrcset.split(',').map(entry => {
+                  const [url, width] = entry.trim().split(/\s+/);
+                  // 从width字符串中提取数字
+                  const widthNum = parseInt(width.replace(/[^\d]/g, '')) || 0;
                   return {
                     url: url.trim(),
-                    width: parseInt(width) || 0
+                    width: widthNum
                   };
                 });
 
@@ -575,19 +581,24 @@ function extractAndCopy() {
                   return (current.width > prev.width) ? current : prev;
                 }, srcsetEntries[0]);
 
-                if (highestResSrc) {
+                if (highestResSrc && highestResSrc.url) {
                   highestResUrl = highestResSrc.url;
                 }
               }
 
-              // 尝试构建最高分辨率版本的URL
+              // 构建最终的URL
               const baseUrl = highestResUrl.split('?')[0];
-              const highResUrl = `${baseUrl}?width=700&size=1.5042117930204573&pixel_ratio=2`;
+              const finalUrl = `${baseUrl}?width=700&size=1.2610340479192939&pixel_ratio=2`;
 
+              // 获取图片描述
+              const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
+              const altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+
+              // 发送下载请求
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
-                url: highResUrl,
-                filename: `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
+                url: finalUrl,
+                filename: `${altText.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
               });
             }
           });

@@ -2,6 +2,8 @@ import os
 import cv2
 import html
 import time
+import shutil
+import glob
 import pyperclip
 import pyautogui
 import subprocess
@@ -136,6 +138,42 @@ def close_html_skeleton(html_file_path):
 
 # 主函数
 def main():
+    def move_and_record_images(url):
+        """
+        移动多种格式图片并记录到article_copier.txt
+        """
+        source_dir = "/Users/yanzhang/Downloads"
+        target_dir = "/Users/yanzhang/Downloads/news_image"
+        record_file = "/Users/yanzhang/Documents/News/article_copier.txt"
+        
+        # 支持的图片格式
+        image_formats = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.gif"]
+
+        # 确保目标目录存在
+        os.makedirs(target_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(record_file), exist_ok=True)
+
+        # 获取所有图片文件
+        image_files = []
+        for format in image_formats:
+            image_files.extend(glob.glob(os.path.join(source_dir, format)))
+        moved_files = []
+
+        # 移动文件
+        for image_file in image_files:
+            filename = os.path.basename(image_file)
+            target_path = os.path.join(target_dir, filename)
+            shutil.move(image_file, target_path)
+            moved_files.append(filename)
+
+        # 写入记录文件，无论是否有移动文件都写入URL
+        content = f"{url}\n\n"
+        if moved_files:
+            content += "\n".join(moved_files) + "\n\n"
+        
+        with open(record_file, 'a', encoding='utf-8') as f:
+            f.write(content)
+
     html_skeleton_created = False
     html_file_path = ''  # 用空字符串初始化
 
@@ -232,10 +270,12 @@ def main():
             site_content = site_file.read().strip()  # 使用strip()移除可能的空白字符
         
     # 在site_content的前后分别加入</document>
-    site_content_with_tags = '<document>' + site_content + '</document>'
+    # site_content_with_tags = '<document>' + site_content + '</document>'
+    site_content_with_tags = f'{site_content}'
 
     # 将读取到的segment_content内容插入在剪贴板内容的最前面
-    final_content = segment_content + '\n' + site_content_with_tags + '\n\n' + modified_content
+    # final_content = segment_content + '\n' + site_content_with_tags + '\n\n' + modified_content
+    final_content = f"{site_content_with_tags}\n\n{clipboard_content}"
 
     # 设置txt文件的保存目录
     txt_directory = '/Users/yanzhang/Documents/News'
@@ -297,6 +337,9 @@ def main():
     except subprocess.CalledProcessError as e:
         # 如果有错误发生，打印错误信息
         print(f"Error running AppleScript: {e}")
+    
+    move_and_record_images(site_content)
+    sleep(0.3)
     
     # 检查并删除/tmp/segment.txt和site.txt文件
     try:

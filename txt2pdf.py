@@ -116,7 +116,7 @@ def distribute_images_in_content(content, url_images):
     print("\n开始分布图片:")
     print(f"找到 {len(article_images)} 篇文章需要处理")
     
-    processed_content = content
+    processed_articles = []
     for article, images in article_images:
         if not images:
             # 如果没有图片，跳过处理这篇文章
@@ -128,10 +128,9 @@ def distribute_images_in_content(content, url_images):
         url_line = next((line for line in lines if line.startswith('http')), '')
         content_lines = [line for line in lines if line != url_line and line.strip()]
         
-        # 确保至少有内容行
-        if not content_lines:
-            continue
-            
+        # 提取网站名称
+        site_name = extract_site_name(url_line) if url_line else "Other"
+        
         # 始终将第一张图片放在开头
         new_content = [url_line] if url_line else []
         if images:
@@ -172,15 +171,16 @@ def distribute_images_in_content(content, url_images):
             # 如果没有剩余图片，直接添加所有内容行，保持原有换行
             new_content.extend(content_lines)
         
-        try:
-            # 使用两个换行符连接内容，保持段落格式
-            new_article = '\n'.join(new_content)
-            processed_content = processed_content.replace(article, new_article)
-            print("文章内容替换成功")
-        except Exception as e:
-            print(f"文章内容替换失败: {str(e)}")
+        # 添加处理后的文章和网站名称
+        processed_articles.append('\n'.join(new_content))
+        processed_articles.append(f"\n{site_name}\n")
     
-    return processed_content
+    # 移除最后一个网站名称标记（因为是最后一篇文章）
+    if processed_articles:
+        processed_articles.pop()
+    
+    # 合并所有处理后的内容
+    return '\n'.join(processed_articles)
 
 def clean_and_format_text(txt_path, article_copier_path, image_dir):
     try:
@@ -253,7 +253,6 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         y = height - 30  # 减小上边距，原来是height - 50
         line_height = 44  # 减小行高，原来是20
         
-        # paragraphs = content.split('\n\n')
         paragraphs = content.splitlines()
         
         for paragraph in paragraphs:
@@ -360,40 +359,71 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
             else:
                 # 处理文本段落
                 text = paragraph.strip()
-                max_width = width - 30  # 减小文本区域边距，原来是100
-                
-                while text:
-                    # 计算当前行可以容纳的文字
-                    line = ''
-                    i = 0
-                    while i < len(text):
-                        if c.stringWidth(line + text[i]) < max_width:
-                            line += text[i]
-                            i += 1
-                        else:
-                            break
+
+                # 检查是否是主要新闻网站名称
+                major_news_sites = {'FT', 'WSJ', 'Bloomberg', 'Technology Review', 'The Economist', "Other"}
+                if text in major_news_sites:
+                    # 保存当前字体设置和颜色
+                    current_font_size = font_size
                     
-                    # 如果一个字符都放不下，强制换页
-                    if not line:
-                        line = text[0]
-                        i = 1
+                    # 设置更大的字体和蓝色
+                    c.setFont(font_name, font_size * 1.5)
+                    c.setFillColor(colors.HexColor('#4169E1'))  # Royal Blue
+                    
+                    # 左对齐显示
+                    x_left = 20  # 可以调整这个值来改变左边距
                     
                     # 检查是否需要换页
-                    if y < 30:  # 减小底部边距，原来是50
+                    if y < 30:
                         c.showPage()
-                        draw_black_background()  # 新页面时重新绘制黑色背景
-                        set_font()  # 新页面重新设置字体
+                        draw_black_background()
+                        set_font()
                         y = height - 40
+                        
+                    # 绘制网站名称
+                    c.drawString(x_left, y, text)
                     
-                    # 绘制当前行
-                    c.drawString(x, y, line)
-                    y -= line_height
+                    # 恢复原来的字体设置和颜色
+                    c.setFont(font_name, current_font_size)
+                    c.setFillColor(colors.white)  # 直接设置回白色
                     
-                    # 更新剩余文本
-                    text = text[i:]
-                
-                # 段落间距
-                y -= 10  # 减小段落间距，原来是10
+                    # 更新y坐标
+                    y -= line_height * 1.5
+                else:
+                    max_width = width - 30  # 减小文本区域边距，原来是100
+                    
+                    while text:
+                        # 计算当前行可以容纳的文字
+                        line = ''
+                        i = 0
+                        while i < len(text):
+                            if c.stringWidth(line + text[i]) < max_width:
+                                line += text[i]
+                                i += 1
+                            else:
+                                break
+                        
+                        # 如果一个字符都放不下，强制换页
+                        if not line:
+                            line = text[0]
+                            i = 1
+                        
+                        # 检查是否需要换页
+                        if y < 30:  # 减小底部边距，原来是50
+                            c.showPage()
+                            draw_black_background()  # 新页面时重新绘制黑色背景
+                            set_font()  # 新页面重新设置字体
+                            y = height - 40
+                        
+                        # 绘制当前行
+                        c.drawString(x, y, line)
+                        y -= line_height
+                        
+                        # 更新剩余文本
+                        text = text[i:]
+                    
+                    # 段落间距
+                    y -= 10  # 减小段落间距，原来是10
         
         c.save()
         return True
@@ -433,10 +463,36 @@ def process_all_files(directory, article_copier_path, image_dir):
             print(f"处理 {os.path.basename(txt_file)} 时出错: {str(e)}")
             failed += 1
     
-    print("\n处理完成:")
     print(f"成功转换: {converted} 个文件")
     print(f"跳过处理: {skipped} 个文件")
     print(f"转换失败: {failed} 个文件")
+
+def extract_site_name(url):
+    try:
+        # 移除 http:// 或 https:// 前缀
+        url = re.sub(r'^https?://(www\.)?', '', url.lower())
+        
+        # 常见新闻网站的特殊处理
+        if 'ft.com' in url:
+            return 'FT'
+        elif 'wsj.com' in url or 'cn.wsj.com' in url:
+            return 'WSJ'
+        elif 'bloomberg.com' in url:
+            return 'Bloomberg'
+        elif 'economist.com' in url:
+            return 'The Economist'
+        elif 'technologyreview.com' in url:
+            return 'Technology Review'
+        
+        # 对于其他网站，提取域名主体
+        domain = url.split('/')[0]
+        # 提取主域名（例如：example.com）
+        site_name = domain.split('.')[0].upper()
+        return site_name
+        
+    except Exception as e:
+        print(f"提取网站名称时出错: {str(e)}")
+        return "Other"
 
 if __name__ == "__main__":
     news_directory = "/Users/yanzhang/Documents/News/"

@@ -261,7 +261,7 @@ function extractAndCopy() {
                 if (imageDescription) {
                   // 使用找到的描述作为文件名
                   const cleanedDescription = imageDescription
-                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/[/\\?*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -273,7 +273,7 @@ function extractAndCopy() {
                 } else if (img && img.alt) {
                   // 如果没有找到描述，退回到使用alt文本
                   const cleanedAlt = img.alt
-                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/[/\\?*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -309,7 +309,7 @@ function extractAndCopy() {
                 let filename;
                 if (imageDescription) {
                   const cleanedDescription = imageDescription
-                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/[/\\?*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -321,7 +321,7 @@ function extractAndCopy() {
                 } else if (img.alt) {
                   // 对单独img标签的alt文本进行同样的处理
                   const cleanedAlt = img.alt
-                    .replace(/[/\\?%*:|"<>]/g, '-')
+                    .replace(/[/\\?*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -461,8 +461,10 @@ function extractAndCopy() {
             // 生成文件名
             let filename;
             if (img.alt) {
-              // 使用alt文本作为文件名
-              filename = `bloomberg-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
+              // 使用alt文本作为文件名，并替换&nbsp;为空格
+              filename = `bloomberg-${img.alt
+                .replace(/&nbsp;/g, ' ') // 替换&nbsp;为空格
+                .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
             } else {
               // 如果没有alt文本，使用时间戳
               const timestamp = new Date().getTime();
@@ -591,14 +593,40 @@ function extractAndCopy() {
               const finalUrl = `${baseUrl}?width=700&size=1.2610340479192939&pixel_ratio=2`;
 
               // 获取图片描述
+              // const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
+              // const altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+
+              // // 发送下载请求
+              // chrome.runtime.sendMessage({
+              //   action: 'downloadImage',
+              //   url: finalUrl,
+              //   filename: `${altText.replace(/[/\\?*:|"<>]/g, '-')}.jpg`
+              // });
+
+              // 在获取图片描述的部分
               const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
-              const altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+              let altText = creditSpan ? creditSpan.textContent : (img.alt || 'wsj_image');
+
+              // 文件名处理函数
+              const processFileName = (text) => {
+                // 移除或替换特殊字符
+                text = text.replace(/[/\\?*:|"<>]/g, '-')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+
+                // 如果文本超过250个字符，在最接近的单词边界处截断
+                if (text.length > 250) {
+                  text = text.substr(0, 250).split(' ').slice(0, -1).join(' ');
+                }
+
+                return `${text}.jpg`;
+              };
 
               // 发送下载请求
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
                 url: finalUrl,
-                filename: `${altText.replace(/[/\\?%*:|"<>]/g, '-')}.jpg`
+                filename: processFileName(altText)
               });
             }
           });
@@ -669,10 +697,12 @@ function extractAndCopy() {
         const figures = Array.from(article.querySelectorAll('figure.css-3mn275'))
           .filter(figure => {
             // 检查父元素，排除相关文章区域的图片
-            return !figure.closest('[data-optimizely="related-articles-section"]') && // 排除相关文章区域
+            return !figure.closest('[data-optimizely="onward-articles-component"]') && // 排除相关文章组件
+              !figure.closest('[data-optimizely="related-articles-section"]') && // 排除相关文章区域
               !figure.closest('[data-tracking-id="content-well-chapter-list"]') && // 排除章节列表
               !figure.closest('.css-1qaigru') && // 排除水平布局区域
-              !figure.closest('.css-12lyffs'); // 排除推荐文章卡片
+              !figure.closest('.css-12lyffs') && // 排除推荐文章卡片
+              !figure.closest('.css-1xfkcl4'); // 排除onward-articles区域
           });
 
         if (figures.length === 0) {
@@ -714,7 +744,7 @@ function extractAndCopy() {
               let filename;
               if (imageDescription) {
                 // 使用图片描述作为文件名，替换非法字符
-                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+                filename = `economist-${imageDescription.replace(/[/\\?*:|"<>]/g, '-')}.${fileExtension}`;
               } else {
                 // 如果没有描述，使用时间戳
                 const timestamp = new Date().getTime();
@@ -722,8 +752,8 @@ function extractAndCopy() {
               }
 
               // 确保文件名不会太长
-              if (filename.length > 200) {
-                filename = filename.substring(0, 196) + '.' + fileExtension;
+              if (filename.length > 250) {
+                filename = filename.substring(0, 246) + '.' + fileExtension;
               }
 
               // 发送下载消息到background script
@@ -830,7 +860,7 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (img.alt && img.alt.trim()) {
-                filename = `technologyreview-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
+                filename = `technologyreview-${img.alt.replace(/[/\\?*:|"<>]/g, '-')}`;
               } else {
                 const timestamp = new Date().getTime();
                 filename = `technologyreview-image-${timestamp}`;

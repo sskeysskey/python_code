@@ -119,6 +119,7 @@ def distribute_images_in_content(content, url_images):
     processed_content = content
     for article, images in article_images:
         if not images:
+            # 如果没有图片，跳过处理这篇文章
             continue
             
         print(f"\n处理文章，包含 {len(images)} 张图片")
@@ -151,7 +152,7 @@ def distribute_images_in_content(content, url_images):
                 
                 # 当段落达到预期大小或是最后一行时插入图片
                 if (len(current_segment) >= segment_size or i == len(content_lines) - 1) and image_index < len(remaining_images):
-                    # 添加当前段落内容
+                    # 添加当前段落内容，保持原有的换行
                     new_content.extend(current_segment)
                     # 添加图片占位符
                     new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
@@ -168,10 +169,12 @@ def distribute_images_in_content(content, url_images):
                 new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
                 image_index += 1
         else:
+            # 如果没有剩余图片，直接添加所有内容行，保持原有换行
             new_content.extend(content_lines)
         
         try:
-            new_article = '\n\n'.join(new_content)
+            # 使用两个换行符连接内容，保持段落格式
+            new_article = '\n'.join(new_content)
             processed_content = processed_content.replace(article, new_article)
             print("文章内容替换成功")
         except Exception as e:
@@ -185,15 +188,10 @@ def clean_and_format_text(txt_path, article_copier_path, image_dir):
             content = f.read()
             
         print(f"\n处理文件: {txt_path}")
-        print("\n原始内容的前200个字符:")
-        print(repr(content[:200]))  # 使用repr()可以显示空白字符
         
         url_images = parse_article_copier(article_copier_path)
         cleaned_content = distribute_images_in_content(content, url_images)
 
-        print("\n处理后内容的前200个字符:")
-        print(repr(cleaned_content[:200]))
-        
         images = []
         print("\n找到的图片占位符:")
         for img_placeholder in re.finditer(r'--IMAGE_PLACEHOLDER_(.*?)--(?:\n|$)', cleaned_content):
@@ -205,14 +203,7 @@ def clean_and_format_text(txt_path, article_copier_path, image_dir):
             if os.path.exists(img_path):
                 images.append(img_path)
         
-        # 在删除URL之前打印
-        print("\n准备删除URL...")
-
         cleaned_content = re.sub(r'^\s*\ufeff?https?://[^\n]+\n?', '', cleaned_content, flags=re.MULTILINE)
-
-        print("\n删除URL后的前200个字符:")
-        print(repr(cleaned_content[:200]))
-
         cleaned_content = re.sub(r'\n{3,}', '\n\n', cleaned_content)
         
         return cleaned_content.strip(), images
@@ -262,7 +253,8 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         y = height - 30  # 减小上边距，原来是height - 50
         line_height = 44  # 减小行高，原来是20
         
-        paragraphs = content.split('\n\n')
+        # paragraphs = content.split('\n\n')
+        paragraphs = content.splitlines()
         
         for paragraph in paragraphs:
             if '--IMAGE_PLACEHOLDER_' in paragraph:

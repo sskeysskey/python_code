@@ -701,13 +701,22 @@ function extractAndCopy() {
               const imagePath = srcUrl.split('/content-assets/')[1].split('?')[0];
               const highResUrl = `${baseUrl}${imagePath}?width=1424&quality=80&format=auto`;
 
+              // 优先获取figcaption中的span标签内容作为描述
+              let imageDescription = '';
+              const figcaptionSpan = figure.querySelector('figcaption span.css-1st60ou');
+              if (figcaptionSpan && figcaptionSpan.textContent.trim()) {
+                imageDescription = figcaptionSpan.textContent.trim();
+              } else if (img.alt && img.alt.trim()) {
+                imageDescription = img.alt.trim();
+              }
+
               // 生成文件名
               let filename;
-              if (img.alt && img.alt.trim()) {
-                // 使用图片alt文本作为文件名，替换非法字符
-                filename = `economist-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+              if (imageDescription) {
+                // 使用图片描述作为文件名，替换非法字符
+                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
               } else {
-                // 如果没有alt文本，使用时间戳
+                // 如果没有描述，使用时间戳
                 const timestamp = new Date().getTime();
                 filename = `economist-image-${timestamp}.${fileExtension}`;
               }

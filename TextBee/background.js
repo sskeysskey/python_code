@@ -592,13 +592,30 @@ function extractAndCopy() {
 
       // 【2】只有当文本提取成功后，再进行图片下载
       if (textContent) {
+        // 查找"Show Conversation"元素
+        const showConversationElement = document.querySelector('.css-1nc85ca-Show0rHideCommentsSpan');
+
         // 扩展图片查找范围
-        const allImages = [
+        let allImages = [
           ...Array.from(article.querySelectorAll('picture.css-u314cv img')), // 原有的选择器
           ...Array.from(article.querySelectorAll('.origami-item img')), // 新增：origami布局中的图片
           ...Array.from(article.querySelectorAll('[data-type="inset"] img')), // 新增：inset中的图片
           ...Array.from(article.querySelectorAll('figure img')) // 新增：figure中的图片
-        ].filter(img => {
+        ];
+
+        // 如果找到"Show Conversation"元素，则过滤掉其后的图片
+        if (showConversationElement) {
+          allImages = allImages.filter(img => {
+            // 判断图片是否在"Show Conversation"元素之前
+            // 使用compareDocumentPosition进行DOM位置比较
+            const position = showConversationElement.compareDocumentPosition(img);
+            // 如果图片在showConversationElement之后，返回false
+            return !(position & Node.DOCUMENT_POSITION_FOLLOWING);
+          });
+        }
+
+        // 继续进行剩余过滤
+        allImages = allImages.filter(img => {
           const imgSrc = img.src || '';
 
           // 排除SVG和小图标

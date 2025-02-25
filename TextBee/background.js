@@ -554,7 +554,27 @@ function extractAndCopy() {
           ...Array.from(article.querySelectorAll('.origami-item img')), // 新增：origami布局中的图片
           ...Array.from(article.querySelectorAll('[data-type="inset"] img')), // 新增：inset中的图片
           ...Array.from(article.querySelectorAll('figure img')) // 新增：figure中的图片
-        ];
+        ].filter(img => {
+          const imgSrc = img.src || '';
+
+          // 排除SVG和小图标
+          if (imgSrc.toLowerCase().endsWith('.svg') ||
+            imgSrc.includes('/icons/') ||
+            imgSrc.includes('/social/') ||
+            imgSrc.includes('/ui/') ||
+            img.closest('button, .share-button, .toolbar')) {
+            return false;
+          }
+
+          // 使用尺寸信息（如果可用）
+          const imgWidth = img.width || img.naturalWidth || 0;
+          const imgHeight = img.height || img.naturalHeight || 0;
+          if (imgWidth > 0 && imgHeight > 0 && (imgWidth < 150 || imgHeight < 150)) {
+            return false;
+          }
+
+          return true;
+        });
 
         if (allImages.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });

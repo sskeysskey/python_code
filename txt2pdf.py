@@ -116,71 +116,99 @@ def distribute_images_in_content(content, url_images):
     print("\n开始分布图片:")
     print(f"找到 {len(article_images)} 篇文章需要处理")
     
-    processed_articles = []
-    for article, images in article_images:
-        if not images:
-            # 如果没有图片，跳过处理这篇文章
-            continue
-            
-        print(f"\n处理文章，包含 {len(images)} 张图片")
-        
+    # 找出所有文章块，包括没有图片的文章
+    all_articles = []
+    current_article = []
+    lines = content.strip().split('\n')
+    
+    for line in lines:
+        if line.startswith('http') and current_article:
+            all_articles.append('\n'.join(current_article))
+            current_article = []
+        current_article.append(line)
+    
+    if current_article:
+        all_articles.append('\n'.join(current_article))
+    
+    # 处理所有文章，添加网站名称
+    processed_content = []
+    for article in all_articles:
         lines = article.strip().split('\n')
         url_line = next((line for line in lines if line.startswith('http')), '')
-        content_lines = [line for line in lines if line != url_line and line.strip()]
         
+        if not url_line:
+            processed_content.append(article)
+            continue
+            
         # 提取网站名称
-        site_name = extract_site_name(url_line) if url_line else "Other"
+        site_name = extract_site_name(url_line)
         
-        # 始终将第一张图片放在开头
-        new_content = [url_line] if url_line else []
-        if images:
-            new_content.append(f"--IMAGE_PLACEHOLDER_{images[0]}--")
-        
-        # 处理剩余的图片
-        remaining_images = images[1:] if len(images) > 1 else []
-        
-        if remaining_images and content_lines:
-            # 根据剩余图片数量将内容均匀分段
-            segment_size = max(1, len(content_lines) // (len(remaining_images) + 1))
-            
-            current_segment = []
-            image_index = 0
-            
-            for i, line in enumerate(content_lines):
-                current_segment.append(line)
+        # 查找这篇文章是否有图片
+        article_with_images = None
+        for art, imgs in article_images:
+            if url_line in art:
+                article_with_images = (art, imgs)
+                break
                 
-                # 当段落达到预期大小或是最后一行时插入图片
-                if (len(current_segment) >= segment_size or i == len(content_lines) - 1) and image_index < len(remaining_images):
-                    # 添加当前段落内容，保持原有的换行
+        if article_with_images:
+            # 处理有图片的文章
+            art, imgs = article_with_images
+            content_lines = [line for line in lines if line != url_line and line.strip()]
+            
+            # 始终将第一张图片放在开头
+            new_content = [url_line]
+            if imgs:
+                new_content.append(f"--IMAGE_PLACEHOLDER_{imgs[0]}--")
+            
+            # 处理剩余的图片
+            remaining_images = imgs[1:] if len(imgs) > 1 else []
+            
+            if remaining_images and content_lines:
+                # 根据剩余图片数量将内容均匀分段
+                segment_size = max(1, len(content_lines) // (len(remaining_images) + 1))
+                
+                current_segment = []
+                image_index = 0
+                
+                for i, line in enumerate(content_lines):
+                    current_segment.append(line)
+                    
+                    # 当段落达到预期大小或是最后一行时插入图片
+                    if (len(current_segment) >= segment_size or i == len(content_lines) - 1) and image_index < len(remaining_images):
+                        # 添加当前段落内容，保持原有的换行
+                        new_content.extend(current_segment)
+                        # 添加图片占位符
+                        new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
+                        # 重置当前段落
+                        current_segment = []
+                        image_index += 1
+                
+                # 添加剩余的段落内容
+                if current_segment:
                     new_content.extend(current_segment)
-                    # 添加图片占位符
+                
+                # 如果还有未使用的图片，在末尾添加
+                while image_index < len(remaining_images):
                     new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
-                    # 重置当前段落
-                    current_segment = []
                     image_index += 1
+            else:
+                # 如果没有剩余图片，直接添加所有内容行，保持原有换行
+                new_content.extend(content_lines)
             
-            # 添加剩余的段落内容
-            if current_segment:
-                new_content.extend(current_segment)
-            
-            # 如果还有未使用的图片，在末尾添加
-            while image_index < len(remaining_images):
-                new_content.append(f"--IMAGE_PLACEHOLDER_{remaining_images[image_index]}--")
-                image_index += 1
+            processed_content.append('\n'.join(new_content))
         else:
-            # 如果没有剩余图片，直接添加所有内容行，保持原有换行
-            new_content.extend(content_lines)
-        
-        # 添加处理后的文章和网站名称
-        processed_articles.append('\n'.join(new_content))
-        processed_articles.append(f"\n{site_name}\n")
+            # 处理没有图片的文章，保持原样
+            processed_content.append(article)
+            
+        # 每篇文章后添加网站名称
+        processed_content.append(f"\n{site_name}\n")
     
-    # 移除最后一个网站名称标记（因为是最后一篇文章）
-    if processed_articles:
-        processed_articles.pop()
+    # 移除最后一个网站名称标记的换行符（因为是最后一篇文章）
+    if processed_content and processed_content[-1].strip() in {"FT", "WSJ", "Bloomberg", "Technology Review", "The Economist", "Other"}:
+        processed_content[-1] = processed_content[-1].strip()
     
     # 合并所有处理后的内容
-    return '\n'.join(processed_articles)
+    return '\n'.join(processed_content)
 
 def clean_and_format_text(txt_path, article_copier_path, image_dir):
     try:
@@ -475,7 +503,7 @@ def extract_site_name(url):
         # 常见新闻网站的特殊处理
         if 'ft.com' in url:
             return 'FT'
-        elif 'wsj.com' in url or 'cn.wsj.com' in url:
+        elif 'wsj.com' in url:  # 简化判断，包含wsj.com的都归为WSJ
             return 'WSJ'
         elif 'bloomberg.com' in url:
             return 'Bloomberg'
@@ -486,8 +514,15 @@ def extract_site_name(url):
         
         # 对于其他网站，提取域名主体
         domain = url.split('/')[0]
-        # 提取主域名（例如：example.com）
-        site_name = domain.split('.')[0].upper()
+        # 提取次级域名和主域名
+        parts = domain.split('.')
+        if len(parts) >= 2:
+            # 如果有次级域名，使用次级域名+主域名
+            site_name = '.'.join(parts[0:2]).upper()
+        else:
+            # 否则只使用主域名
+            site_name = parts[0].upper()
+            
         return site_name
         
     except Exception as e:

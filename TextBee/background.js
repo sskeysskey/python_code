@@ -396,7 +396,7 @@ function extractAndCopy() {
           .replace(/\s+/g, ' ') // 规范化空白
           .replace(/&nbsp;/g, ' ') // 处理HTML空格
           .replace(/==\s*\$\d+/g, '') // 移除调试标记
-          .replace(/<![-—]{2,}>/g, '') // 移除HTML注释标记
+          .replace(/<![---]{2,}>/g, '') // 移除HTML注释标记
           .replace(/<\/?[^>]+(>|$)/g, '') // 移除HTML标签
           .trim();
 
@@ -422,12 +422,34 @@ function extractAndCopy() {
       // 检查是否找到了符合条件的图片
       let foundValidImages = false;
 
+      // 用于存储已处理的图片URL
+      const processedUrls = new Set();
+
       if (articleImages && articleImages.length > 0) {
         articleImages.forEach(figure => {
           const img = figure.querySelector('img.ui-image.high-res-img');
           if (img) {
             foundValidImages = true;
-            // 图片处理代码保持不变...
+            // 获取图片描述文本 - 新增部分
+            let caption = '';
+            // 查找figcaption元素
+            const figcaption = figure.querySelector('figcaption');
+            if (figcaption) {
+              // 尝试获取所有可能包含描述的元素
+              const captionSpans = figcaption.querySelectorAll('span');
+              if (captionSpans && captionSpans.length > 0) {
+                // 合并所有span的文本内容
+                caption = Array.from(captionSpans)
+                  .map(span => span.textContent.trim())
+                  .filter(text => text) // 过滤空文本
+                  .join(' ');
+              } else {
+                // 如果没有span，直接获取figcaption的文本
+                caption = figcaption.textContent.trim();
+              }
+            }
+
+            // 图片处理代码
             let highestResUrl = img.src; // 默认使用src
 
             // 如果有srcset，解析并找出最高分辨率的图片
@@ -453,33 +475,44 @@ function extractAndCopy() {
             // 清理URL（移除多余的空格和换行）
             highestResUrl = highestResUrl.replace(/\s+/g, '');
 
-            // 获取文件扩展名
-            const extension = highestResUrl.toLowerCase().includes('.png') ? 'png' : 'webp';
+            // 检查URL是否已经处理过
+            if (!processedUrls.has(highestResUrl)) {
+              processedUrls.add(highestResUrl);
+              foundValidImages = true;
 
-            // 生成文件名
-            let filename;
-            if (img.alt) {
-              // 使用alt文本作为文件名，并替换&nbsp;为空格
-              filename = `bloomberg-${img.alt
-                .replace(/&nbsp;/g, ' ') // 替换&nbsp;为空格
-                .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
-            } else {
-              // 如果没有alt文本，使用时间戳
-              const timestamp = new Date().getTime();
-              filename = `bloomberg-image-${timestamp}.${extension}`;
+              // 获取文件扩展名
+              const extension = highestResUrl.toLowerCase().includes('.png') ? 'png' : 'webp';
+
+              // 生成文件名
+              let filename;
+              if (caption) {
+                // 如果没有alt但有caption，使用caption作为文件名
+                filename = `bloomberg-${caption
+                  .replace(/&nbsp;/g, ' ')
+                  .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
+              } else if (img.alt) {
+                // 使用alt文本作为文件名，并替换&nbsp;为空格
+                filename = `bloomberg-${img.alt
+                  .replace(/&nbsp;/g, ' ') // 替换&nbsp;为空格
+                  .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
+              } else {
+                // 如果既没有alt也没有caption，使用时间戳
+                const timestamp = new Date().getTime();
+                filename = `bloomberg-image-${timestamp}.${extension}`;
+              }
+
+              // 确保文件名不会太长
+              if (filename.length > 200) {
+                filename = filename.substring(0, 196) + '.' + extension;
+              }
+
+              // 发送下载消息到background script
+              chrome.runtime.sendMessage({
+                action: 'downloadImage',
+                url: highestResUrl,
+                filename: filename
+              });
             }
-
-            // 确保文件名不会太长
-            if (filename.length > 200) {
-              filename = filename.substring(0, 196) + '.' + extension;
-            }
-
-            // 发送下载消息到background script
-            chrome.runtime.sendMessage({
-              action: 'downloadImage',
-              url: highestResUrl,
-              filename: filename
-            });
           }
         });
       }

@@ -150,12 +150,15 @@ def distribute_images_in_content(content, url_images):
                 article_with_images = (art, imgs)
                 break
                 
+        # 先添加网站名称，然后再添加文章内容
+        processed_content.append(f"{site_name}\n")
+                
         if article_with_images:
             # 处理有图片的文章
             art, imgs = article_with_images
             content_lines = [line for line in lines if line != url_line and line.strip()]
             
-            # 始终将第一张图片放在开头
+            # 首先添加URL
             new_content = [url_line]
             if imgs:
                 new_content.append(f"--IMAGE_PLACEHOLDER_{imgs[0]}--")
@@ -199,9 +202,6 @@ def distribute_images_in_content(content, url_images):
         else:
             # 处理没有图片的文章，保持原样
             processed_content.append(article)
-            
-        # 每篇文章后添加网站名称
-        processed_content.append(f"\n{site_name}\n")
     
     # 移除最后一个网站名称标记的换行符（因为是最后一篇文章）
     if processed_content and processed_content[-1].strip() in {"FT", "WSJ", "Bloomberg", "Technology Review", "The Economist", "Other"}:

@@ -419,12 +419,15 @@ function extractAndCopy() {
       // 查找所有类型的图片容器
       const articleImages = document.querySelectorAll('figure[data-component="article-image"]');
 
-      if (articleImages.length === 0) {
-        chrome.runtime.sendMessage({ action: 'noImages' });
-      } else {
+      // 检查是否找到了符合条件的图片
+      let foundValidImages = false;
+
+      if (articleImages && articleImages.length > 0) {
         articleImages.forEach(figure => {
           const img = figure.querySelector('img.ui-image.high-res-img');
           if (img) {
+            foundValidImages = true;
+            // 图片处理代码保持不变...
             let highestResUrl = img.src; // 默认使用src
 
             // 如果有srcset，解析并找出最高分辨率的图片
@@ -480,6 +483,14 @@ function extractAndCopy() {
           }
         });
       }
+
+      // 在处理完所有图片后，如果没有找到有效图片，则发送noImages消息
+      if (!foundValidImages) {
+        chrome.runtime.sendMessage({ action: 'noImages' });
+      }
+    } else {
+      // 如果没有提取到有效文本，也应该发送noImages消息
+      chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }
 

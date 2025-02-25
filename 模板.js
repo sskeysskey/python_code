@@ -1,3 +1,46 @@
+// ——————————————————————————————————————————————————————————————
+//   // 检查多种可能的尺寸来源
+//   const width = img.width || img.naturalWidth ||
+//     parseInt(img.getAttribute('width')) ||
+//     parseInt(window.getComputedStyle(img).width) || 0;
+
+//   const height = img.height || img.naturalHeight ||
+//     parseInt(img.getAttribute('height')) ||
+//     parseInt(window.getComputedStyle(img).height) || 0;
+
+//   // 检查图片的实际显示尺寸
+//   const rect = img.getBoundingClientRect();
+//   const displayWidth = rect.width;
+//   const displayHeight = rect.height;
+
+//   // 检查data属性中可能包含的尺寸信息
+//   const dataWidth = parseInt(img.dataset.width || '0');
+//   const dataHeight = parseInt(img.dataset.height || '0');
+
+//   // 综合判断图片尺寸
+//   const isTooSmall = (
+//     // 检查实际尺寸
+//     (width > 0 && height > 0 && (width < 150 || height < 150)) ||
+//     // 检查显示尺寸
+//     (displayWidth > 0 && displayHeight > 0 && (displayWidth < 150 || displayHeight < 150)) ||
+//     // 检查data属性尺寸
+//     (dataWidth > 0 && dataHeight > 0 && (dataWidth < 150 || dataHeight < 150))
+//   );
+
+//   // 检查图片的样式类名，排除可能的小图标
+//   const hasIconClass = img.className.toLowerCase().includes('icon') ||
+//     img.className.toLowerCase().includes('avatar') ||
+//     img.className.toLowerCase().includes('thumb');
+
+//   // 检查父元素是否暗示这是一个小图标
+//   const parentIndicatesIcon = img.parentElement && (
+//     img.parentElement.className.toLowerCase().includes('icon') ||
+//     img.parentElement.className.toLowerCase().includes('avatar') ||
+//     img.parentElement.className.toLowerCase().includes('thumbnail')
+//   );
+
+//   return !isTooSmall && !hasIconClass && !parentIndicatesIcon;
+// });
 
 // ——————————————————————————————————————————————————————————————
 const creditSpan = picture.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');

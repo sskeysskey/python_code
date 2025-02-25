@@ -256,7 +256,7 @@ function extractAndCopy() {
                 if (imageDescription) {
                   // 使用找到的描述作为文件名
                   const cleanedDescription = imageDescription
-                    .replace(/[/\\?*:|"<>]/g, '-')
+                    .replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -268,7 +268,7 @@ function extractAndCopy() {
                 } else if (img && img.alt) {
                   // 如果没有找到描述，退回到使用alt文本
                   const cleanedAlt = img.alt
-                    .replace(/[/\\?*:|"<>]/g, '-')
+                    .replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -304,7 +304,7 @@ function extractAndCopy() {
                 let filename;
                 if (imageDescription) {
                   const cleanedDescription = imageDescription
-                    .replace(/[/\\?*:|"<>]/g, '-')
+                    .replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -316,7 +316,7 @@ function extractAndCopy() {
                 } else if (img.alt) {
                   // 对单独img标签的alt文本进行同样的处理
                   const cleanedAlt = img.alt
-                    .replace(/[/\\?*:|"<>]/g, '-')
+                    .replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -489,12 +489,12 @@ function extractAndCopy() {
                 // 如果没有alt但有caption，使用caption作为文件名
                 filename = `bloomberg-${caption
                   .replace(/&nbsp;/g, ' ')
-                  .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
+                  .replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else if (img.alt) {
                 // 使用alt文本作为文件名，并替换&nbsp;为空格
                 filename = `bloomberg-${img.alt
                   .replace(/&nbsp;/g, ' ') // 替换&nbsp;为空格
-                  .replace(/[/\\?*:|"<>]/g, '-')}.${extension}`;
+                  .replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else {
                 // 如果既没有alt也没有caption，使用时间戳
                 const timestamp = new Date().getTime();
@@ -699,7 +699,7 @@ function extractAndCopy() {
                 // 文件名处理函数
                 const processFileName = (text) => {
                   // 移除或替换特殊字符
-                  text = text.replace(/[/\\?*:|"<>]/g, '-')
+                  text = text.replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
 
@@ -834,7 +834,7 @@ function extractAndCopy() {
               let filename;
               if (imageDescription) {
                 // 使用图片描述作为文件名，替换非法字符
-                filename = `economist-${imageDescription.replace(/[/\\?*:|"<>]/g, '-')}.${fileExtension}`;
+                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
               } else {
                 // 如果没有描述，使用时间戳
                 const timestamp = new Date().getTime();
@@ -950,7 +950,7 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (img.alt && img.alt.trim()) {
-                filename = `technologyreview-${img.alt.replace(/[/\\?*:|"<>]/g, '-')}`;
+                filename = `technologyreview-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
               } else {
                 const timestamp = new Date().getTime();
                 filename = `technologyreview-image-${timestamp}`;

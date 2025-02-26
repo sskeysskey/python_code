@@ -258,7 +258,8 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
             c.setFillColor(colors.black)
             c.rect(0, 0, width, height, fill=1)
             # 重置填充颜色为白色用于文本
-            c.setFillColor(colors.white)
+            # c.setFillColor(colors.white)
+            c.setFillColor(colors.HexColor('#D3D3D3'))  # 米色 浅灰色: '#E0E0E0' 暖灰色: '#D3D3D3' 象牙色: '#FFFFF0'
         
         # 设置中文字体
         try:
@@ -272,7 +273,8 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
             
         def set_font():
             c.setFont(font_name, font_size)
-            c.setFillColor(colors.white)  # 设置文字颜色为白色
+            # c.setFillColor(colors.white)  # 设置文字颜色为白色
+            c.setFillColor(colors.HexColor('#D3D3D3'))  # 米色 浅灰色: '#E0E0E0' 暖灰色: '#D3D3D3' 象牙色: '#FFFFF0'
             
         draw_black_background()  # 初始页面绘制黑色背景
         set_font()  # 初始设置字体
@@ -389,8 +391,8 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                 text = paragraph.strip()
 
                 # 检查是否是主要新闻网站名称
-                major_news_sites = {'FT', 'WSJ', 'Bloomberg', 'Technology Review', 'The Economist', "Other"}
-                if text in major_news_sites:
+                major_news_sites = {'FT', 'WSJ', 'BLOOMBERG', 'TECHNOLOGYREVIEW', 'ECONOMIST', "Other"}
+                if text.upper() in {site.upper() for site in major_news_sites}:
                     # 保存当前字体设置和颜色
                     current_font_size = font_size
                     
@@ -413,7 +415,8 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                     
                     # 恢复原来的字体设置和颜色
                     c.setFont(font_name, current_font_size)
-                    c.setFillColor(colors.white)  # 直接设置回白色
+                    # c.setFillColor(colors.white)  # 直接设置回白色
+                    c.setFillColor(colors.HexColor('#D3D3D3'))  # 米色 浅灰色: '#E0E0E0' 暖灰色: '#D3D3D3' 象牙色: '#FFFFF0'
                     
                     # 更新y坐标
                     y -= line_height * 1.5
@@ -506,11 +509,11 @@ def extract_site_name(url):
         elif '.wsj.com' in url:  # 修改判断条件，使用.wsj.com
             return 'WSJ'
         elif '.bloomberg.com' in url:
-            return 'Bloomberg'
+            return 'BLOOMBERG'
         elif '.economist.com' in url:
-            return 'The Economist'
+            return 'ECONOMIST'
         elif '.technologyreview.com' in url:
-            return 'Technology Review'
+            return 'TECHNOLOGYREVIEW'
         
         # 对于其他网站，提取域名主体
         domain = url.split('/')[0]

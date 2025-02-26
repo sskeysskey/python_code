@@ -501,24 +501,25 @@ def extract_site_name(url):
         url = re.sub(r'^https?://(www\.)?', '', url.lower())
         
         # 常见新闻网站的特殊处理
-        if 'ft.com' in url:
+        if '.ft.com' in url:
             return 'FT'
-        elif 'wsj.com' in url:  # 简化判断，包含wsj.com的都归为WSJ
+        elif '.wsj.com' in url:  # 修改判断条件，使用.wsj.com
             return 'WSJ'
-        elif 'bloomberg.com' in url:
+        elif '.bloomberg.com' in url:
             return 'Bloomberg'
-        elif 'economist.com' in url:
+        elif '.economist.com' in url:
             return 'The Economist'
-        elif 'technologyreview.com' in url:
+        elif '.technologyreview.com' in url:
             return 'Technology Review'
         
         # 对于其他网站，提取域名主体
         domain = url.split('/')[0]
-        # 提取次级域名和主域名
+        # 提取主域名
         parts = domain.split('.')
         if len(parts) >= 2:
-            # 如果有次级域名，使用次级域名+主域名
-            site_name = '.'.join(parts[0:2]).upper()
+            # 查找主域名（通常是倒数第二个部分）
+            main_domain = parts[-2]
+            site_name = main_domain.upper()
         else:
             # 否则只使用主域名
             site_name = parts[0].upper()

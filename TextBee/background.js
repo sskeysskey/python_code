@@ -849,12 +849,14 @@ function extractAndCopy() {
 
               // 生成文件名
               let filename;
+              const now = new Date();
+              const timestamp = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+
               if (imageDescription) {
-                // 使用图片描述作为文件名，替换非法字符
-                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+                // 使用图片描述作为文件名,替换非法字符,并加上时间戳
+                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}-${timestamp}.${fileExtension}`;
               } else {
-                // 如果没有描述，使用时间戳
-                const timestamp = new Date().getTime();
+                // 如果没有描述,使用image加时间戳
                 filename = `economist-image-${timestamp}.${fileExtension}`;
               }
 

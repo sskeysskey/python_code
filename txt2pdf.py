@@ -220,16 +220,50 @@ def clean_and_format_text(txt_path, article_copier_path, image_dir):
         url_images = parse_article_copier(article_copier_path)
         cleaned_content = distribute_images_in_content(content, url_images)
 
-        images = []
+        # 使用集合来存储唯一的图片路径，避免重复
+        unique_image_paths = set()
+        
         print("\n找到的图片占位符:")
+        # 跟踪所有占位符，不论图片是否存在
+        all_placeholders = []
+        
         for img_placeholder in re.finditer(r'--IMAGE_PLACEHOLDER_(.*?)--(?:\n|$)', cleaned_content):
             img_name = img_placeholder.group(1).strip()
             img_path = os.path.join(image_dir, img_name)
+            all_placeholders.append(img_name)
+            
             print(f"Image placeholder: {img_name}")
             print(f"Full path: {img_path}")
             print(f"Exists: {os.path.exists(img_path)}")
+            
             if os.path.exists(img_path):
-                images.append(img_path)
+                unique_image_paths.add(img_path)
+            else:
+                # 移除不存在图片的占位符
+                cleaned_content = cleaned_content.replace(f"--IMAGE_PLACEHOLDER_{img_name}--", "")
+                print(f"警告: 图片 {img_name} 不存在，已从内容中移除其占位符")
+        
+        # 检查是否有重复的占位符
+        placeholder_counts = {}
+        for placeholder in all_placeholders:
+            if placeholder in placeholder_counts:
+                placeholder_counts[placeholder] += 1
+            else:
+                placeholder_counts[placeholder] = 1
+        
+        # 打印重复的占位符
+        duplicates = [p for p, count in placeholder_counts.items() if count > 1]
+        if duplicates:
+            print("\n警告: 发现重复的图片占位符:")
+            for dup in duplicates:
+                print(f"  - {dup} (出现 {placeholder_counts[dup]} 次)")
+        
+        # 将集合转换为列表
+        images = list(unique_image_paths)
+        
+        print(f"\n实际找到的有效图片数量: {len(images)}")
+        print(f"占位符总数: {len(all_placeholders)}")
+        print(f"唯一占位符数: {len(placeholder_counts)}")
         
         cleaned_content = re.sub(r'^\s*\ufeff?https?://[^\n]+\n?', '', cleaned_content, flags=re.MULTILINE)
         cleaned_content = re.sub(r'\n{3,}', '\n\n', cleaned_content)
@@ -319,49 +353,92 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         
                         # 计算描述文字的行数和位置
                         desc_font_size = font_size * 0.6
-                        max_desc_width = width - 60  # 留出左右边距
-                        desc_words = []
+                        max_desc_width = width - 80  # 留出左右边距
+                        # desc_words = []
                         
-                        # 检查文本是否包含英文单词
-                        has_english = bool(re.search(r'[a-zA-Z]', description))
+                        # # 检查文本是否包含英文单词
+                        # has_english = bool(re.search(r'[a-zA-Z]', description))
 
-                        if has_english:
-                            # 英文处理：按单词分割
-                            words = description.split()
-                            current_line = words[0] if words else ""
+                        # if has_english:
+                        #     # 英文处理：按单词分割
+                        #     words = description.split()
+                        #     current_line = words[0] if words else ""
                             
-                            for word in words[1:]:
-                                test_line = current_line + " " + word
-                                if c.stringWidth(test_line, font_name, desc_font_size) < max_desc_width:
-                                    current_line = test_line
-                                else:
-                                    desc_words.append(current_line)
-                                    current_line = word
-                            if current_line:
-                                desc_words.append(current_line)
-                        else:
-                            # 中文处理：按字符分割
-                            text = description
-                            while text:
-                                line = ''
+                        #     for word in words[1:]:
+                        #         test_line = current_line + " " + word
+                        #         if c.stringWidth(test_line, font_name, desc_font_size) < max_desc_width:
+                        #             current_line = test_line
+                        #         else:
+                        #             desc_words.append(current_line)
+                        #             current_line = word
+                        #     if current_line:
+                        #         desc_words.append(current_line)
+                        # else:
+                        #     # 中文处理：按字符分割
+                        #     text = description
+                        #     while text:
+                        #         line = ''
+                        #         i = 0
+                        #         while i < len(text):
+                        #             if c.stringWidth(line + text[i], font_name, desc_font_size) < max_desc_width:
+                        #                 line += text[i]
+                        #                 i += 1
+                        #             else:
+                        #                 break
+                                
+                        #         if not line:
+                        #             line = text[0]
+                        #             i = 1
+                                
+                        #         desc_words.append(line)
+                        #         text = text[i:]
+
+                        # # 计算描述文字实际占用的总高度
+                        # desc_total_height = len(desc_words) * (desc_font_size + 2)  # 每行文字高度加行间距
+                        
+                        # # 绘制描述文字
+                        # desc_y = y - img_height - 10
+                        # for line in desc_words:
+                        #     line_width = c.stringWidth(line, font_name, desc_font_size)
+                        #     desc_x = (width - line_width) / 2  # 文字水平居中
+                        #     c.drawString(desc_x, desc_y, line)
+                        #     desc_y -= desc_font_size + 2  # 行间距
+
+                        # 改进的文本分行处理，能更好地处理中英文混合文本
+                        def split_text_for_display(text, font_name, font_size, max_width, canvas):
+                            lines = []
+                            remaining_text = text
+                            
+                            while remaining_text:
+                                # 初始化当前行
+                                current_line = ""
                                 i = 0
-                                while i < len(text):
-                                    if c.stringWidth(line + text[i], font_name, desc_font_size) < max_desc_width:
-                                        line += text[i]
+                                
+                                # 逐字符添加，直到达到最大宽度
+                                while i < len(remaining_text):
+                                    test_line = current_line + remaining_text[i]
+                                    if canvas.stringWidth(test_line, font_name, font_size) < max_width:
+                                        current_line = test_line
                                         i += 1
                                     else:
                                         break
                                 
-                                if not line:
-                                    line = text[0]
+                                # 如果一个字符都放不下（极少数情况），强制添加一个字符
+                                if not current_line and i == 0:
+                                    current_line = remaining_text[0]
                                     i = 1
                                 
-                                desc_words.append(line)
-                                text = text[i:]
+                                lines.append(current_line)
+                                remaining_text = remaining_text[i:]
+                            
+                            return lines
+
+                        # 使用改进的函数处理描述文字
+                        desc_words = split_text_for_display(description, font_name, desc_font_size, max_desc_width, c)
 
                         # 计算描述文字实际占用的总高度
                         desc_total_height = len(desc_words) * (desc_font_size + 2)  # 每行文字高度加行间距
-                        
+
                         # 绘制描述文字
                         desc_y = y - img_height - 10
                         for line in desc_words:

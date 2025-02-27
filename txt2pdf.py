@@ -315,7 +315,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         
         x = 20  # 减小左边距，原来是50
         y = height - 30  # 减小上边距，原来是height - 50
-        line_height = 44  # 减小行高，原来是20
+        line_height = 48  # 减小行高，原来是20
         
         paragraphs = content.splitlines()
         
@@ -354,55 +354,6 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         # 计算描述文字的行数和位置
                         desc_font_size = font_size * 0.6
                         max_desc_width = width - 80  # 留出左右边距
-                        # desc_words = []
-                        
-                        # # 检查文本是否包含英文单词
-                        # has_english = bool(re.search(r'[a-zA-Z]', description))
-
-                        # if has_english:
-                        #     # 英文处理：按单词分割
-                        #     words = description.split()
-                        #     current_line = words[0] if words else ""
-                            
-                        #     for word in words[1:]:
-                        #         test_line = current_line + " " + word
-                        #         if c.stringWidth(test_line, font_name, desc_font_size) < max_desc_width:
-                        #             current_line = test_line
-                        #         else:
-                        #             desc_words.append(current_line)
-                        #             current_line = word
-                        #     if current_line:
-                        #         desc_words.append(current_line)
-                        # else:
-                        #     # 中文处理：按字符分割
-                        #     text = description
-                        #     while text:
-                        #         line = ''
-                        #         i = 0
-                        #         while i < len(text):
-                        #             if c.stringWidth(line + text[i], font_name, desc_font_size) < max_desc_width:
-                        #                 line += text[i]
-                        #                 i += 1
-                        #             else:
-                        #                 break
-                                
-                        #         if not line:
-                        #             line = text[0]
-                        #             i = 1
-                                
-                        #         desc_words.append(line)
-                        #         text = text[i:]
-
-                        # # 计算描述文字实际占用的总高度
-                        # desc_total_height = len(desc_words) * (desc_font_size + 2)  # 每行文字高度加行间距
-                        
-                        # # 绘制描述文字
-                        # desc_y = y - img_height - 10
-                        # for line in desc_words:
-                        #     line_width = c.stringWidth(line, font_name, desc_font_size)
-                        #     desc_x = (width - line_width) / 2  # 文字水平居中
-                        #     c.drawString(desc_x, desc_y, line)
-                        #     desc_y -= desc_font_size + 2  # 行间距
 
                         # 改进的文本分行处理，能更好地处理中英文混合文本
                         def split_text_for_display(text, font_name, font_size, max_width, canvas):
@@ -445,7 +396,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                             line_width = c.stringWidth(line, font_name, desc_font_size)
                             desc_x = (width - line_width) / 2  # 文字水平居中
                             c.drawString(desc_x, desc_y, line)
-                            desc_y -= desc_font_size + 2  # 行间距
+                            desc_y -= desc_font_size + 4  # 行间距
                         
                         set_font()  # 恢复原来的字体大小
                         # 动态计算需要的间距

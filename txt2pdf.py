@@ -504,15 +504,15 @@ def extract_site_name(url):
         url = re.sub(r'^https?://(www\.)?', '', url.lower())
         
         # 常见新闻网站的特殊处理
-        if '.ft.com' in url:
+        if 'ft.com' in url:  # 修改为使用包含判断
             return 'FT'
-        elif '.wsj.com' in url:  # 修改判断条件，使用.wsj.com
+        elif 'wsj.com' in url:  # 修改为使用包含判断，这样cn.wsj.com也能被正确识别
             return 'WSJ'
-        elif '.bloomberg.com' in url:
+        elif 'bloomberg.com' in url:
             return 'BLOOMBERG'
-        elif '.economist.com' in url:
+        elif 'economist.com' in url:
             return 'ECONOMIST'
-        elif '.technologyreview.com' in url:
+        elif 'technologyreview.com' in url:
             return 'TECHNOLOGYREVIEW'
         
         # 对于其他网站，提取域名主体

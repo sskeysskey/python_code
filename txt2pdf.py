@@ -364,16 +364,28 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                                 # 初始化当前行
                                 current_line = ""
                                 i = 0
+                                last_space_idx = -1  # 用于记录上一个空格的位置
                                 
                                 # 逐字符添加，直到达到最大宽度
                                 while i < len(remaining_text):
+                                    # 记录空格的位置，用于英文单词的整体处理
+                                    if remaining_text[i] == ' ':
+                                        last_space_idx = i
                                     test_line = current_line + remaining_text[i]
                                     if canvas.stringWidth(test_line, font_name, font_size) < max_width:
                                         current_line = test_line
                                         i += 1
                                     else:
                                         break
-                                
+                                # 处理英文单词切分的问题
+                                # 如果当前行已有内容且找到了空格，则回退到最后一个空格处
+                                if current_line and last_space_idx > 0 and i < len(remaining_text) and last_space_idx < i:
+                                    # 计算需要回退的字符数
+                                    back_chars = i - last_space_idx - 1
+                                    if back_chars > 0:
+                                        # 回退到最后一个空格
+                                        i = last_space_idx + 1
+                                        current_line = current_line[:-back_chars]
                                 # 如果一个字符都放不下（极少数情况），强制添加一个字符
                                 if not current_line and i == 0:
                                     current_line = remaining_text[0]

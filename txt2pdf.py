@@ -134,8 +134,9 @@ def distribute_images_in_content(content, url_images):
     processed_content = []
     for article in all_articles:
         lines = article.strip().split('\n')
-        url_line = next((line for line in lines if line.startswith('http')), '')
-        
+        # 用正则提取文章中第一个出现的 URL
+        url_match = re.search(r'(https?://[^\s]+)', article)
+        url_line = url_match.group(1) if url_match else ''
         if not url_line:
             processed_content.append(article)
             continue
@@ -146,7 +147,9 @@ def distribute_images_in_content(content, url_images):
         # 查找这篇文章是否有图片
         article_with_images = None
         for art, imgs in article_images:
-            if url_line in art:
+            art_url_match = re.search(r'(https?://[^\s]+)', art)
+            art_url = art_url_match.group(1) if art_url_match else ''
+            if art_url == url_line:
                 article_with_images = (art, imgs)
                 break
                 
@@ -329,10 +332,10 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         img = Image.open(img_path)
                         img_width, img_height = img.size
                         
-                        # 调整图片大小以适应页面
+                        # 调整图片大小以适应页面（调小左右边距）
                         aspect = img_width / float(img_height)
-                        if img_width > width - 40:
-                            img_width = width - 60
+                        if img_width > width - 0:   # 调整边距，例如总边距为20
+                            img_width = width - 0
                             img_height = img_width / aspect
                         
                         # 如果当前页空间不足，新建页面

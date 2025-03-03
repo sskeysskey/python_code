@@ -318,7 +318,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         
         x = 20  # 减小左边距，原来是50
         y = height - 30  # 减小上边距，原来是height - 50
-        line_height = 48  # 减小行高，原来是20
+        line_height = 60  # 减小行高，原来是20
         
         paragraphs = content.splitlines()
         

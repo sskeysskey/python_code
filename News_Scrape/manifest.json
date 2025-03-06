@@ -17,7 +17,8 @@
     "content_scripts": [
         {
             "matches": [
-                "*://*.bloomberg.com/*"
+                "*://*.bloomberg.com/",
+                "*://*.bloomberg.com/asia"
             ],
             "js": [
                 "content.js"

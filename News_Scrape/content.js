@@ -3,7 +3,7 @@ function isValidTitle(titleText) {
     const invalidPhrases = [
         'Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:',
         'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage',
-        'Listen (', 'Podcast:'
+        'Podcast:'
     ];
 
     // 过滤掉仅包含 "LIVE" 的标题
@@ -11,13 +11,13 @@ function isValidTitle(titleText) {
         return false;
     }
 
-    if (invalidPhrases.some(phrase => titleText.includes(phrase))) {
+    // 过滤掉以 "Listen" 开头的标题
+    if (titleText.trim().startsWith("Listen")) {
         return false;
     }
 
-    if ((titleText.includes('Listen') || titleText.includes('Watch')) &&
-        titleText.includes('(') && titleText.includes(')')) {
-        titleText = titleText.split(')')[1].trim();
+    if (invalidPhrases.some(phrase => titleText.includes(phrase))) {
+        return false;
     }
 
     return titleText && !isTimeFormat(titleText);
@@ -35,21 +35,9 @@ function isTimeFormat(text) {
 // 生成HTML内容
 function generateHTML(data) {
     let html = `
-<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
-    th { background-color: #f4f4f4; }
-    a { color: #0066cc; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
 <body>
-  <table>
+  <table border='1'>
     <tr><th>Date</th><th>Title</th></tr>
 `;
 
@@ -64,7 +52,9 @@ function generateHTML(data) {
 
 // 主抓取函数
 function scrapeAndDownload() {
-    const currentDatetime = new Date().toISOString().slice(0, 13).replace(/-/g, '_').replace('T', '_');
+    // const currentDatetime = new Date().toISOString().slice(0, 13).replace(/-/g, '_').replace('T', '_');
+    const now = new Date();
+    const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
     const links = document.querySelectorAll("a[href*='/2025']");
     const newRows = [];
 
@@ -89,7 +79,7 @@ function scrapeAndDownload() {
         const html = generateHTML(newRows);
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
-        const now = new Date();
+        // const now = new Date();
         const timestamp = now.toLocaleString('zh-CN', {
             year: 'numeric',
             month: '2-digit',

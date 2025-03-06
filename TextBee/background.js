@@ -721,8 +721,8 @@ function extractAndCopy() {
                     .trim();
 
                   // 如果文本超过250个字符，在最接近的单词边界处截断
-                  if (text.length > 250) {
-                    text = text.substr(0, 250).split(' ').slice(0, -1).join(' ');
+                  if (text.length > 200) {
+                    text = text.substr(0, 196).split(' ').slice(0, -1).join(' ');
                   }
 
                   return `${text}.jpg`;
@@ -861,8 +861,8 @@ function extractAndCopy() {
               }
 
               // 确保文件名不会太长
-              if (filename.length > 250) {
-                filename = filename.substring(0, 246) + '.' + fileExtension;
+              if (filename.length > 200) {
+                filename = filename.substring(0, 196) + '.' + fileExtension;
               }
 
               // 发送下载消息到background script

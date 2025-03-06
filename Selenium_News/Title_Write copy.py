@@ -119,45 +119,9 @@ try:
         result_eng_html = '/Users/yanzhang/Documents/News/today_eng.html'
         result_jpn_html = '/Users/yanzhang/Documents/News/today_jpn.html'
         
-        # 使用BeautifulSoup修改HTML结构，添加<head>内容
-        soup = BeautifulSoup(parser.result_html, 'html.parser')
-        
-        # 检查是否有head标签，如果没有则创建
-        if not soup.head:
-            head = soup.new_tag('head')
-            if soup.html:
-                soup.html.insert(0, head)
-            else:
-                # 如果没有html标签，创建一个并添加head
-                html = soup.new_tag('html')
-                head = soup.new_tag('head')
-                html.append(head)
-                # 将原内容移到body中
-                body = soup.new_tag('body')
-                for content in list(soup.contents):
-                    body.append(content)
-                html.append(body)
-                soup = BeautifulSoup(str(html), 'html.parser')
-        
-        # 添加meta和style标签到head
-        meta = soup.new_tag('meta')
-        meta['charset'] = 'UTF-8'
-        soup.head.append(meta)
-        
-        style = soup.new_tag('style')
-        style.string = """
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
-            th { background-color: #f4f4f4; }
-            a { color: #0066cc; text-decoration: none; }
-            a:hover { text-decoration: underline; }
-        """
-        soup.head.append(style)
-        
         try:
             with open(original_file_path, 'w', encoding='utf-8') as file:
-                file.write(str(soup))
+                file.write(parser.result_html)
             print("文件已成功更新。")
             for file_to_delete in [file_path, process_eng_txt, process_jpn_txt, result_eng_html, result_jpn_html]:
                 try:

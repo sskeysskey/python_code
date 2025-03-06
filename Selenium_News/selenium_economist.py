@@ -203,5 +203,3 @@ if new_rows1:
         with open(today_html_path, 'a', encoding='utf-8') as html_file:
             html_file.write(append_content)
             html_file.write("</table></body></html>")
-
-# open_new_html_file()

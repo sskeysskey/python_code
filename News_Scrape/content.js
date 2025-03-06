@@ -6,6 +6,11 @@ function isValidTitle(titleText) {
         'Listen (', 'Podcast:'
     ];
 
+    // 过滤掉仅包含 "LIVE" 的标题
+    if (titleText.trim() === "LIVE") {
+        return false;
+    }
+
     if (invalidPhrases.some(phrase => titleText.includes(phrase))) {
         return false;
     }

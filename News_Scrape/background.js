@@ -1,5 +1,5 @@
 chrome.runtime.onInstalled.addListener(function () {
-    console.log('Bloomberg News Scraper 已安装');
+    console.log('News Scraper 已安装');
 });
 
 // 处理来自content script的下载请求

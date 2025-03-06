@@ -33,7 +33,7 @@ function isTimeFormat(text) {
 }
 
 // 生成HTML内容
-function generateHTML(data) {
+function generateHTML(data, source) {
     let html = `
 <html>
 <body>
@@ -50,9 +50,8 @@ function generateHTML(data) {
     return html;
 }
 
-// 主抓取函数
-function scrapeAndDownload() {
-    // const currentDatetime = new Date().toISOString().slice(0, 13).replace(/-/g, '_').replace('T', '_');
+// Bloomberg 抓取函数
+function scrapeBloomberg() {
     const now = new Date();
     const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
     const links = document.querySelectorAll("a[href*='/2025']");
@@ -76,10 +75,9 @@ function scrapeAndDownload() {
     });
 
     if (newRows.length > 0) {
-        const html = generateHTML(newRows);
+        const html = generateHTML(newRows, 'Bloomberg');
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
-        // const now = new Date();
         const timestamp = now.toLocaleString('zh-CN', {
             year: 'numeric',
             month: '2-digit',
@@ -98,9 +96,67 @@ function scrapeAndDownload() {
     }
 }
 
+// WSJ 抓取函数
+function scrapeWSJ() {
+    const now = new Date();
+    const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
+    const newRows = [];
+
+    // 基于你的 Selenium 代码，尝试找到 WSJ 标题元素
+    const titleElements = document.querySelectorAll('h3.css-fsvegl a, article h2 a, .WSJTheme--headline--7VCzo7Ay a');
+
+    titleElements.forEach(titleElement => {
+        const href = titleElement.href;
+        // 跳过包含 livecoverage 的链接
+        if (href && href.toLowerCase().includes('livecoverage')) {
+            return;
+        }
+
+        let titleText = titleElement.innerText.trim();
+
+        // 移除阅读时间标记
+        titleText = titleText.replace(/\d+ min read/g, '').trim();
+
+        if (titleText && href) {
+            newRows.push([currentDatetime, titleText, href]);
+        }
+    });
+
+    if (newRows.length > 0) {
+        const html = generateHTML(newRows, 'WSJ');
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const timestamp = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(/[/: ]/g, '_');
+
+        chrome.runtime.sendMessage({
+            action: "downloadHTML",
+            url: url,
+            filename: `wsj_${timestamp}.html`
+        });
+    }
+}
+
+// 主抓取函数
+function scrapeAndDownload() {
+    const hostname = window.location.hostname;
+
+    if (hostname.includes('bloomberg.com')) {
+        scrapeBloomberg();
+    } else if (hostname.includes('wsj.com')) {
+        scrapeWSJ();
+    }
+}
+
 // 当页面加载完成后自动执行抓取
 window.addEventListener('load', () => {
-    if (window.location.hostname.includes('bloomberg.com')) {
-        scrapeAndDownload();
-    }
+    console.log('News Scraper content script loaded for: ' + window.location.hostname);
+    scrapeAndDownload();
 });

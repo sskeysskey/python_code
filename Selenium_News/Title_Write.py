@@ -239,12 +239,3 @@ if os.path.exists(txt_file_path):
         time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
 else:
     print("文件不存在，无法打开。")
-
-time.sleep(1)  
-
-try:
-    # 打开 WSJ 主页
-    webbrowser.open('https://www.wsj.com', new=2)
-    print("已成功打开华尔街日报网站")
-except Exception as e:
-    print(f"打开华尔街日报网站时发生错误: {e}")

@@ -2,18 +2,15 @@
     "manifest_version": 3,
     "name": "Bloomberg News Scraper",
     "version": "1.0",
-    "description": "抓取Bloomberg网站新闻内容并保存为HTML文件",
+    "description": "自动抓取Bloomberg网站新闻内容并下载HTML文件",
     "permissions": [
-        "activeTab",
         "storage",
         "downloads"
     ],
     "host_permissions": [
         "*://*.bloomberg.com/*"
     ],
-    "action": {
-        "default_popup": "popup.html"
-    },
+    "action": {},
     "background": {
         "service_worker": "background.js"
     },

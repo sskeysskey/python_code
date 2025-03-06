@@ -1,7 +1,13 @@
-// 当扩展安装或更新时初始化
 chrome.runtime.onInstalled.addListener(function () {
     console.log('Bloomberg News Scraper 已安装');
+});
 
-    // 初始化存储
-    chrome.storage.local.set({ bloombergNews: [] });
+// 处理来自content script的下载请求
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "downloadHTML") {
+        chrome.downloads.download({
+            url: request.url,
+            filename: request.filename
+        });
+    }
 });

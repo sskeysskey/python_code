@@ -1,11 +1,37 @@
 import os
+import cv2
 import time
 import subprocess
 import webbrowser
+import pyautogui
+import numpy as np
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from PIL import ImageGrab
 import glob
+
+def capture_screen():
+    """
+    使用PIL的ImageGrab直接截取屏幕，并转换为OpenCV格式
+    """
+    screenshot = ImageGrab.grab()
+    return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+
+def find_image_on_screen(template, threshold=0.9):
+    """
+    在当前屏幕中查找给定模板图像的匹配位置（精度默认0.9）。
+    如果找到，则返回 (top_left坐标, 模板形状)，否则返回 (None, None)。
+    """
+    screen = capture_screen()
+    result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    # 释放截图及相关资源
+    del screen
+    if max_val >= threshold:
+        return max_loc, template.shape
+    return None, None
 
 def is_similar(url1, url2):
     """
@@ -39,17 +65,17 @@ def get_old_content(file_path, days_ago):
                 old_content.append([date_str, title, link])
     return old_content
 
-def get_new_content_from_files():
+def get_new_content_from_files(file_prefix):
     """
-    读取Downloads目录下以bloomberg_开头的HTML文件内容
+    读取Downloads目录下以指定前缀开头的HTML文件内容
     """
     new_content = []
     download_dir = "/Users/yanzhang/Downloads/"
-    bloomberg_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
+    files = glob.glob(os.path.join(download_dir, f"{file_prefix}_*.html"))
     
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
     
-    for file_path in bloomberg_files:
+    for file_path in files:
         with open(file_path, 'r', encoding='utf-8') as file:
             soup = BeautifulSoup(file, 'html.parser')
             for row in soup.find_all('tr')[1:]:  # 跳过表头
@@ -120,36 +146,41 @@ def append_to_today_html(today_html_path, new_rows1):
         print(f"Error writing to file: {e}")
         raise
 
-def count_bloomberg_files():
+def count_files(prefix):
     """
-    计算Downloads目录中bloomberg_开头的文件数量
+    计算Downloads目录中指定前缀开头的文件数量
     """
     download_dir = "/Users/yanzhang/Downloads/"
-    bloomberg_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
-    return len(bloomberg_files)
+    files = glob.glob(os.path.join(download_dir, f"{prefix}_*.html"))
+    return len(files)
 
-def open_webpage_and_monitor():
+def clean_files(prefix):
     """
-    打开Bloomberg页面并监控下载文件
+    清理Downloads目录中指定前缀开头的文件
     """
     download_dir = "/Users/yanzhang/Downloads/"
-    
-    # 清理可能已存在的bloomberg_*.html文件
-    existing_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
+    existing_files = glob.glob(os.path.join(download_dir, f"{prefix}_*.html"))
     for file in existing_files:
         try:
             os.remove(file)
             print(f"Removed existing file: {file}")
         except Exception as e:
             print(f"Error removing file {file}: {e}")
+
+def open_webpage_and_monitor_bloomberg():
+    """
+    打开Bloomberg页面并监控下载文件
+    """
+    # 清理已存在的bloomberg文件
+    clean_files("bloomberg")
     
     # 打开第一个页面
     print("Opening Bloomberg main page...")
-    webbrowser.open("https://bloomberg.com/")
+    webbrowser.open("https://www.bloomberg.com/asia")
     
     # 等待第一个文件下载
     print("Waiting for first file download...")
-    while count_bloomberg_files() < 1:
+    while count_files("bloomberg") < 1:
         time.sleep(2)
         print(".", end="", flush=True)
     
@@ -157,21 +188,84 @@ def open_webpage_and_monitor():
     
     # 打开第二个页面
     print("Opening Bloomberg Asia page...")
-    webbrowser.open("https://www.bloomberg.com/asia")
+    template_paths = {
+        "asia": "/Users/yanzhang/Documents/python_code/Resource/scraper_asia.png",
+        "us": "/Users/yanzhang/Documents/python_code/Resource/scraper_us.png"
+    }
+
+    # 读取所有模板图片，并存储在字典中
+    templates = {}
+    for key, path in template_paths.items():
+        template = cv2.imread(path, cv2.IMREAD_COLOR)
+        if template is None:
+            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+        templates[key] = template
+
+    # 第一阶段：在 10 秒内尝试找到 asia 图片
+    found_asia_image = False
+    timeout_stop = time.time() + 10
+    while not found_asia_image and time.time() < timeout_stop:
+        location_asia, shape_asia = find_image_on_screen(templates["asia"])
+        if location_asia:
+            center_x = (location_asia[0] + shape_asia[1] // 2) // 2
+            center_y = (location_asia[1] + shape_asia[0] // 2) // 2
+            pyautogui.click(center_x, center_y)
+            found_asia_image = True
+            print(f"找到asia图片位置: {location_asia}")
+        else:
+            print("未找到asia图片，继续监控...")
+            time.sleep(1)
+    
+    time.sleep(1)
+    location_us, shape_us = find_image_on_screen(templates["us"])
+    if location_us:
+        center_x = (location_us[0] + shape_us[1] // 2) // 2
+        center_y = (location_us[1] + shape_us[0] // 2) // 2
+        pyautogui.click(center_x, center_y)
     
     # 等待第二个文件下载
     print("Waiting for second file download...")
-    while count_bloomberg_files() < 2:
+    while count_files("bloomberg") < 2:
         time.sleep(2)
         print(".", end="", flush=True)
     
     print("\nSecond file detected!")
-    print("All required files downloaded. Processing...")
+    print("All Bloomberg files downloaded. Processing...")
     
+    # 关闭页面
+    close_browser_tabs(1)
+
+def open_webpage_and_monitor_wsj():
+    """
+    打开WSJ页面并监控下载文件
+    """
+    # 清理已存在的wsj文件
+    clean_files("wsj")
+    
+    # 打开WSJ页面
+    print("Opening WSJ main page...")
+    webbrowser.open("https://www.wsj.com/")
+    
+    # 等待文件下载
+    print("Waiting for WSJ file download...")
+    while count_files("wsj") < 1:
+        time.sleep(2)
+        print(".", end="", flush=True)
+    
+    print("\nWSJ file detected!")
+    print("WSJ file downloaded. Processing...")
+    
+    # 关闭页面
+    close_browser_tabs(1)
+    
+def close_browser_tabs(num_tabs):
+    """
+    关闭指定数量的浏览器标签页
+    """
     # AppleScript 代码 (按下 Command+W 快捷键)
-    applescript = '''
+    applescript = f'''
     tell application "System Events"
-    	repeat 2 times
+        repeat {num_tabs} times
             key code 13 using command down
             delay 0.5
         end repeat
@@ -181,28 +275,27 @@ def open_webpage_and_monitor():
     # 使用 subprocess 执行 AppleScript
     subprocess.run(['osascript', '-e', applescript])
 
-    applescript_code = 'display dialog "文件已下载！" buttons {"OK"} default button "OK"'
+def display_notification(message):
+    """
+    显示系统通知
+    """
+    applescript_code = f'display dialog "{message}" buttons {{"OK"}} default button "OK"'
     subprocess.run(['osascript', '-e', applescript_code], check=True)
-    print("Please close the Bloomberg pages manually.")
-    
-    # 等待一会儿，以便用户关闭页面
-    time.sleep(5)
 
-if __name__ == "__main__":
-    # 新增: 打开网页并监控下载文件
-    open_webpage_and_monitor()
-    
+def process_news_source(source_name, old_file_path, today_html_path):
+    """
+    处理特定新闻源的数据，并更新相应文件
+    """
     current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
 
     # 读取旧文件内容
-    old_file_path = "/Users/yanzhang/Documents/News/backup/site/bloomberg.html"
     old_content = get_old_content(old_file_path, 30)
     
     # 获取旧文件中的链接列表(用于去重)
     existing_links = {link for _, _, link in old_content}
     
-    # 从两个新文件中读取内容
-    new_content = get_new_content_from_files()
+    # 从新文件中读取内容
+    new_content = get_new_content_from_files(source_name.lower())
     
     # 根据is_similar规则排重
     new_rows = []
@@ -217,12 +310,44 @@ if __name__ == "__main__":
             existing_links.add(link)  # 将新链接添加到已存在列表中，防止新内容中有重复
 
     # 转换为today_eng.html需要的格式
-    new_rows1 = [["Bloomberg", title, link] for date_str, title, link in new_rows]
+    new_rows1 = [[source_name, title, link] for date_str, title, link in new_rows]
 
-    # 写入bloomberg.html并追加到today_eng.html
+    # 写入source.html并追加到today_eng.html
     if new_rows:
         write_html(old_file_path, new_rows, old_content)
-        append_to_today_html("/Users/yanzhang/Documents/News/today_eng.html", new_rows1)
-        print(f"Added {len(new_rows)} new articles to files")
+        append_to_today_html(today_html_path, new_rows1)
+        print(f"Added {len(new_rows)} new {source_name} articles to files")
     else:
-        print("No new content to add")
+        print(f"No new {source_name} content to add")
+    
+    return new_rows
+
+if __name__ == "__main__":
+    today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
+    
+    # 处理Bloomberg
+    print("Starting Bloomberg processing...")
+    open_webpage_and_monitor_bloomberg()
+    bloomberg_new_rows = process_news_source(
+        "Bloomberg", 
+        "/Users/yanzhang/Documents/News/backup/site/bloomberg.html",
+        today_html_path
+    )
+    
+    # 处理WSJ
+    print("\nStarting WSJ processing...")
+    open_webpage_and_monitor_wsj()
+    wsj_new_rows = process_news_source(
+        "WSJ", 
+        "/Users/yanzhang/Documents/News/backup/site/wsj.html",
+        today_html_path
+    )
+    
+    # 汇总结果
+    total_new_articles = len(bloomberg_new_rows) + len(wsj_new_rows)
+    
+    display_notification("Bloomberg和WSJ新闻已抓取完成！")
+    
+    print(f"\nSummary: Added {total_new_articles} new articles in total")
+    print(f"- Bloomberg: {len(bloomberg_new_rows)} articles")
+    print(f"- WSJ: {len(wsj_new_rows)} articles")

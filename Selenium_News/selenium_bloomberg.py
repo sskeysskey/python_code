@@ -108,6 +108,26 @@ def switch_to_us_and_fetch(driver, existing_links, formatted_datetime):
         print("切换到US版并抓取内容时出现错误:", e)
         return []
 
+def switch_to_asia_and_fetch(driver, existing_links, formatted_datetime):
+    """
+    切换到US版后，再次抓取页面内容。
+    """
+    try:
+        region_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, ".media-ui-RegionPicker_region-p79mNAtF--M-"))
+        )
+        region_button.click()
+        time.sleep(1)
+
+        us_option = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//div[@data-testid='dropdown']//div[text()='Asia']"))
+        )
+        us_option.click()
+        time.sleep(1)
+        return fetch_content(driver, existing_links, formatted_datetime)
+    except Exception as e:
+        print("切换到US版并抓取内容时出现错误:", e)
+        return []
 
 def process_titles(titles_elements, existing_links, formatted_datetime):
     """
@@ -271,17 +291,20 @@ if __name__ == "__main__":
 
     # 第一次抓取（当前页面）
     new_rows = fetch_content(driver, existing_links, current_datetime)
-    existing_links.update(link for _, _, link in new_rows)
+    # existing_links.update(link for _, _, link in new_rows)
 
     # 切换到US版并抓取
-    us_new_rows = switch_to_us_and_fetch(driver, existing_links, current_datetime)
+    # us_new_rows = switch_to_us_and_fetch(driver, existing_links, current_datetime)
+    # asia_new_rows = switch_to_asia_and_fetch(driver, existing_links, current_datetime)
 
     # 合并两次抓取的结果并去重
-    all_new_rows_dict = {row[2]: row for row in new_rows + us_new_rows}
-    all_new_rows = list(all_new_rows_dict.values())
+    # all_new_rows_dict = {row[2]: row for row in new_rows + us_new_rows}
+    # all_new_rows_dict = {row[2]: row for row in new_rows + asia_new_rows}
+    # all_new_rows = list(all_new_rows_dict.values())
 
     # 格式化后用于插入today_html
-    new_rows1 = [["Bloomberg", title, link] for _, title, link in all_new_rows]
+    # new_rows1 = [["Bloomberg", title, link] for _, title, link in all_new_rows]
+    new_rows1 = [["Bloomberg", title, link] for _, title, link in new_rows]
 
     driver.quit()
 
@@ -290,6 +313,6 @@ if __name__ == "__main__":
         os.remove(old_file_path)
 
     # 写入bloomberg.html并追加到today_eng.html
-    write_html(old_file_path, all_new_rows, old_content)
+    write_html(old_file_path, new_rows, old_content)
     append_to_today_html("/Users/yanzhang/Documents/News/today_eng.html", new_rows1)
     time.sleep(1)

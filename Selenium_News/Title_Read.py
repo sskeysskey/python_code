@@ -34,9 +34,9 @@ def add_line_numbers(text):
 
 # 文件路径定义
 file_path_eng = '/Users/yanzhang/Documents/News/today_eng.html'
-backup_path_eng = '/Users/yanzhang/Documents/News/site/today_eng.html'
+backup_path_eng = '/Users/yanzhang/Documents/News/backup/site/today_eng.html'
 file_path_jpn = '/Users/yanzhang/Documents/News/today_jpn.html'
-backup_path_jpn = '/Users/yanzhang/Documents/News/site/today_jpn.html'
+backup_path_jpn = '/Users/yanzhang/Documents/News/backup/site/today_jpn.html'
 
 # 读取HTML文件内容
 with open(file_path_eng, 'r', encoding='utf-8') as file:

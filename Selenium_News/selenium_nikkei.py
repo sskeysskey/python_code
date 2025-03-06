@@ -81,7 +81,7 @@ service = Service(executable_path=chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 driver.get("https://www.nikkei.com/")
 
-old_file_path = "/Users/yanzhang/Documents/News/site/nikkei.html"
+old_file_path = "/Users/yanzhang/Documents/News/backup/site/nikkei.html"
 old_content = get_old_content(old_file_path, 18)
 old_links = [row[2] for row in old_content]
 
@@ -94,7 +94,7 @@ if new_rows:
     except OSError as e:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
-    new_html_path = "/Users/yanzhang/Documents/News/site/nikkei.html"
+    new_html_path = "/Users/yanzhang/Documents/News/backup/site/nikkei.html"
     write_html(new_html_path, new_rows, old_content)
 
     new_rows1 = [["Nikkei", row[1], row[2]] for row in new_rows]

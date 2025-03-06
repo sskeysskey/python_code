@@ -121,8 +121,9 @@ def main():
         移动多种格式图片并记录到article_copier.txt
         """
         source_dir = "/Users/yanzhang/Downloads"
-        target_dir = "/Users/yanzhang/Downloads/news_image"
-        record_file = "/Users/yanzhang/Documents/News/article_copier.txt"
+        today = datetime.now().strftime("%y%m%d")
+        target_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
+        record_file = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
         
         # 支持的图片格式
         image_formats = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.gif"]

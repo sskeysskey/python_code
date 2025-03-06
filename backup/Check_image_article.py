@@ -1,9 +1,9 @@
 import os
 
 def check_files():
-    # 定义路径
-    image_dir = '/Users/yanzhang/Downloads/news_image'
-    txt_file = '/Users/yanzhang/Documents/News/article_copier.txt'
+    today = datetime.now().strftime("%y%m%d")
+    image_dir = f'/Users/yanzhang/Downloads/news_image_{today}'
+    txt_file = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
     
     # 读取txt文件内容
     with open(txt_file, 'r', encoding='utf-8') as f:

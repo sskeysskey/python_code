@@ -16,8 +16,8 @@ from selenium.webdriver.chrome.service import Service
 # 定义一些全局变量
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 template_path_accept = '/Users/yanzhang/Documents/python_code/Resource/economist_accept.png'
-file_pattern = "/Users/yanzhang/Documents/News/site/economist.html"
-new_html_path = "/Users/yanzhang/Documents/News/site/economist.html"
+file_pattern = "/Users/yanzhang/Documents/News/backup/site/economist.html"
+new_html_path = "/Users/yanzhang/Documents/News/backup/site/economist.html"
 today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
 timeout = 10  # 设置超时时间
 

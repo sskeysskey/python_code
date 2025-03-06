@@ -36,7 +36,7 @@ driver = webdriver.Chrome(service=service)
 driver.get("https://www.ft.com/")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/News/site/ft.html"
+file_pattern = "/Users/yanzhang/Documents/News/backup/site/ft.html"
 old_file_list = glob.glob(file_pattern)
 
 old_content = []
@@ -107,7 +107,7 @@ if old_file_list:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
 # 创建 HTML 文件
-new_html_path = f"/Users/yanzhang/Documents/News/site/ft.html"
+new_html_path = f"/Users/yanzhang/Documents/News/backup/site/ft.html"
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签
     html_file.write("<html><body><table border='1'>\n")

@@ -275,7 +275,7 @@ if __name__ == "__main__":
         else:
             time.sleep(1)
 
-    old_file_path = "/Users/yanzhang/Documents/News/site/bloomberg.html"
+    old_file_path = "/Users/yanzhang/Documents/News/backup/site/bloomberg.html"
     old_content = get_old_content(old_file_path, 30)
     existing_links = {link for _, _, link in old_content}
 

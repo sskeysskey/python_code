@@ -76,7 +76,7 @@ def txt_to_pdf(txt_file, pdf_file):
 
 def main():
     directory = '/Users/yanzhang/Documents/News/'
-    done_directory = '/Users/yanzhang/Documents/News/done/'
+    done_directory = '/Users/yanzhang/Documents/News/backup/done'
     if not os.path.exists(done_directory):
         os.makedirs(done_directory)
 

@@ -4,6 +4,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib import colors
 from PIL import Image
+from datetime import datetime
 import re
 import os
 import glob
@@ -577,9 +578,10 @@ def extract_site_name(url):
         return "Other"
 
 if __name__ == "__main__":
+    today = datetime.now().strftime("%y%m%d")
     news_directory = "/Users/yanzhang/Documents/News/"
-    article_copier_path = "/Users/yanzhang/Documents/News/article_copier.txt"
-    image_dir = "/Users/yanzhang/Downloads/news_image"
+    article_copier_path = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
+    image_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
     
     process_all_files(news_directory, article_copier_path, image_dir)
     move_cnh_file(news_directory)

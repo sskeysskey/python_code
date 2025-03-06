@@ -1,6 +1,7 @@
 import os
 import cv2
 import time
+import glob
 import subprocess
 import webbrowser
 import pyautogui
@@ -9,7 +10,6 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from PIL import ImageGrab
-import glob
 
 def capture_screen():
     """
@@ -17,7 +17,6 @@ def capture_screen():
     """
     screenshot = ImageGrab.grab()
     return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-
 
 def find_image_on_screen(template, threshold=0.9):
     """

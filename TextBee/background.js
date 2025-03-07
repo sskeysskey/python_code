@@ -752,10 +752,10 @@ function extractAndCopy() {
       // 原有网页结构的处理
       paragraphs = article.querySelectorAll('p[data-component="paragraph"]');
     } else {
-      // 新网页结构的处理
-      article = document.querySelector('.article-text');
+      // 新网页结构的处理 - 修改这部分以匹配新结构
+      article = document.querySelector('.article-text') || document.body; // 如果找不到.article-text则使用body
       if (article) {
-        paragraphs = document.querySelectorAll('.article-text body-text');
+        paragraphs = document.querySelectorAll('.article-text body-text, body-text.svelte-16dgy1v');
       }
     }
 

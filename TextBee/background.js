@@ -755,7 +755,7 @@ function extractAndCopy() {
       // 新网页结构的处理
       article = document.querySelector('.article-text');
       if (article) {
-        paragraphs = article.querySelectorAll('body-text');
+        paragraphs = document.querySelectorAll('.article-text body-text');
       }
     }
 

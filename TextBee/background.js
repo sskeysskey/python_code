@@ -744,10 +744,22 @@ function extractAndCopy() {
 
   // 处理 economist.com
   else if (window.location.hostname.includes("economist.com")) {
-    const article = document.querySelector('[data-test-id="Article"]');
-    if (article) {
-      const paragraphs = article.querySelectorAll('p[data-component="paragraph"]');
+    // 首先尝试获取原有的文章结构
+    let article = document.querySelector('[data-test-id="Article"]');
+    let paragraphs;
 
+    if (article) {
+      // 原有网页结构的处理
+      paragraphs = article.querySelectorAll('p[data-component="paragraph"]');
+    } else {
+      // 新网页结构的处理
+      article = document.querySelector('.article-text');
+      if (article) {
+        paragraphs = article.querySelectorAll('body-text');
+      }
+    }
+
+    if (paragraphs && paragraphs.length > 0) {
       textContent = Array.from(paragraphs)
         .map(p => {
           // 递归获取所有文本内容的函数
@@ -765,6 +777,10 @@ function extractAndCopy() {
                 }
                 // 处理 small 标签，保持大写
                 else if (child.tagName === 'SMALL') {
+                  text += child.textContent;
+                }
+                // 处理斜体
+                else if (child.tagName === 'I') {
                   text += child.textContent;
                 }
                 // 处理链接和其他元素

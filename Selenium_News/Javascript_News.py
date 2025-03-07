@@ -11,6 +11,13 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from PIL import ImageGrab
 
+def sanitize_html_content(text):
+    """
+    清理文本中可能破坏HTML结构的字符
+    """
+    # 替换尖括号和引号，防止HTML注入或破坏
+    return text.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+
 def capture_screen():
     """
     使用PIL的ImageGrab直接截取屏幕，并转换为OpenCV格式
@@ -117,10 +124,12 @@ def append_to_today_html(today_html_path, new_rows1):
     """
     将新增的抓取结果追加到today_eng.html文件末尾，并进行文件完整性校验。
     """
-    append_content = ''.join([
-        f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
-        for row in new_rows1
-    ])
+    # 确保每行都有完整的HTML标签
+    append_content = ''
+    for row in new_rows1:
+        # 确保每行的HTML标签都完整闭合
+        append_content += f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
+    
     try:
         if os.path.exists(today_html_path):
             with open(today_html_path, 'r+', encoding='utf-8') as html_file:
@@ -137,10 +146,16 @@ def append_to_today_html(today_html_path, new_rows1):
                 html_file.flush()
                 os.fsync(html_file.fileno())
 
+        # 验证文件完整性
         with open(today_html_path, 'r', encoding='utf-8') as verify_file:
             content = verify_file.read()
             if not content.endswith("</table></body></html>"):
                 raise IOError("File writing verification failed")
+            
+            # 增加额外验证：检查是否存在未闭合的标签
+            if "</a></td></tr>" not in content or content.count("<tr>") != content.count("</tr>"):
+                print("警告：可能存在未闭合的HTML标签")
+                
     except Exception as e:
         print(f"Error writing to file: {e}")
         raise
@@ -309,7 +324,9 @@ def process_news_source(source_name, old_file_path, today_html_path):
             existing_links.add(link)  # 将新链接添加到已存在列表中，防止新内容中有重复
 
     # 转换为today_eng.html需要的格式
-    new_rows1 = [[source_name, title, link] for date_str, title, link in new_rows]
+    # 然后在process_news_source函数中修改新行的创建：
+    new_rows1 = [[source_name, sanitize_html_content(title), link] 
+                for date_str, title, link in new_rows]
 
     # 写入source.html并追加到today_eng.html
     if new_rows:
@@ -333,6 +350,25 @@ if __name__ == "__main__":
         today_html_path
     )
     
+    # 验证Bloomberg处理后HTML文件的完整性
+    with open(today_html_path, 'r', encoding='utf-8') as html_file:
+        content = html_file.read()
+        if content.count("<tr>") != content.count("</tr>") or content.count("<td>") != content.count("</td>"):
+            print("警告：Bloomberg处理后发现HTML标签不匹配，尝试修复...")
+            # 简单修复尝试，确保所有标签闭合
+            fixed_content = content.replace("</table></body></html>", "")
+            if fixed_content.count("<tr>") > fixed_content.count("</tr>"):
+                fixed_content += "</tr>"
+            if fixed_content.count("<td>") > fixed_content.count("</td>"):
+                fixed_content += "</td>"
+            if fixed_content.count("<a") > fixed_content.count("</a>"):
+                fixed_content += "</a>"
+            fixed_content += "</table></body></html>"
+            
+            with open(today_html_path, 'w', encoding='utf-8') as fix_file:
+                fix_file.write(fixed_content)
+                print("已尝试修复HTML文件")
+    
     # 处理WSJ
     print("\nStarting WSJ processing...")
     open_webpage_and_monitor_wsj()
@@ -341,6 +377,19 @@ if __name__ == "__main__":
         "/Users/yanzhang/Documents/News/backup/site/wsj.html",
         today_html_path
     )
+    
+    # 最终验证HTML文件完整性
+    try:
+        with open(today_html_path, 'r', encoding='utf-8') as final_check:
+            content = final_check.read()
+            if content.count("<tr>") != content.count("</tr>") or content.count("<td>") != content.count("</td>") or content.count("<a") != content.count("</a>"):
+                print("警告：最终HTML文件仍有标签不匹配，进行最终修复...")
+                soup = BeautifulSoup(content, 'html.parser')
+                with open(today_html_path, 'w', encoding='utf-8') as final_fix:
+                    final_fix.write(str(soup))
+                    print("已使用BeautifulSoup修复HTML结构")
+    except Exception as e:
+        print(f"最终验证时出错: {e}")
     
     # 汇总结果
     total_new_articles = len(bloomberg_new_rows) + len(wsj_new_rows)

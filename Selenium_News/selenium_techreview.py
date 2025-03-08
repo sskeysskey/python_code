@@ -47,7 +47,7 @@ if old_file_list:
                     date_str = cols[0].text.strip()
                     # 解析日期字符串
                     date = datetime.strptime(date_str, '%Y_%m_%d_%H')
-                    # 若日期大于等于50天前的日期，则保留
+                    # 若日期大于等于指定时间，则保留
                     if date >= seven_days_ago:
                         title_column = cols[1]
                         title = title_column.text.strip()
@@ -73,6 +73,7 @@ try:
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
 
+            # 排除不需要的链接（例如包含 'podcasts' 的）
             if 'podcasts' not in href:
                 if not any(href == old_link for _, _, old_link in old_content):
                     if not any(href == new_link for _, _, new_link in new_rows):
@@ -93,7 +94,7 @@ if old_file_list:
     except OSError as e:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
-# 创建 HTML 文件
+# 创建 site HTML 文件（technologyreview.html）
 new_html_path = f"/Users/yanzhang/Documents/News/backup/site/technologyreview.html"
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签
@@ -117,37 +118,31 @@ with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 结束表格和 HTML 结构
     html_file.write("</table></body></html>")
 
+# 创建每日新闻总表 HTML（today_eng.html）
 if new_rows1:
     # 创建用于翻译的每日新闻总表html
     today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
+    closing_tag = "</table></body></html>"
     file_exists = os.path.isfile(today_html_path)
 
+    # 如果文件不存在，则创建初始框架
     if not file_exists:
         with open(today_html_path, 'w', encoding='utf-8') as html_file:
             html_file.write("<html><body><table border='1'>\n")
             html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
-
+            html_file.write(closing_tag)
+    
     # 准备要追加的内容
     append_content = ""
     for row in new_rows1:
         clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
         append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
-
-    # 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
-    if file_exists:
-        with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-            # 移动到文件末尾的"</table></body></html>"前
-            html_file.seek(0, os.SEEK_END)
-            html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
-            # 追加新内容
-            html_file.write(append_content)
-            # 重新添加HTML结束标签
-            html_file.write("</table></body></html>")
-
-    # 如果文件是新建的，添加新内容和HTML结束标签
-    else:
-        with open(today_html_path, 'a', encoding='utf-8') as html_file:
-            html_file.write(append_content)
-            html_file.write("</table></body></html>")
-
-# open_new_html_file()
+    
+    # 先读取整个文件内容，去掉末尾的结束标签后，再追加新内容，再重新拼接结束标签
+    with open(today_html_path, 'r', encoding='utf-8') as html_file:
+        content = html_file.read()
+    if closing_tag in content:
+        content = content.replace(closing_tag, "")
+    new_file_content = content + append_content + closing_tag
+    with open(today_html_path, 'w', encoding='utf-8') as html_file:
+        html_file.write(new_file_content)

@@ -40,7 +40,7 @@ def is_similar(url1, url2):
 
     return base_url1 == base_url2
 
-# 截取屏幕
+# 截取屏幕（使用PIL截屏并转换为OpenCV格式）
 def capture_screen():
     # 使用PIL的ImageGrab直接截取屏幕
     screenshot = ImageGrab.grab()
@@ -48,7 +48,7 @@ def capture_screen():
     screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     return screenshot
 
-# 查找屏幕上的图片
+# 查找屏幕上的图片，若匹配超过阈值返回坐标和模板尺寸
 def find_image_on_screen(template, threshold=0.9):
     screen = capture_screen()
     result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
@@ -77,7 +77,7 @@ while not found and time.time() - start_time < timeout:
     location, shape = find_image_on_screen(template_accept)
     if location:
         print("找到图片，继续执行后续程序。")
-        # 计算中心坐标
+        # 计算中心坐标（注意这里的计算和实际可能有调整需求）
         center_x = (location[0] + shape[1] // 2) // 2
         center_y = (location[1] + shape[0] // 2) // 2
             
@@ -93,18 +93,18 @@ old_content = []
 
 if old_file_list:
     old_file_path = old_file_list[0]
-    seven_days_ago = datetime.now() - timedelta(days=45)
+    threshold_date = datetime.now() - timedelta(days=45)
     with open(old_file_path, 'r', encoding='utf-8') as file:
         soup = BeautifulSoup(file, 'html.parser')
         rows = soup.find_all('tr')[1:]  # 跳过标题行
         for row in rows:
             cols = row.find_all('td')
-            if len(cols) >= 2:  # 确保行有足够的列
+            if len(cols) >= 2:
                 date_str = cols[0].text.strip()
                 # 解析日期字符串
-                date = datetime.strptime(date_str, '%Y_%m_%d_%H')
+                date_obj = datetime.strptime(date_str, '%Y_%m_%d_%H')
                 # 若日期大于等于30天前的日期，则保留
-                if date >= seven_days_ago:
+                if date_obj >= threshold_date:
                     title_column = cols[1]
                     title = title_column.text.strip()
                     # 从标题所在的列中提取链接
@@ -117,6 +117,7 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
+    # 查找今年内的链接
     titles_elements = driver.find_elements(By.CSS_SELECTOR, f"a[href*='/{datetime.now().year}/']")
     # 打印titles_elements的内容
     # for title_element in titles_elements:
@@ -128,7 +129,8 @@ try:
         title_text = title_element.text.strip()
 
         if href and title_text:
-            if 'podcasts' not in href and "film" not in href and "cartoon" not in href and not ('letters' in href and 'editor' in href and 'Sources and acknowledgments' in href):
+            if ('podcasts' not in href and "film" not in href and "cartoon" not in href and 
+                not ('letters' in href and 'editor' in href and 'Sources and acknowledgments' in href)):
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])
@@ -141,6 +143,7 @@ except Exception as e:
 # 关闭驱动
 driver.quit()
 
+# 删除旧的 HTML 文件
 if old_file_list:
     try:
         os.remove(old_file_path)
@@ -148,7 +151,7 @@ if old_file_list:
     except OSError as e:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
-# 创建 site HTML 文件
+# 创建 site HTML 文件（economist.html）
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签
     html_file.write("<html><body><table border='1'>\n")
@@ -171,35 +174,39 @@ with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 结束表格和 HTML 结构
     html_file.write("</table></body></html>")
 
-# 创建每日新闻总表 HTML
+# 创建每日新闻总表 HTML（today_eng.html）
 if new_rows1:
+    closing_tag = "</table></body></html>"
     file_exists = os.path.isfile(today_html_path)
-
-    # 如果文件不存在，创建文件并写入基础HTML结构
+    
+    # 如果文件不存在，则创建文件并写入基础HTML结构
     if not file_exists:
         with open(today_html_path, 'w', encoding='utf-8') as html_file:
             html_file.write("<html><body><table border='1'>\n")
             html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
-
+    
     # 准备要追加的内容
     append_content = ""
     for row in new_rows1:
         clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
         append_content += f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n"
-
-    # 如果文件已存在，先删除末尾的HTML结束标签，再追加新内容，最后重新添加结束标签
+    
+    # 采用先读取文件、去掉关闭标签，再追加新内容后重写整个文件的方法
     if file_exists:
-        with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-            # 移动到文件末尾的"</table></body></html>"前
-            html_file.seek(0, os.SEEK_END)
-            html_file.seek(html_file.tell() - len("</table></body></html>"), os.SEEK_SET)
-            # 追加新内容
-            html_file.write(append_content)
-            # 重新添加HTML结束标签
-            html_file.write("</table></body></html>")
-
-    # 如果文件是新建的，添加新内容和HTML结束标签
+        with open(today_html_path, 'r', encoding='utf-8') as html_file:
+            content = html_file.read()
+        # 移除已有的结束标签（如果存在）
+        if closing_tag in content:
+            content = content.replace(closing_tag, "")
+        new_file_content = content + append_content + closing_tag
+        with open(today_html_path, 'w', encoding='utf-8') as html_file:
+            html_file.write(new_file_content)
     else:
-        with open(today_html_path, 'a', encoding='utf-8') as html_file:
+        # 新建文件时写入全部内容
+        with open(today_html_path, 'w', encoding='utf-8') as html_file:
+            html_file.write("<html><body><table border='1'>\n")
+            html_file.write("<tr><th>site</th><th>Title</th></tr>\n")
             html_file.write(append_content)
-            html_file.write("</table></body></html>")
+            html_file.write(closing_tag)
+            html_file.flush()
+            os.fsync(html_file.fileno())

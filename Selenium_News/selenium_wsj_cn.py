@@ -55,7 +55,7 @@ if old_file_list:
                     date_str = cols[0].text.strip()
                     # 解析日期字符串
                     date = datetime.strptime(date_str, '%Y_%m_%d_%H')
-                    # 若日期大于等于50天前的日期，则保留
+                    # 若日期大于等于指定时间，则保留
                     if date >= seven_days_ago:
                         title_column = cols[1]
                         title = title_column.text.strip()
@@ -71,7 +71,7 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    # 使用多个选择器来匹配不同类型的文章标题
+    # 使用多个选择器来匹配不同类型的新闻标题
     selectors = [
         # 匹配中等大小的头条新闻
         "//a[contains(@class, 'css-g4pnb7')]",
@@ -125,7 +125,7 @@ if old_file_list:
     except OSError as e:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
-# 创建 HTML 文件
+# 创建站点 HTML 文件 (wsj_cn.html)
 new_html_path = f"/Users/yanzhang/Documents/News/backup/site/wsj_cn.html"
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签

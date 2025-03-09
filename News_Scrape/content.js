@@ -107,8 +107,20 @@ function scrapeWSJ() {
 
     titleElements.forEach(titleElement => {
         const href = titleElement.href;
+
         // 跳过包含 livecoverage 的链接
-        if (href && href.toLowerCase().includes('livecoverage')) {
+        if (!href || href.toLowerCase().includes('livecoverage')) {
+            return;
+        }
+
+        // 检查链接域名，只保留 wsj.com 的链接
+        try {
+            const url = new URL(href);
+            if (!url.hostname.includes('wsj.com')) {
+                return;
+            }
+        } catch (e) {
+            // 如果 URL 解析失败，跳过这个链接
             return;
         }
 

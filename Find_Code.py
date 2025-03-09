@@ -17,7 +17,7 @@ searchFolders = [
     # "/Users/yanzhang/Documents/LuxuryBox",
     "/Users/yanzhang/Downloads/backup/TXT",
     "/Users/yanzhang/Documents/Books",
-    "/Users/yanzhang/Documents/News/backup/done"
+    "/Users/yanzhang/Documents/News/done"
     # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
 ]
 

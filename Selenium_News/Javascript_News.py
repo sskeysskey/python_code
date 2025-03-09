@@ -115,67 +115,48 @@ def write_html(file_path, new_rows, old_content):
 
 def append_to_today_html(today_html_path, new_rows1):
     """
-    将新增的抓取结果追加到today_eng.html文件末尾，并进行文件完整性校验。
+    将新增的抓取结果追加到today_eng.html文件末尾，并进行文件完整性校验
+    使用完整读取-修改-写入的安全方式，并添加错误处理和文件完整性验证。
     """
-    append_content = ''.join([
-        f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
-        for row in new_rows1
-    ])
     try:
+        # 准备追加的内容
+        append_content = ""
+        for row in new_rows1:
+            # 确保每一行标签完整闭合
+            append_content += f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
+        
+        closing_tag = "</table></body></html>"
+        
+        # 如果文件存在，则读取旧内容，去掉结束标签后重写文件
         if os.path.exists(today_html_path):
-            with open(today_html_path, 'r+', encoding='utf-8') as html_file:
+            with open(today_html_path, 'r', encoding='utf-8') as html_file:
                 content = html_file.read()
-                insertion_point = content.rindex("</table></body></html>")
-                html_file.seek(insertion_point)
-                # 写入插入内容和结尾标签
-                new_content = append_content + "</table></body></html>"
-                html_file.write(new_content)
-                # 截断文件防止文件尾部残留原有内容
-                html_file.truncate()
+            # 去除原有的关闭标签，避免重复写入
+            if closing_tag in content:
+                content = content.replace(closing_tag, "")
+            content += append_content + closing_tag
+            
+            with open(today_html_path, 'w', encoding='utf-8') as html_file:
+                html_file.write(content)
                 html_file.flush()
                 os.fsync(html_file.fileno())
         else:
+            # 如果文件不存在，则构造新的 HTML 文件
             with open(today_html_path, 'w', encoding='utf-8') as html_file:
                 html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-                html_file.write(append_content + "</table></body></html>")
+                html_file.write(append_content + closing_tag)
                 html_file.flush()
                 os.fsync(html_file.fileno())
 
         # 验证文件完整性
         with open(today_html_path, 'r', encoding='utf-8') as verify_file:
             content = verify_file.read()
-            if not content.endswith("</table></body></html>"):
+            if not content.endswith(closing_tag):
                 raise IOError("File writing verification failed")
+                
     except Exception as e:
         print(f"Error writing to file: {e}")
         raise
-
-# def append_to_today_html(today_html_path, new_rows1):
-#     """
-#     将新增的抓取结果追加到today_eng.html文件末尾，并进行文件完整性校验
-#     修改方法：先读取整份文件去除结束标签，再将新内容拼接后完整覆盖写入。
-#     """
-#     append_content = ""
-#     for row in new_rows1:
-#         # 确保每一行标签完整闭合
-#         append_content += f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
-    
-#     closing_tag = "</table></body></html>"
-#     # 如果文件存在，则读取旧内容，去掉结束标签后重写文件
-#     if os.path.exists(today_html_path):
-#         with open(today_html_path, 'r', encoding='utf-8') as html_file:
-#             content = html_file.read()
-#         # 去除原有的关闭标签，避免重复写入
-#         if closing_tag in content:
-#             content = content.replace(closing_tag, "")
-#         content += append_content + closing_tag
-#         with open(today_html_path, 'w', encoding='utf-8') as html_file:
-#             html_file.write(content)
-#     else:
-#         # 如果文件不存在，则构造新的 HTML 文件
-#         with open(today_html_path, 'w', encoding='utf-8') as html_file:
-#             html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-#             html_file.write(append_content + closing_tag)
 
 def count_files(prefix):
     """

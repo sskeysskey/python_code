@@ -16,7 +16,6 @@ def delete_done_txt_files(directory):
     if not os.path.exists(directory):
         print("提供的目录不存在")
         return
-    
     try:
         # 遍历目录下的所有文件
         for filename in os.listdir(directory):
@@ -122,105 +121,6 @@ try:
         # 使用BeautifulSoup修改HTML结构，添加<head>内容
         soup = BeautifulSoup(parser.result_html, 'html.parser')
         
-        # 检查是否有head标签，如果没有则创建
-        if not soup.head:
-            head = soup.new_tag('head')
-            if soup.html:
-                soup.html.insert(0, head)
-            else:
-                # 如果没有html标签，创建一个并添加head
-                html = soup.new_tag('html')
-                head = soup.new_tag('head')
-                html.append(head)
-                # 将原内容移到body中
-                body = soup.new_tag('body')
-                for content in list(soup.contents):
-                    body.append(content)
-                html.append(body)
-                soup = BeautifulSoup(str(html), 'html.parser')
-        
-        # 添加meta和style标签到head
-        meta = soup.new_tag('meta')
-        meta['charset'] = 'UTF-8'
-        soup.head.append(meta)
-
-        style = soup.new_tag('style')
-        style.string = """
-            body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-            }
-
-            table {
-                border-collapse: collapse;
-                width: 100%;
-            }
-
-            th,
-            td {
-                padding: 8px;
-                text-align: left;
-                border: 1px solid #ddd;
-            }
-
-            th {
-                background-color: #f4f4f4;
-            }
-
-            a {
-                color: #0066cc;
-                text-decoration: none;
-            }
-
-            /* 未访问的链接 */
-            a:link {
-                color: #0066cc;
-            }
-
-            /* 已访问的链接 */
-            a:visited, a.visited {
-                color: #800080; /* 紫色，可以根据需要更改 */
-            }
-
-            a:hover {
-                text-decoration: underline;
-            }
-        """
-        soup.head.append(style)
-
-        # 添加JavaScript脚本
-        script = soup.new_tag('script')
-        script.string = """
-            // 页面加载时检查localStorage中记录的已访问链接
-            document.addEventListener('DOMContentLoaded', function() {
-                const visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
-                
-                // 为所有已访问的链接添加visited类
-                visitedLinks.forEach(href => {
-                    const links = document.querySelectorAll(`a[href="${href}"]`);
-                    links.forEach(link => {
-                        link.classList.add('visited');
-                    });
-                });
-                
-                // 为所有链接添加点击事件
-                document.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function() {
-                        const href = this.getAttribute('href');
-                        // 记录被点击的链接
-                        let visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
-                        if (!visitedLinks.includes(href)) {
-                            visitedLinks.push(href);
-                            localStorage.setItem('visitedLinks', JSON.stringify(visitedLinks));
-                        }
-                        // 添加visited类
-                        this.classList.add('visited');
-                    });
-                });
-            });
-        """
-        soup.head.append(script)
-        
         try:
             with open(original_file_path, 'w', encoding='utf-8') as file:
                 file.write(str(soup))
@@ -280,13 +180,13 @@ if os.path.exists(wsj_file):
         table_wsj = soup_wsj.find('table')
         table_today_cnh = soup_today_cnh.find('table')
 
-        # 将wsj的表格内容加到today_cnh的表格末尾
-        for row in table_wsj.find_all('tr')[1:]:  # 跳过表头
-            table_today_cnh.append(row)
+        # 将today_cnh的表格内容加到wsj的表格末尾
+        for row in table_today_cnh.find_all('tr')[1:]:  # 跳过表头
+            table_wsj.append(row)
 
         # 将合并后的内容保存到一个新文件中
         with open(txt_file_path, 'w', encoding='utf-8') as f:
-            f.write(str(soup_today_cnh))
+            f.write(str(soup_wsj))
 
         print(f"合并后的文件已保存为: {txt_file_path}")
         os.remove(wsj_file)
@@ -300,7 +200,7 @@ if os.path.exists(txt_file_path):
     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
     time.sleep(0.5)
     # 循环5次模拟按下Command + '='快捷键
-    for _ in range(5):
+    for _ in range(4):
         pyautogui.hotkey('command', '=')
         time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
 else:

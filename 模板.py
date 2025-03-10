@@ -1,3 +1,103 @@
+# ——————————————————————————————————————————————————————————————
+# 检查是否有head标签，如果没有则创建
+if not soup.head:
+    head = soup.new_tag('head')
+    if soup.html:
+        soup.html.insert(0, head)
+    else:
+        # 如果没有html标签，创建一个并添加head
+        html = soup.new_tag('html')
+        head = soup.new_tag('head')
+        html.append(head)
+        # 将原内容移到body中
+        body = soup.new_tag('body')
+        for content in list(soup.contents):
+            body.append(content)
+        html.append(body)
+        soup = BeautifulSoup(str(html), 'html.parser')
+
+# 添加meta和style标签到head
+meta = soup.new_tag('meta')
+meta['charset'] = 'UTF-8'
+soup.head.append(meta)
+
+style = soup.new_tag('style')
+style.string = """
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    th,
+    td {
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+
+    th {
+        background-color: #f4f4f4;
+    }
+
+    a {
+        color: #0066cc;
+        text-decoration: none;
+    }
+
+    /* 未访问的链接 */
+    a:link {
+        color: #0066cc;
+    }
+
+    /* 已访问的链接 */
+    a:visited, a.visited {
+        color: #800080; /* 紫色，可以根据需要更改 */
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+"""
+soup.head.append(style)
+
+# 添加JavaScript脚本
+script = soup.new_tag('script')
+script.string = """
+    // 页面加载时检查localStorage中记录的已访问链接
+    document.addEventListener('DOMContentLoaded', function() {
+        const visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
+        
+        // 为所有已访问的链接添加visited类
+        visitedLinks.forEach(href => {
+            const links = document.querySelectorAll(`a[href="${href}"]`);
+            links.forEach(link => {
+                link.classList.add('visited');
+            });
+        });
+        
+        // 为所有链接添加点击事件
+        document.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                const href = this.getAttribute('href');
+                // 记录被点击的链接
+                let visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
+                if (!visitedLinks.includes(href)) {
+                    visitedLinks.push(href);
+                    localStorage.setItem('visitedLinks', JSON.stringify(visitedLinks));
+                }
+                // 添加visited类
+                this.classList.add('visited');
+            });
+        });
+    });
+"""
+soup.head.append(script)
+# ——————————————————————————————————————————————————————————————
 def find_image_on_screen(self, threshold=0.9):
         screen = self.capture_screen()
         result = cv2.matchTemplate(screen, self.template, cv2.TM_CCOEFF_NORMED)

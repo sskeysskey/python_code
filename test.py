@@ -1,228 +1,306 @@
+import re
 import os
 import time
-import subprocess
-import webbrowser
-from datetime import datetime, timedelta
-from urllib.parse import urlparse
-from bs4 import BeautifulSoup
 import glob
+import pyautogui
+import pyperclip
+import webbrowser
+import subprocess
+import tkinter as tk
+from datetime import datetime
+from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 
-def is_similar(url1, url2):
-    """
-    比较两个URL是否只在参数不同或其他细微处不同，
-    通过比较URL的scheme、netloc和path判定是否相似。
-    """
-    parsed_url1, parsed_url2 = urlparse(url1), urlparse(url2)
-    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
-    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
-    return base_url1 == base_url2
-
-def get_old_content(file_path, days_ago):
-    """
-    读取旧的HTML文件，获取指定天数内的数据（基于<tr><td>结构）。
-    """
-    old_content = []
-    if not os.path.exists(file_path):
-        return old_content
-
-    cutoff_date = datetime.now() - timedelta(days=days_ago)
-    with open(file_path, 'r', encoding='utf-8') as file:
-        soup = BeautifulSoup(file, 'html.parser')
-        for row in soup.find_all('tr')[1:]:  # 跳过表头
-            cols = row.find_all('td')
-            if len(cols) < 2:
-                continue
-            date_str, title = cols[0].text.strip(), cols[1].text.strip()
-            link = cols[1].find('a')['href'] if cols[1].find('a') else ''
-            date = datetime.strptime(date_str, '%Y_%m_%d_%H')
-            if date >= cutoff_date:
-                old_content.append([date_str, title, link])
-    return old_content
-
-def get_new_content_from_files():
-    """
-    读取Downloads目录下以bloomberg_开头的HTML文件内容
-    """
-    new_content = []
-    download_dir = "/Users/yanzhang/Downloads/"
-    bloomberg_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
-    
-    current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
-    
-    for file_path in bloomberg_files:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            soup = BeautifulSoup(file, 'html.parser')
-            for row in soup.find_all('tr')[1:]:  # 跳过表头
-                cols = row.find_all('td')
-                if len(cols) < 2:
-                    continue
-                date_str = cols[0].text.strip() if len(cols) > 0 else current_datetime
-                title = cols[1].text.strip() if len(cols) > 1 else ""
-                link = cols[1].find('a')['href'] if cols[1].find('a') else ''
-                if title and link:
-                    new_content.append([date_str, title, link])
-    
-    return new_content
-
-def write_html(file_path, new_rows, old_content):
-    """
-    将新的抓取结果与旧内容写入同一个HTML文件，包含表格结构，
-    并进行完整性校验。
-    """
+def delete_done_txt_files(directory):
+    # 确保提供的目录路径是存在的
+    if not os.path.exists(directory):
+        print("提供的目录不存在")
+        return
     try:
-        with open(file_path, 'w', encoding='utf-8') as html_file:
-            html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-            for row in new_rows + old_content:
-                clickable_title = f"<a href='{row[2]}' target='_blank'>{row[1]}</a>"
-                html_file.write(f"<tr><td>{row[0]}</td><td>{clickable_title}</td></tr>\n")
-            html_file.write("</table></body></html>")
-            html_file.flush()
-            os.fsync(html_file.fileno())
-
-        # 验证完整性
-        with open(file_path, 'r', encoding='utf-8') as verify_file:
-            content = verify_file.read()
-            if not content.endswith("</table></body></html>"):
-                raise IOError("File writing verification failed")
+        # 遍历目录下的所有文件
+        for filename in os.listdir(directory):
+            # 构建完整的文件路径
+            filepath = os.path.join(directory, filename)
+            # 检查文件名是否符合条件
+            if filename.startswith("done_") and filename.endswith(".txt"):
+                # 删除文件
+                os.remove(filepath)
+                print(f"已删除文件：{filename}")
     except Exception as e:
-        print(f"Error writing to file: {e}")
-        raise
+        print(f"在删除文件时发生错误：{e}")
 
-def append_to_today_html(today_html_path, new_rows1):
-    """
-    将新增的抓取结果追加到today_eng.html文件末尾，并进行文件完整性校验。
-    """
-    append_content = ''.join([
-        f"<tr><td>{row[0]}</td><td><a href='{row[2]}' target='_blank'>{row[1]}</a></td></tr>\n"
-        for row in new_rows1
-    ])
-    try:
-        if os.path.exists(today_html_path):
-            with open(today_html_path, 'r+', encoding='utf-8') as html_file:
-                content = html_file.read()
-                insertion_point = content.rindex("</table></body></html>")
-                html_file.seek(insertion_point)
-                html_file.write(append_content + "</table></body></html>")
-                html_file.flush()
-                os.fsync(html_file.fileno())
+# 从剪贴板读取翻译后的内容
+def get_clipboard_data():
+    p = subprocess.Popen(['pbpaste'], stdout=subprocess.PIPE)
+    data, _ = p.communicate()
+    return data.decode('utf-8').splitlines()
+
+class MyHTMLParser(HTMLParser):
+    def __init__(self, new_texts):
+        super().__init__()
+        self.new_texts = new_texts
+        self.current_index = 0
+        self.result_html = ""
+        self.inside_a = False
+        self.capture = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self.inside_a = True
+            self.capture = False  # 每次进入<a>标签时重置capture
+            for attr in attrs:
+                if attr[0] == "target" and attr[1] == "_blank":
+                    self.capture = True
+        self.result_html += self.get_starttag_text()
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.inside_a = False
+            self.capture = False  # 确保在离开<a>标签后不会错误地捕获文本
+            self.current_index += 1  # 只有成功处理完一个<a>标签后，才增加索引
+        self.result_html += f"</{tag}>"
+
+    def handle_data(self, data):
+        if self.inside_a and self.capture:
+            if self.current_index < len(self.new_texts):
+                self.result_html += self.new_texts[self.current_index]
+            else:
+                raise IndexError(f"错误：超出新文本行的数量。当前处理到第 {self.current_index + 1} 个链接，但是新文本只有 {len(self.new_texts)} 行。")
         else:
-            with open(today_html_path, 'w', encoding='utf-8') as html_file:
-                html_file.write("<html><body><table border='1'>\n<tr><th>Date</th><th>Title</th></tr>\n")
-                html_file.write(append_content + "</table></body></html>")
-                html_file.flush()
-                os.fsync(html_file.fileno())
+            self.result_html += data
 
-        with open(today_html_path, 'r', encoding='utf-8') as verify_file:
-            content = verify_file.read()
-            if not content.endswith("</table></body></html>"):
-                raise IOError("File writing verification failed")
-    except Exception as e:
-        print(f"Error writing to file: {e}")
-        raise
+# 文件路径
+file_path = "/Users/yanzhang/Documents/News/today_chn.txt"
 
-def count_bloomberg_files():
-    """
-    计算Downloads目录中bloomberg_开头的文件数量
-    """
-    download_dir = "/Users/yanzhang/Downloads/"
-    bloomberg_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
-    return len(bloomberg_files)
+# 读取文件内容，并去除空行
+with open(file_path, 'r', encoding='utf-8') as file:
+    lines = file.readlines()
+    non_empty_lines = [line for line in lines if line.strip()]
 
-def open_webpage_and_monitor():
-    """
-    打开Bloomberg页面并监控下载文件
-    """
-    download_dir = "/Users/yanzhang/Downloads/"
-    
-    # 清理可能已存在的bloomberg_*.html文件
-    existing_files = glob.glob(os.path.join(download_dir, "bloomberg_*.html"))
-    for file in existing_files:
+# 合并非空行，并去除尾部的换行符
+content_to_copy = ''.join(non_empty_lines).rstrip('\n')
+
+# 将内容复制到剪贴板
+pyperclip.copy(content_to_copy)
+
+# 读取剪贴板中翻译后的内容
+translated_texts = get_clipboard_data()
+
+# 过滤掉空行
+translated_texts = [line for line in translated_texts if line.strip() != '']
+
+# 读取HTML文件内容
+try:
+    with open('/Users/yanzhang/Documents/News/today_all.html', 'r', encoding='utf-8') as file:
+        html_content = file.read()
+except FileNotFoundError:
+    try:
+        print("未找到 today_all.html，尝试打开 today_eng.html")
+        with open('/Users/yanzhang/Documents/News/today_eng.html', 'r', encoding='utf-8') as file:
+            html_content = file.read()
+    except FileNotFoundError:
+        print("未找到 today_eng.html，无法继续处理。")
+        exit(1)
+
+# 创建解析器实例并传入翻译后的内容
+parser = MyHTMLParser(translated_texts)
+
+try:
+    # 解析并替换文本
+    parser.feed(html_content)
+
+    # 如果新文本数量与原始链接数量相同，则写回文件
+    if parser.current_index == len(translated_texts):
+        # 定义原始和目标文件路径
+        original_file_path = '/Users/yanzhang/Documents/News/today_all.html'
+        process_eng_txt = '/Users/yanzhang/Documents/News/today_eng.txt'
+        process_jpn_txt = '/Users/yanzhang/Documents/News/today_jpn.txt'
+        result_eng_html = '/Users/yanzhang/Documents/News/today_eng.html'
+        result_jpn_html = '/Users/yanzhang/Documents/News/today_jpn.html'
+        
+        # 使用BeautifulSoup修改HTML结构，添加<head>内容
+        soup = BeautifulSoup(parser.result_html, 'html.parser')
+        
+        # 检查是否有head标签，如果没有则创建
+        if not soup.head:
+            head = soup.new_tag('head')
+            if soup.html:
+                soup.html.insert(0, head)
+            else:
+                # 如果没有html标签，创建一个并添加head
+                html = soup.new_tag('html')
+                head = soup.new_tag('head')
+                html.append(head)
+                # 将原内容移到body中
+                body = soup.new_tag('body')
+                for content in list(soup.contents):
+                    body.append(content)
+                html.append(body)
+                soup = BeautifulSoup(str(html), 'html.parser')
+        
+        # 添加meta和style标签到head
+        meta = soup.new_tag('meta')
+        meta['charset'] = 'UTF-8'
+        soup.head.append(meta)
+
+        style = soup.new_tag('style')
+        style.string = """
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+
+            th,
+            td {
+                padding: 8px;
+                text-align: left;
+                border: 1px solid #ddd;
+            }
+
+            th {
+                background-color: #f4f4f4;
+            }
+
+            a {
+                color: #0066cc;
+                text-decoration: none;
+            }
+
+            /* 未访问的链接 */
+            a:link {
+                color: #0066cc;
+            }
+
+            /* 已访问的链接 */
+            a:visited, a.visited {
+                color: #800080; /* 紫色，可以根据需要更改 */
+            }
+
+            a:hover {
+                text-decoration: underline;
+            }
+        """
+        soup.head.append(style)
+
+        # 添加JavaScript脚本
+        script = soup.new_tag('script')
+        script.string = """
+            // 页面加载时检查localStorage中记录的已访问链接
+            document.addEventListener('DOMContentLoaded', function() {
+                const visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
+                
+                // 为所有已访问的链接添加visited类
+                visitedLinks.forEach(href => {
+                    const links = document.querySelectorAll(`a[href="${href}"]`);
+                    links.forEach(link => {
+                        link.classList.add('visited');
+                    });
+                });
+                
+                // 为所有链接添加点击事件
+                document.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', function() {
+                        const href = this.getAttribute('href');
+                        // 记录被点击的链接
+                        let visitedLinks = JSON.parse(localStorage.getItem('visitedLinks') || '[]');
+                        if (!visitedLinks.includes(href)) {
+                            visitedLinks.push(href);
+                            localStorage.setItem('visitedLinks', JSON.stringify(visitedLinks));
+                        }
+                        // 添加visited类
+                        this.classList.add('visited');
+                    });
+                });
+            });
+        """
+        soup.head.append(script)
+        
         try:
-            os.remove(file)
-            print(f"Removed existing file: {file}")
-        except Exception as e:
-            print(f"Error removing file {file}: {e}")
-    
-    # 打开第一个页面
-    print("Opening Bloomberg main page...")
-    webbrowser.open("https://bloomberg.com/")
-    
-    # 等待第一个文件下载
-    print("Waiting for first file download...")
-    while count_bloomberg_files() < 1:
-        time.sleep(2)
-        print(".", end="", flush=True)
-    
-    print("\nFirst file detected!")
-    
-    # 打开第二个页面
-    print("Opening Bloomberg Asia page...")
-    webbrowser.open("https://www.bloomberg.com/asia")
-    
-    # 等待第二个文件下载
-    print("Waiting for second file download...")
-    while count_bloomberg_files() < 2:
-        time.sleep(2)
-        print(".", end="", flush=True)
-    
-    print("\nSecond file detected!")
-    print("All required files downloaded. Processing...")
-    
-    # AppleScript 代码 (按下 Command+W 快捷键)
-    applescript = '''
-    tell application "System Events"
-    	repeat 2 times
-            key code 13 using command down
-            delay 0.5
-        end repeat
-    end tell
-    '''
+            with open(original_file_path, 'w', encoding='utf-8') as file:
+                file.write(str(soup))
+            print("文件已成功更新。")
+            for file_to_delete in [file_path, process_eng_txt, process_jpn_txt, result_eng_html, result_jpn_html]:
+                try:
+                    os.remove(file_to_delete)
+                except FileNotFoundError:
+                    print(f"{file_to_delete} 文件不存在，跳过删除。")
+            print("文件已成功删除。")
+        except IOError as e:
+            print(f"文件操作失败: {e}")
 
-    # 使用 subprocess 执行 AppleScript
-    subprocess.run(['osascript', '-e', applescript])
+        # 设置TXT文件的保存路径
+        now = datetime.now()
+        time_str = now.strftime("%y%m%d")
+        txt_file_name = f"TodayCNH_{time_str}.html"
+        txt_directory = '/Users/yanzhang/Documents/News'
+        txt_file_path = os.path.join(txt_directory, txt_file_name)
 
-    applescript_code = 'display dialog "文件已下载！" buttons {"OK"} default button "OK"'
-    subprocess.run(['osascript', '-e', applescript_code], check=True)
-    print("Please close the Bloomberg pages manually.")
-    
-    # 等待一会儿，以便用户关闭页面
-    time.sleep(5)
+        # 重命名文件
+        os.rename(original_file_path, txt_file_path)
+        print(f"文件已重命名为：{txt_file_path}")
 
-if __name__ == "__main__":
-    # 新增: 打开网页并监控下载文件
-    open_webpage_and_monitor()
-    
-    current_datetime = datetime.now().strftime("%Y_%m_%d_%H")
-
-    # 读取旧文件内容
-    old_file_path = "/Users/yanzhang/Documents/News/backup/site/bloomberg.html"
-    old_content = get_old_content(old_file_path, 30)
-    
-    # 获取旧文件中的链接列表(用于去重)
-    existing_links = {link for _, _, link in old_content}
-    
-    # 从两个新文件中读取内容
-    new_content = get_new_content_from_files()
-    
-    # 根据is_similar规则排重
-    new_rows = []
-    for date_str, title, link in new_content:
-        is_duplicate = False
-        for existing_link in existing_links:
-            if is_similar(link, existing_link):
-                is_duplicate = True
-                break
-        if not is_duplicate:
-            new_rows.append([date_str, title, link])
-            existing_links.add(link)  # 将新链接添加到已存在列表中，防止新内容中有重复
-
-    # 转换为today_eng.html需要的格式
-    new_rows1 = [["Bloomberg", title, link] for date_str, title, link in new_rows]
-
-    # 写入bloomberg.html并追加到today_eng.html
-    if new_rows:
-        write_html(old_file_path, new_rows, old_content)
-        append_to_today_html("/Users/yanzhang/Documents/News/today_eng.html", new_rows1)
-        print(f"Added {len(new_rows)} new articles to files")
+        # 调用函数，传入路径
+        delete_done_txt_files("/tmp/")
     else:
-        print("No new content to add")
+        raise IndexError(f"翻译完的内容行数与原英文链接的数量不匹配，请检查。当前处理到第 {parser.current_index + 1} 个链接，但是新文本有 {len(translated_texts)} 行。")
+        
+except IndexError as e:
+    # 打印错误信息
+    print(e)
+    # 初始化Tkinter窗口
+    root = tk.Tk()
+    root.withdraw()  # 隐藏主窗口
+    applescript_code = f'display dialog "{str(e)}" buttons {{"OK"}} default button "OK"'
+    subprocess.run(['osascript', '-e', applescript_code], check=True)
+    root.destroy()
+
+# 定义文件路径
+wsj_file = '/Users/yanzhang/Documents/News/today_wsjcn.html'
+
+if os.path.exists(wsj_file):
+    try:
+        # 读取两个文件的内容
+        with open(wsj_file, 'r', encoding='utf-8') as f:
+            wsj_html = f.read()
+
+        with open(txt_file_path, 'r', encoding='utf-8') as f:
+            today_cnh_html = f.read()
+
+        # 使用BeautifulSoup解析HTML
+        soup_wsj = BeautifulSoup(wsj_html, 'html.parser')
+        soup_today_cnh = BeautifulSoup(today_cnh_html, 'html.parser')
+
+        # 找到两个文件中的表格
+        table_wsj = soup_wsj.find('table')
+        table_today_cnh = soup_today_cnh.find('table')
+
+        # 将today_cnh的表格内容加到wsj的表格末尾
+        for row in table_today_cnh.find_all('tr')[1:]:  # 跳过表头
+            table_wsj.append(row)
+
+        # 将合并后的内容保存到一个新文件中
+        with open(txt_file_path, 'w', encoding='utf-8') as f:
+            f.write(str(soup_wsj))
+
+        print(f"合并后的文件已保存为: {txt_file_path}")
+        os.remove(wsj_file)
+    except Exception as e:
+        print(f"合并文件时发生错误: {e}")
+else:
+    print("未找到WSJ文件，继续执行其他操作。")
+
+# 打开文件和调整大小
+if os.path.exists(txt_file_path):
+    webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+    time.sleep(0.5)
+    # 循环5次模拟按下Command + '='快捷键
+    for _ in range(4):
+        pyautogui.hotkey('command', '=')
+        time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
+else:
+    print("文件不存在，无法打开。")

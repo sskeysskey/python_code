@@ -514,6 +514,8 @@ def process_all_files(directory, article_copier_path, image_dir):
         print(f"在 {directory} 目录下没有找到以News_开头的txt文件")
         return
     
+    done_dir = os.path.join(directory, "done")
+    
     converted = 0
     skipped = 0
     failed = 0
@@ -526,12 +528,20 @@ def process_all_files(directory, article_copier_path, image_dir):
                 print(f"正在处理: {os.path.basename(txt_file)}")
                 if txt_to_pdf_with_formatting(txt_file, pdf_file, article_copier_path, image_dir):
                     print(f"成功转换: {os.path.basename(txt_file)} -> {os.path.basename(pdf_file)}")
+                    # 移动txt文件到done目录
+                    done_file = os.path.join(done_dir, os.path.basename(txt_file))
+                    shutil.move(txt_file, done_file)
+                    print(f"已移动txt文件到: {done_file}")
                     converted += 1
                 else:
                     print(f"转换失败: {os.path.basename(txt_file)}")
                     failed += 1
             else:
                 print(f"跳过已存在的文件: {os.path.basename(txt_file)}")
+                # 对于已存在的PDF文件，也移动对应的txt文件
+                done_file = os.path.join(done_dir, os.path.basename(txt_file))
+                shutil.move(txt_file, done_file)
+                print(f"已移动txt文件到: {done_file}")
                 skipped += 1
                 
         except Exception as e:

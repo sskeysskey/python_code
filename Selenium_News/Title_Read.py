@@ -38,6 +38,7 @@ backup_path_eng = '/Users/yanzhang/Documents/News/backup/site/today_eng.html'
 file_path_jpn = '/Users/yanzhang/Documents/News/today_jpn.html'
 backup_path_jpn = '/Users/yanzhang/Documents/News/backup/site/today_jpn.html'
 
+# 处理英文文件
 # 读取HTML文件内容
 with open(file_path_eng, 'r', encoding='utf-8') as file:
     html_content_eng = file.read()

@@ -20,7 +20,8 @@
             "matches": [
                 "*://*.bloomberg.com/",
                 "*://*.bloomberg.com/asia",
-                "*://*.wsj.com/"
+                "*://*.wsj.com/",
+                "*://cn.wsj.com/*"
             ],
             "js": [
                 "content.js"

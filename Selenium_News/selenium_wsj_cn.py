@@ -8,6 +8,9 @@ from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+# from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 def is_similar(url1, url2):
     """
@@ -35,6 +38,16 @@ driver = webdriver.Chrome(service=service)
 
 # 打开 WSJ_CN 网站
 driver.get("https://cn.wsj.com/")
+
+# 等待页面上某个特定元素出现，表明页面已经正常加载
+# 这里等待任意一个新闻标题元素出现
+# wait = WebDriverWait(driver,30)
+# wait.until(EC.presence_of_element_located((By.XPATH, 
+#     "//a[contains(@class, 'css-g4pnb7')] | " +
+#     "//a[contains(@class, 'css-1rznr30-CardLink')] | " +
+#     "//div[contains(@class, 'css-wxquvv-HeadlineTextBlock')]/parent::a | " +
+#     "//div[contains(@class, 'css-18mqv2f-HeadlineTextBlock')]/parent::a"
+# )))
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/backup/site/wsj_cn.html"

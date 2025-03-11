@@ -169,15 +169,25 @@ def count_files(prefix):
 def clean_files(prefix):
     """
     清理Downloads目录中指定前缀开头的文件
+    同时清理相关的其他前缀文件（如wsj_和cnwsj_）
     """
     download_dir = "/Users/yanzhang/Downloads/"
-    existing_files = glob.glob(os.path.join(download_dir, f"{prefix}_*.html"))
-    for file in existing_files:
-        try:
-            os.remove(file)
-            print(f"Removed existing file: {file}")
-        except Exception as e:
-            print(f"Error removing file {file}: {e}")
+    prefixes = [prefix + '_']
+    
+    # 为特定前缀添加相关的其他前缀
+    if prefix == "wsj":
+        prefixes.append("cnwsj_")
+    elif prefix == "bloomberg":
+        prefixes.append("cnbloomberg_")
+    
+    for current_prefix in prefixes:
+        existing_files = glob.glob(os.path.join(download_dir, f"{current_prefix}*.html"))
+        for file in existing_files:
+            try:
+                os.remove(file)
+                print(f"Removed existing file: {file}")
+            except Exception as e:
+                print(f"Error removing file {file}: {e}")
 
 def open_webpage_and_monitor_bloomberg():
     """
@@ -256,7 +266,11 @@ def open_webpage_and_monitor_wsj():
     
     # 打开WSJ页面
     print("Opening WSJ main page...")
+    pyautogui.moveTo(591, 574)
     webbrowser.open("https://www.wsj.com/")
+    for i in range(5):
+        pyautogui.scroll(-80)
+        time.sleep(0.5)
     
     # 等待文件下载
     print("Waiting for WSJ file download...")

@@ -101,9 +101,10 @@ function scrapeWSJ() {
     const now = new Date();
     const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
     const newRows = [];
+    const hostname = window.location.hostname;
 
-    // 基于你的 Selenium 代码，尝试找到 WSJ 标题元素
-    const titleElements = document.querySelectorAll('h3.css-fsvegl a, article h2 a, .WSJTheme--headline--7VCzo7Ay a');
+    // 添加新的选择器 css-g4pnb7
+    const titleElements = document.querySelectorAll('h3.css-fsvegl a, article h2 a, .WSJTheme--headline--7VCzo7Ay a, .css-g4pnb7, .css-2pp34t');
 
     titleElements.forEach(titleElement => {
         const href = titleElement.href;
@@ -148,10 +149,13 @@ function scrapeWSJ() {
             hour12: false
         }).replace(/[/: ]/g, '_');
 
+        // 根据域名决定文件名前缀
+        const prefix = hostname.includes('cn.wsj.com') ? 'cnwsj_' : 'wsj_';
+
         chrome.runtime.sendMessage({
             action: "downloadHTML",
             url: url,
-            filename: `wsj_${timestamp}.html`
+            filename: `${prefix}${timestamp}.html`
         });
     }
 }

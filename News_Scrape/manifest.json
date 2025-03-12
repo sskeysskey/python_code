@@ -21,7 +21,7 @@
                 "*://*.bloomberg.com/",
                 "*://*.bloomberg.com/asia",
                 "*://*.wsj.com/",
-                "*://cn.wsj.com/*"
+                "*://cn.wsj.com/"
             ],
             "js": [
                 "content.js"

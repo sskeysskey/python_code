@@ -50,6 +50,19 @@ def find_image_on_screen(template, threshold=0.9):
     else:
         return None, None
 
+def refresh_page():
+    """
+    对当前页面执行 AppleScript 刷新操作
+    """
+    script = """
+    tell application "System Events"
+        key code 15 using command down
+    end tell
+    """
+    subprocess.run(['osascript', '-e', script], check=True)
+    # 给系统一点时间来完成操作
+    time.sleep(0.5)
+
 def get_clipboard_content():
     content = pyperclip.paste()
     
@@ -193,7 +206,8 @@ def main():
 
     if not skip_to_clipboard:
         found_stop = True
-        while found_stop:
+        timeout_pause = time.time() + 120
+        while found_stop and time.time() < timeout_pause:
             location, shape = find_image_on_screen(templates["stop"])
             if location:
                 print("找到stop图了，准备下一步...")
@@ -205,6 +219,10 @@ def main():
                 location, shape = find_image_on_screen(templates["stop"])
                 if not location:
                     found_stop = False
+        
+        if time.time() > timeout_pause:
+            print("在2分钟内仍能找到图片，刷新页面。")
+            refresh_page()
 
         pyautogui.scroll(-80)
         sleep(1.5)

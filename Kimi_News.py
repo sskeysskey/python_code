@@ -206,7 +206,7 @@ def main():
 
     if not skip_to_clipboard:
         found_stop = True
-        timeout_pause = time.time() + 120
+        timeout_pause = time.time() + 180
         while found_stop and time.time() < timeout_pause:
             location, shape = find_image_on_screen(templates["stop"])
             if location:

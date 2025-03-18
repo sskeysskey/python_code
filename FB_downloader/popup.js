@@ -41,27 +41,84 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // 下载视频函数
+    // 在popup.js中修改downloadVideo函数
     function downloadVideo(url) {
         updateStatus('开始下载...', 'loading');
 
-        chrome.runtime.sendMessage({
-            action: "downloadVideo",
-            videoUrl: url
-        }, function (response) {
-            if (chrome.runtime.lastError) {
-                console.error("下载请求错误:", chrome.runtime.lastError);
-                updateStatus('下载请求错误: ' + chrome.runtime.lastError.message, 'error');
-                return;
-            }
+        // 如果是blob URL，使用内容脚本中的直接下载方法
+        if (url.startsWith('blob:')) {
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: "directBlobDownload",
+                    blobUrl: url
+                }, function (response) {
+                    if (response && response.success) {
+                        updateStatus('下载已开始！请留意原始Facebook页面上的提示', 'success');
 
-            if (response && response.success) {
-                console.log("下载已开始，ID:", response.downloadId);
-                updateStatus('下载已开始！', 'success');
-            } else {
-                console.error("下载失败:", response ? response.error : "未知错误");
-                updateStatus('下载失败: ' + (response ? response.error : "未知错误"), 'error');
-            }
-        });
+                        // 提供一个返回Facebook页面的链接
+                        videoLinksDiv.innerHTML = `
+                        <div class="return-notice">
+                            <p>请返回Facebook页面查看下载进度</p>
+                            <button id="returnBtn">返回页面</button>
+                        </div>
+                    `;
+
+                        document.getElementById('returnBtn').addEventListener('click', function () {
+                            chrome.tabs.update(tabs[0].id, { active: true });
+                        });
+                    } else {
+                        // 下载失败，提供替代选项
+                        updateStatus('无法直接下载视频', 'error');
+                        videoLinksDiv.innerHTML = `
+                        <div class="alternative-options">
+                            <p>请尝试以下方法：</p>
+                            <button id="captureVideoBtn">录制视频</button>
+                            <button id="openPlayerBtn">在播放器中打开</button>
+                            <button id="rightClickSaveBtn">右键保存视频</button>
+                        </div>
+                    `;
+
+                        // 绑定按钮事件
+                        document.getElementById('captureVideoBtn').addEventListener('click', function () {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "captureVideo" });
+                            updateStatus('正在录制视频...请返回Facebook页面', 'loading');
+                            chrome.tabs.update(tabs[0].id, { active: true });
+                        });
+
+                        document.getElementById('openPlayerBtn').addEventListener('click', function () {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "openVideoInPlayer" });
+                            updateStatus('正在新窗口中打开视频...', 'loading');
+                        });
+
+                        document.getElementById('rightClickSaveBtn').addEventListener('click', function () {
+                            chrome.tabs.sendMessage(tabs[0].id, { action: "showRightClickSave" });
+                            updateStatus('请在Facebook页面中右键视频选择"另存为..."', 'loading');
+                            chrome.tabs.update(tabs[0].id, { active: true });
+                        });
+                    }
+                });
+            });
+        } else {
+            // 对于非blob URL，使用原有的下载方法
+            chrome.runtime.sendMessage({
+                action: "downloadVideo",
+                videoUrl: url
+            }, function (response) {
+                if (chrome.runtime.lastError) {
+                    console.error("下载请求错误:", chrome.runtime.lastError);
+                    updateStatus('下载请求错误: ' + chrome.runtime.lastError.message, 'error');
+                    return;
+                }
+
+                if (response && response.success) {
+                    console.log("下载已开始，ID:", response.downloadId);
+                    updateStatus('下载已开始！', 'success');
+                } else {
+                    console.error("下载失败:", response ? response.error : "未知错误");
+                    updateStatus('下载失败: ' + (response ? response.error : "未知错误"), 'error');
+                }
+            });
+        }
     }
 
     // 提取视频函数
@@ -137,7 +194,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // 绑定提取按钮事件
     extractBtn.addEventListener('click', extractVideo);
-
-    // 页面加载时自动尝试提取
-    extractVideo();
 });

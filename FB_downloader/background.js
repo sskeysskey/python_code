@@ -1,7 +1,17 @@
 console.log("Facebook视频下载器后台服务已启动");
 
+// 单个消息监听器
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     console.log("后台服务收到消息:", request);
+
+    if (request.action === "downloadBlobVideo") {
+        chrome.downloads.download({
+            url: request.dataUrl,
+            filename: `facebook_video_${Date.now()}.mp4`,
+            saveAs: true
+        });
+        return true;
+    }
 
     if (request.action === "downloadVideo") {
         // 验证URL是否是有效的视频URL
@@ -32,7 +42,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         }
 
         // 尝试下载视频
-        try {
+        if (videoUrl.startsWith('blob:')) {
+            // For blob URLs, we need to fetch the content first
+            chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                chrome.scripting.executeScript({
+                    target: { tabId: tabs[0].id },
+                    function: fetchBlobContent,
+                    args: [videoUrl]
+                });
+            });
+        } else {
             chrome.downloads.download({
                 url: videoUrl,
                 filename: `facebook_video_${Date.now()}${fileExtension}`,
@@ -47,15 +66,30 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     sendResponse({ success: true, downloadId: downloadId });
                 }
             });
-        } catch (error) {
-            console.error("下载过程中出错:", error);
-            // 尝试替代下载方法
-            tryAlternativeDownload(videoUrl, sendResponse);
         }
 
         return true; // 保持消息通道打开以进行异步响应
     }
 });
+
+// Add this function to be injected into the page
+function fetchBlobContent(blobUrl) {
+    fetch(blobUrl)
+        .then(response => response.blob())
+        .then(blob => {
+            // Convert blob to data URL
+            const reader = new FileReader();
+            reader.onloadend = function () {
+                const dataUrl = reader.result;
+                // Send back to extension
+                chrome.runtime.sendMessage({
+                    action: "downloadBlobVideo",
+                    dataUrl: dataUrl
+                });
+            };
+            reader.readAsDataURL(blob);
+        });
+}
 
 // 如果正常下载失败，尝试替代下载方法
 function tryAlternativeDownload(videoUrl, sendResponse) {
@@ -132,8 +166,3 @@ function tryAlternativeDownload(videoUrl, sendResponse) {
         });
     }
 }
-
-// 监听安装/更新事件
-chrome.runtime.onInstalled.addListener(function () {
-    console.log("Facebook视频下载器已安装/更新");
-});

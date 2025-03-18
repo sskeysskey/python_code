@@ -39,7 +39,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.downloads.download({
             url: downloadUrl,
             filename: filename,
-            saveAs: true
+            saveAs: false
         });
         sendResponse({ success: true });
     }

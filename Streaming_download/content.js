@@ -1,5 +1,5 @@
 // 用于在页面中检测视频的内容脚本
-let foundVideos = new Set();
+let foundVideos = [];  // 改为数组以存储视频URL和相关用户名
 let observerActive = false;
 
 // 创建一个MutationObserver来监视DOM变化
@@ -15,20 +15,76 @@ function detectVideos() {
 
     videos.forEach(video => {
         // 检查视频源
-        if (video.src && !foundVideos.has(video.src) && video.src.startsWith('blob:')) {
-            foundVideos.add(video.src);
-            newVideosFound = true;
+        if (video.src && video.src.startsWith('blob:')) {
+            // 检查这个视频是否已经在列表中
+            const existingVideo = foundVideos.find(v => v.url === video.src);
+            if (!existingVideo) {
+                // 尝试找到相关的用户名称
+                const videoInfo = {
+                    url: video.src,
+                    title: "未知视频",
+                    username: ""
+                };
 
-            // 尝试提取真实视频URL
-            fetchBlobUrl(video.src);
+                // 尝试获取与视频相关的用户名
+                // 首先查找包含视频的父元素
+                let videoContainer = video;
+                let maxSearchDepth = 10; // 防止无限循环
+                let depth = 0;
+
+                while (videoContainer && depth < maxSearchDepth) {
+                    // 向上查找父元素，直到找到一个可能包含用户信息的元素
+                    videoContainer = videoContainer.parentElement;
+                    depth++;
+
+                    // 如果找到了父容器，在其中查找用户名
+                    if (videoContainer) {
+                        // 查找用户名元素，根据你提供的HTML，通常在VonaH nonIntl类的元素内
+                        const userNameElement = videoContainer.querySelector('.VonaH.nonIntl h3');
+                        if (userNameElement && userNameElement.textContent) {
+                            videoInfo.username = userNameElement.textContent.trim();
+                            videoInfo.title = `${videoInfo.username}的视频`;
+                            break;
+                        }
+
+                        // 如果找不到h3，尝试查找其他可能包含用户名的元素
+                        const altUserNameElement = videoContainer.querySelector('a.gtry');
+                        if (altUserNameElement) {
+                            const username = altUserNameElement.getAttribute('href').split('/').pop();
+                            if (username) {
+                                videoInfo.username = username;
+                                videoInfo.title = `${username}的视频`;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                foundVideos.push(videoInfo);
+                newVideosFound = true;
+
+                // 尝试提取真实视频URL
+                fetchBlobUrl(video.src, videoInfo);
+            }
         }
 
         // 检查source元素
         const sources = video.querySelectorAll('source');
         sources.forEach(source => {
-            if (source.src && !foundVideos.has(source.src)) {
-                foundVideos.add(source.src);
-                newVideosFound = true;
+            if (source.src) {
+                const existingVideo = foundVideos.find(v => v.url === source.src);
+                if (!existingVideo) {
+                    // 类似逻辑来获取用户名
+                    const videoInfo = {
+                        url: source.src,
+                        title: "未知视频",
+                        username: ""
+                    };
+
+                    // ...同上的用户名检测代码
+                    foundVideos.push(videoInfo);
+                    newVideosFound = true;
+                }
             }
         });
     });
@@ -39,7 +95,7 @@ function detectVideos() {
 }
 
 // 尝试提取blob URL的实际内容
-async function fetchBlobUrl(blobUrl) {
+async function fetchBlobUrl(blobUrl, videoInfo) {
     try {
         // 获取blob内容
         const response = await fetch(blobUrl);
@@ -49,8 +105,10 @@ async function fetchBlobUrl(blobUrl) {
         const url = URL.createObjectURL(blob);
 
         // 添加到找到的视频中
-        if (!foundVideos.has(url)) {
-            foundVideos.add(url);
+        const existingVideo = foundVideos.find(v => v.url === blobUrl);
+        if (existingVideo) {
+            // 更新URL为可下载的URL
+            existingVideo.downloadUrl = url;
             updateVideoList();
         }
     } catch (error) {
@@ -62,7 +120,7 @@ async function fetchBlobUrl(blobUrl) {
 function updateVideoList() {
     chrome.runtime.sendMessage({
         type: 'FOUND_VIDEOS',
-        urls: Array.from(foundVideos)
+        videos: foundVideos
     });
 }
 
@@ -85,8 +143,16 @@ function setupRequestCapture() {
                 contentType.includes('audio/') ||
                 url.includes('.mp4') || url.includes('.m3u8')) {
 
-                if (!foundVideos.has(url)) {
-                    foundVideos.add(url);
+                const existingVideo = foundVideos.find(v => v.url === url);
+                if (!existingVideo) {
+                    // 尝试确定与此URL相关的上下文
+                    const videoInfo = {
+                        url: url,
+                        title: `视频 (${url.split('/').pop()})`,
+                        username: ""
+                    };
+
+                    foundVideos.push(videoInfo);
                     updateVideoList();
                 }
             }
@@ -97,7 +163,7 @@ function setupRequestCapture() {
         return response;
     };
 
-    // 覆盖XMLHttpRequest
+    // 覆盖XMLHttpRequest，类似上面的逻辑
     const originalXhrOpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function (method, url) {
         this.addEventListener('load', function () {
@@ -107,8 +173,15 @@ function setupRequestCapture() {
                 contentType.includes('audio/') ||
                 url.includes('.mp4') || url.includes('.m3u8')) {
 
-                if (!foundVideos.has(url)) {
-                    foundVideos.add(url);
+                const existingVideo = foundVideos.find(v => v.url === url);
+                if (!existingVideo) {
+                    const videoInfo = {
+                        url: url,
+                        title: `视频 (${url.split('/').pop()})`,
+                        username: ""
+                    };
+
+                    foundVideos.push(videoInfo);
                     updateVideoList();
                 }
             }

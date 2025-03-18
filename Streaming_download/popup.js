@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 获取当前标签页中找到的视频
     function getVideos() {
         chrome.runtime.sendMessage({ type: 'GET_VIDEOS' }, (response) => {
-            const videos = response.urls || [];
+            const videos = response.videos || [];
 
             // 更新UI
             if (videos.length === 0) {
@@ -27,26 +27,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 清空视频列表
                 videoListElement.innerHTML = '';
 
+                // 复制视频数组并反转顺序，这样最新的视频会显示在最上面
+                const reversedVideos = [...videos].reverse();
+
                 // 添加视频到列表
-                videos.forEach((url, index) => {
+                reversedVideos.forEach((videoInfo, index) => {
                     const listItem = document.createElement('li');
                     listItem.className = 'video-item';
 
-                    const videoInfo = document.createElement('div');
-                    videoInfo.className = 'video-info';
-                    videoInfo.textContent = `视频 ${index + 1}`;
+                    const videoInfoDiv = document.createElement('div');
+                    videoInfoDiv.className = 'video-info';
+
+                    // 使用用户名作为视频标题，如果有的话
+                    if (videoInfo.title) {
+                        videoInfoDiv.textContent = videoInfo.title;
+                    } else if (videoInfo.username) {
+                        videoInfoDiv.textContent = `${videoInfo.username}的视频`;
+                    } else {
+                        // 保持索引与原始数组一致，但显示反过来的顺序
+                        videoInfoDiv.textContent = `视频 ${videos.length - index}`;
+                    }
 
                     const downloadButton = document.createElement('button');
                     downloadButton.className = 'download-btn';
                     downloadButton.textContent = '下载';
                     downloadButton.addEventListener('click', () => {
+                        // 使用downloadUrl如果有的话，否则使用原始url
+                        const urlToDownload = videoInfo.downloadUrl || videoInfo.url;
                         chrome.runtime.sendMessage({
                             type: 'DOWNLOAD_VIDEO',
-                            url: url
+                            url: urlToDownload
                         });
                     });
 
-                    listItem.appendChild(videoInfo);
+                    listItem.appendChild(videoInfoDiv);
                     listItem.appendChild(downloadButton);
                     videoListElement.appendChild(listItem);
                 });

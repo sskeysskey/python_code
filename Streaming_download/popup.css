@@ -56,6 +56,15 @@ h2 {
     overflow-y: auto;
 }
 
+.video-info {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 10px;
+    font-size: 14px;
+}
+
 .video-item {
     background-color: #fff;
     border: 1px solid #ddd;

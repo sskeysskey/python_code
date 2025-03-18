@@ -15,8 +15,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else if (message.type === 'GET_VIDEOS') {
         sendResponse({ videos: videoList });
     } else if (message.type === 'DOWNLOAD_VIDEO') {
-        // 下载视频
-        const videoInfo = videoList.find(v => v.url === message.url || v.downloadUrl === message.url);
+        // 下载视频，优先使用高分辨率URL
+        const videoInfo = videoList.find(v =>
+            v.url === message.url ||
+            v.highResUrl === message.url ||
+            v.downloadUrl === message.url
+        );
+
+        let downloadUrl = message.url;
+        // 优先使用高分辨率URL
+        if (videoInfo) {
+            downloadUrl = videoInfo.highResUrl || videoInfo.downloadUrl || videoInfo.url;
+        }
+
         let filename = 'snapchat_video.mp4';
 
         if (videoInfo && videoInfo.username) {
@@ -26,7 +37,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         chrome.downloads.download({
-            url: message.url,
+            url: downloadUrl,
             filename: filename,
             saveAs: true
         });

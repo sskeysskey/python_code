@@ -1,6 +1,8 @@
 // 用于在页面中检测视频的内容脚本
 let foundVideos = [];  // 改为数组以存储视频URL和相关用户名
 let observerActive = false;
+// 用于存储可能包含不同分辨率的视频源
+let highQualityVideoSources = new Map();
 
 // 创建一个MutationObserver来监视DOM变化
 const observer = new MutationObserver(() => {
@@ -125,35 +127,100 @@ function updateVideoList() {
 }
 
 // 用于监听网络请求中的媒体文件
+// 修改setupRequestCapture函数来寻找HLS或DASH清单
 function setupRequestCapture() {
-    // 由于 manifest v3 的限制，我们需要使用内容脚本来捕获请求
+    // 覆盖原始fetch函数
     const originalFetch = window.fetch;
     window.fetch = async function (...args) {
         const response = await originalFetch.apply(this, args);
 
         // 克隆响应以便我们可以使用它
         const clone = response.clone();
+        const url = response.url;
 
         try {
             const contentType = response.headers.get('content-type') || '';
-            const url = response.url;
 
-            // 如果是视频或音频内容
+            // 检查是否是视频内容
             if (contentType.includes('video/') ||
-                contentType.includes('audio/') ||
-                url.includes('.mp4') || url.includes('.m3u8')) {
+                url.includes('.mp4') ||
+                url.includes('.m3u8') ||
+                url.includes('.mpd')) {
 
-                const existingVideo = foundVideos.find(v => v.url === url);
-                if (!existingVideo) {
-                    // 尝试确定与此URL相关的上下文
-                    const videoInfo = {
-                        url: url,
-                        title: `视频 (${url.split('/').pop()})`,
-                        username: ""
-                    };
+                // 特别检查流媒体清单文件
+                if (url.includes('.m3u8')) {
+                    // 处理HLS清单
+                    const manifest = await clone.text();
+                    const highestResolutionUrl = extractHighestResolutionFromHLS(manifest, url);
+                    if (highestResolutionUrl) {
+                        // 将高分辨率视频添加到我们的列表中
+                        const videoId = generateUniqueId(url);
+                        highQualityVideoSources.set(videoId, {
+                            manifestUrl: url,
+                            highResUrl: highestResolutionUrl,
+                            type: 'hls'
+                        });
 
-                    foundVideos.push(videoInfo);
-                    updateVideoList();
+                        // 查找相关视频元素并关联这个高质量源
+                        setTimeout(() => {
+                            associateHighQualitySourceWithVideo(videoId);
+                        }, 500);
+                    }
+                } else if (url.includes('.mpd')) {
+                    // 处理DASH清单
+                    const manifest = await clone.text();
+                    const highestResolutionUrl = extractHighestResolutionFromDASH(manifest, url);
+                    if (highestResolutionUrl) {
+                        const videoId = generateUniqueId(url);
+                        highQualityVideoSources.set(videoId, {
+                            manifestUrl: url,
+                            highResUrl: highestResolutionUrl,
+                            type: 'dash'
+                        });
+
+                        setTimeout(() => {
+                            associateHighQualitySourceWithVideo(videoId);
+                        }, 500);
+                    }
+                }
+
+                // 检查MP4文件的分辨率信息
+                if (url.includes('.mp4')) {
+                    // 保存视频URL，以便后续处理
+                    const videoId = generateUniqueId(url);
+                    const existingSource = highQualityVideoSources.get(videoId);
+
+                    // 如果还没有这个视频或新URL可能是更高分辨率的
+                    if (!existingSource || isLikelyHigherResolution(url, existingSource.highResUrl)) {
+                        highQualityVideoSources.set(videoId, {
+                            highResUrl: url,
+                            type: 'mp4'
+                        });
+
+                        setTimeout(() => {
+                            associateHighQualitySourceWithVideo(videoId);
+                        }, 500);
+                    }
+                }
+
+                // 如果是blob URL，也尝试关联它
+                if (url.startsWith('blob:')) {
+                    const existingVideo = foundVideos.find(v => v.url === url);
+                    if (!existingVideo) {
+                        // 检查这个blob是否对应于之前发现的高分辨率视频
+                        const videoInfo = {
+                            url: url,
+                            title: `视频 (${url.split('/').pop()})`,
+                            username: "",
+                            isHighestResolution: true // 默认认为是最高分辨率，因为我们没有更多信息
+                        };
+
+                        // 尝试提取blob内容
+                        fetchBlobUrl(url, videoInfo);
+
+                        foundVideos.push(videoInfo);
+                        updateVideoList();
+                    }
                 }
             }
         } catch (e) {
@@ -163,32 +230,244 @@ function setupRequestCapture() {
         return response;
     };
 
-    // 覆盖XMLHttpRequest，类似上面的逻辑
+    // 同样修改XMLHttpRequest以捕获流媒体清单
     const originalXhrOpen = XMLHttpRequest.prototype.open;
+    const originalXhrSend = XMLHttpRequest.prototype.send;
+
     XMLHttpRequest.prototype.open = function (method, url) {
-        this.addEventListener('load', function () {
-            const contentType = this.getResponseHeader('content-type') || '';
+        this._url = url;
+        return originalXhrOpen.apply(this, arguments);
+    };
 
-            if (contentType.includes('video/') ||
-                contentType.includes('audio/') ||
-                url.includes('.mp4') || url.includes('.m3u8')) {
+    XMLHttpRequest.prototype.send = function () {
+        const xhr = this;
+        const url = xhr._url;
 
-                const existingVideo = foundVideos.find(v => v.url === url);
-                if (!existingVideo) {
-                    const videoInfo = {
-                        url: url,
-                        title: `视频 (${url.split('/').pop()})`,
-                        username: ""
-                    };
+        if (url && (url.includes('.m3u8') || url.includes('.mpd') || url.includes('.mp4'))) {
+            this.addEventListener('load', function () {
+                try {
+                    const contentType = xhr.getResponseHeader('content-type') || '';
 
-                    foundVideos.push(videoInfo);
-                    updateVideoList();
+                    if (url.includes('.m3u8')) {
+                        const manifest = xhr.responseText;
+                        const highestResolutionUrl = extractHighestResolutionFromHLS(manifest, url);
+                        if (highestResolutionUrl) {
+                            const videoId = generateUniqueId(url);
+                            highQualityVideoSources.set(videoId, {
+                                manifestUrl: url,
+                                highResUrl: highestResolutionUrl,
+                                type: 'hls'
+                            });
+
+                            setTimeout(() => {
+                                associateHighQualitySourceWithVideo(videoId);
+                            }, 500);
+                        }
+                    } else if (url.includes('.mpd')) {
+                        const manifest = xhr.responseText;
+                        const highestResolutionUrl = extractHighestResolutionFromDASH(manifest, url);
+                        if (highestResolutionUrl) {
+                            const videoId = generateUniqueId(url);
+                            highQualityVideoSources.set(videoId, {
+                                manifestUrl: url,
+                                highResUrl: highestResolutionUrl,
+                                type: 'dash'
+                            });
+
+                            setTimeout(() => {
+                                associateHighQualitySourceWithVideo(videoId);
+                            }, 500);
+                        }
+                    }
+                } catch (e) {
+                    console.error('分析XHR响应时出错:', e);
+                }
+            });
+        }
+
+        return originalXhrSend.apply(this, arguments);
+    };
+}
+
+// 从HLS清单中提取最高分辨率的视频URL
+// 从DASH清单中提取最高分辨率的视频URL
+function extractHighestResolutionFromDASH(manifest, manifestUrl) {
+    try {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(manifest, "text/xml");
+
+        // 查找所有表示项
+        const representations = xmlDoc.querySelectorAll('Representation');
+        let highestBandwidth = 0;
+        let highestRepresentation = null;
+
+        representations.forEach(representation => {
+            // 确保这是视频轨道
+            const parent = representation.parentNode;
+            if (parent.getAttribute('contentType') === 'video' || parent.getAttribute('mimeType')?.includes('video')) {
+                const bandwidth = parseInt(representation.getAttribute('bandwidth') || '0');
+                const width = parseInt(representation.getAttribute('width') || '0');
+                const height = parseInt(representation.getAttribute('height') || '0');
+
+                // 选择基于分辨率或带宽的最高质量
+                if (width * height > highestBandwidth || (width * height === 0 && bandwidth > highestBandwidth)) {
+                    highestBandwidth = width * height || bandwidth;
+                    highestRepresentation = representation;
                 }
             }
         });
 
-        return originalXhrOpen.apply(this, arguments);
+        if (highestRepresentation) {
+            // 获取基本URL
+            const baseURLElement = highestRepresentation.querySelector('BaseURL') ||
+                xmlDoc.querySelector('BaseURL');
+
+            if (baseURLElement) {
+                const baseURL = baseURLElement.textContent;
+                // 将相对URL转换为绝对URL
+                return new URL(baseURL, manifestUrl).href;
+            }
+        }
+    } catch (e) {
+        console.error('解析DASH清单时出错:', e);
+    }
+
+    return null;
+}
+
+// 将高质量视频源与页面中的视频元素关联起来
+function associateHighQualitySourceWithVideo(videoId) {
+    const source = highQualityVideoSources.get(videoId);
+    if (!source) return;
+
+    // 检查现有视频列表
+    const existingVideo = foundVideos.find(v =>
+        v.originalUrl === source.manifestUrl ||
+        v.url === source.highResUrl ||
+        v.manifestId === videoId
+    );
+
+    if (existingVideo) {
+        // 更新为高分辨率URL
+        existingVideo.highResUrl = source.highResUrl;
+        existingVideo.manifestId = videoId;
+        existingVideo.isHighestResolution = true;
+        updateVideoList();
+    } else {
+        // 尝试查找页面上当前正在播放此视频的元素
+        const videos = document.querySelectorAll('video');
+
+        for (const video of videos) {
+            // 检查这个视频元素是否关联了我们找到的清单
+            if (video.currentSrc && (
+                video.currentSrc.includes(source.manifestUrl) ||
+                video.src.includes(source.manifestUrl))) {
+
+                // 找出视频的上下文（用户名等）
+                const videoInfo = extractVideoContext(video);
+
+                videoInfo.url = video.src; // 原始src
+                videoInfo.originalUrl = source.manifestUrl;
+                videoInfo.highResUrl = source.highResUrl;
+                videoInfo.manifestId = videoId;
+                videoInfo.isHighestResolution = true;
+
+                // 添加到视频列表中
+                const duplicate = foundVideos.find(v => v.url === videoInfo.url);
+                if (!duplicate) {
+                    foundVideos.push(videoInfo);
+                    updateVideoList();
+                } else {
+                    // 更新现有条目
+                    Object.assign(duplicate, videoInfo);
+                    updateVideoList();
+                }
+
+                break;
+            }
+        }
+    }
+}
+
+// 辅助函数，用于从视频元素中提取上下文信息
+function extractVideoContext(videoElement) {
+    const videoInfo = {
+        title: "未知视频",
+        username: ""
     };
+
+    // 同之前的代码，尝试找到与视频相关的用户名
+    let element = videoElement;
+    let maxSearchDepth = 10;
+    let depth = 0;
+
+    while (element && depth < maxSearchDepth) {
+        element = element.parentElement;
+        depth++;
+
+        if (element) {
+            const userNameElement = element.querySelector('.VonaH.nonIntl h3');
+            if (userNameElement && userNameElement.textContent) {
+                videoInfo.username = userNameElement.textContent.trim();
+                videoInfo.title = `${videoInfo.username}的视频`;
+                break;
+            }
+
+            const altUserNameElement = element.querySelector('a.gtry');
+            if (altUserNameElement) {
+                const username = altUserNameElement.getAttribute('href').split('/').pop();
+                if (username) {
+                    videoInfo.username = username;
+                    videoInfo.title = `${username}的视频`;
+                    break;
+                }
+            }
+        }
+    }
+
+    return videoInfo;
+}
+
+// 生成唯一ID
+function generateUniqueId(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(16); // 转换为十六进制字符串
+}
+
+// 从URL判断哪个可能具有更高分辨率
+function isLikelyHigherResolution(url1, url2) {
+    // 这是一个简单的启发式方法，实际结果可能需要根据Snapchat的URL模式调整
+    const res1Match = url1.match(/(\d+)x(\d+)/);
+    const res2Match = url2.match(/(\d+)x(\d+)/);
+
+    if (res1Match && res2Match) {
+        const res1 = parseInt(res1Match[1]) * parseInt(res1Match[2]);
+        const res2 = parseInt(res2Match[1]) * parseInt(res2Match[2]);
+        return res1 > res2;
+    }
+
+    // 如果URL中包含质量提示
+    const qualityHints = ['high', 'hd', '1080', '720', '4k'];
+    for (const hint of qualityHints) {
+        if (url1.includes(hint) && !url2.includes(hint)) {
+            return true;
+        }
+    }
+
+    // 如果文件大小信息可用（有时URL中包含大小信息）
+    const size1Match = url1.match(/size=(\d+)/);
+    const size2Match = url2.match(/size=(\d+)/);
+
+    if (size1Match && size2Match) {
+        return parseInt(size1Match[1]) > parseInt(size2Match[1]);
+    }
+
+    return false; // 无法确定
 }
 
 // 启动扩展功能

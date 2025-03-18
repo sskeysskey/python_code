@@ -76,6 +76,17 @@ h2 {
     align-items: center;
 }
 
+/* 在popup.css中添加 */
+.quality-badge {
+    background-color: #3498db;
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
 .download-btn {
     background-color: #4CAF50;
     color: white;

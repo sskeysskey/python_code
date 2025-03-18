@@ -44,16 +44,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (videoInfo.username) {
                         videoInfoDiv.textContent = `${videoInfo.username}的视频`;
                     } else {
-                        // 保持索引与原始数组一致，但显示反过来的顺序
                         videoInfoDiv.textContent = `视频 ${videos.length - index}`;
+                    }
+
+                    // 如果有高分辨率标记，添加标记
+                    if (videoInfo.isHighestResolution) {
+                        const qualityBadge = document.createElement('span');
+                        qualityBadge.className = 'quality-badge';
+                        qualityBadge.textContent = 'HD';
+                        videoInfoDiv.appendChild(qualityBadge);
                     }
 
                     const downloadButton = document.createElement('button');
                     downloadButton.className = 'download-btn';
                     downloadButton.textContent = '下载';
                     downloadButton.addEventListener('click', () => {
-                        // 使用downloadUrl如果有的话，否则使用原始url
-                        const urlToDownload = videoInfo.downloadUrl || videoInfo.url;
+                        // 优先使用高分辨率URL
+                        const urlToDownload = videoInfo.highResUrl || videoInfo.downloadUrl || videoInfo.url;
                         chrome.runtime.sendMessage({
                             type: 'DOWNLOAD_VIDEO',
                             url: urlToDownload

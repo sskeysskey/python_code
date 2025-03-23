@@ -41,7 +41,7 @@ def main():
         # 计算剪贴板内容中的中文字符数目
         chinese_characters_count = len(re.findall(r'[\u4e00-\u9fff]', clipboard_content))
 
-        if chinese_characters_count < 250:
+        if chinese_characters_count < 200:
             print("剪贴板内容不符合要求，程序终止执行。")
             # 内容非法后的过渡传递参数
             pyperclip.copy("illegal")

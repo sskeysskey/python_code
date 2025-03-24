@@ -592,6 +592,17 @@ if __name__ == "__main__":
     news_directory = "/Users/yanzhang/Documents/News/"
     article_copier_path = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
     image_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
+    downloads_path = '/Users/yanzhang/Downloads'
     
     process_all_files(news_directory, article_copier_path, image_dir)
     move_cnh_file(news_directory)
+
+    html_files = [f for f in os.listdir(downloads_path) if f.endswith('.html')]
+
+    for file in html_files:
+        file_path = os.path.join(downloads_path, file)
+        try:
+            os.remove(file_path)
+            print(f'成功删除: {file}')
+        except OSError as e:
+            print(f'删除失败 {file}: {e}')

@@ -109,8 +109,8 @@ function scrapeWSJ() {
     titleElements.forEach(titleElement => {
         const href = titleElement.href;
 
-        // 跳过包含 livecoverage 的链接
-        if (!href || href.toLowerCase().includes('livecoverage')) {
+        // 跳过包含 livecoverage 或 buyside 的链接
+        if (!href || href.toLowerCase().includes('livecoverage') || href.toLowerCase().includes('wsj.com/buyside')) {
             return;
         }
 

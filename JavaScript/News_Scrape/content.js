@@ -97,7 +97,7 @@ function scrapeBloomberg() {
 }
 
 // WSJ 抓取函数
-function scrapeWSJ() {
+function scrapeWSJ(shouldDownload = true) {
     const now = new Date();
     const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
     const newRows = [];
@@ -135,7 +135,8 @@ function scrapeWSJ() {
         }
     });
 
-    if (newRows.length > 0) {
+    // 只有当 shouldDownload 为 true 且有内容时才下载
+    if (shouldDownload && newRows.length > 0) {
         const html = generateHTML(newRows, 'WSJ');
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
@@ -158,6 +159,8 @@ function scrapeWSJ() {
             filename: `${prefix}${timestamp}.html`
         });
     }
+
+    return newRows.length;
 }
 
 // 主抓取函数
@@ -167,15 +170,81 @@ function scrapeAndDownload() {
     if (hostname.includes('bloomberg.com')) {
         scrapeBloomberg();
     } else if (hostname.includes('wsj.com')) {
-        scrapeWSJ();
+        // WSJ的处理在专门的函数中进行
+        handleWSJScraping();
     }
 }
 
+// 专门处理WSJ的抓取
+function handleWSJScraping() {
+    // 第一次抓取但不下载
+    scrapeWSJ(false);
+
+    // 2秒后进行第二次抓取并下载
+    setTimeout(() => {
+        console.log('执行WSJ的第二次抓取...');
+        scrapeWSJ(true);
+    }, 2000);
+}
+
+// 根据网站使用不同的事件监听方式
+const hostname = window.location.hostname;
+
+if (hostname.includes('bloomberg.com')) {
+    // Bloomberg 使用原来的 load 事件
+    window.addEventListener('load', () => {
+        console.log('Bloomberg Scraper loaded');
+        scrapeBloomberg();
+    });
+} else if (hostname.includes('wsj.com')) {
+    // WSJ 使用 DOMContentLoaded 事件
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('WSJ Scraper loaded');
+        handleWSJScraping();
+    });
+
+    // 对于动态加载的内容，添加 MutationObserver 来监测DOM变化
+    function throttle(func, limit) {
+        let inThrottle;
+        return function () {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        }
+    }
+
+    // 在观察到DOM变化后，仅执行第二次抓取并下载
+    const throttledScrape = throttle(() => {
+        console.log('检测到WSJ页面变化，执行额外抓取...');
+        scrapeWSJ(true);
+    }, 5000);  // 至少间隔5秒
+
+    // 等待初始抓取完成后再设置观察器
+    setTimeout(() => {
+        const observer = new MutationObserver(throttledScrape);
+
+        // 配置 observer
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // 2分钟后断开观察器以避免长时间消耗资源
+        setTimeout(() => {
+            observer.disconnect();
+        }, 2 * 60 * 1000);
+    }, 3000);
+}
+
 // 当页面加载完成后自动执行抓取
-window.addEventListener('load', () => {
-    console.log('News Scraper content script loaded for: ' + window.location.hostname);
-    scrapeAndDownload();
-});
+// window.addEventListener('load', () => {
+//     console.log('News Scraper content script loaded for: ' + window.location.hostname);
+//     scrapeAndDownload();
+// });
 
 // 节流函数
 // function throttle(func, limit) {

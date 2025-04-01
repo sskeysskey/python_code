@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 def open_html_file(file_path):
@@ -21,9 +22,18 @@ formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
+# 设置Chrome选项以提高性能
+chrome_options = Options()
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
+chrome_options.page_load_strategy = 'eager'  # 使用eager策略，DOM准备好就开始
+
 # 设置 ChromeDriver
 service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=chrome_options)  # 在这里添加options参数
 
 # 打开 MIT Technology Review 网站
 driver.get("https://www.technologyreview.com/")

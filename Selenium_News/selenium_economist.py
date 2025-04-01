@@ -30,16 +30,47 @@ def open_html_file(file_path):
 # 比较两个 URL 的相似度
 def is_similar(url1, url2):
     """
-    比较两个 URL 的相似度，如果相似度超过阈值则返回 True，否则返回 False。
-    主要比较 URL 的协议、主机名和路径。
+    比较两个 URL 的相似度，如果是同一篇文章则返回 True。
+    考虑 URL 的协议、主机名、路径，忽略查询参数和片段。
+    还会比较链接路径中的日期和标识符部分。
     """
+    if not url1 or not url2:
+        return False
+        
     parsed_url1 = urlparse(url1)
     parsed_url2 = urlparse(url2)
 
-    base_url1 = f"{parsed_url1.scheme}://{parsed_url1.netloc}{parsed_url1.path}"
-    base_url2 = f"{parsed_url2.scheme}://{parsed_url2.netloc}{parsed_url2.path}"
-
-    return base_url1 == base_url2
+    # 比较基本部分：协议、主机名
+    if parsed_url1.netloc != parsed_url2.netloc:
+        return False
+        
+    # 对于Economist特有的URL结构进行处理
+    # 通常格式为/section/year/month/day/article-title
+    path1 = parsed_url1.path.rstrip('/')
+    path2 = parsed_url2.path.rstrip('/')
+    
+    # 拆分路径为组件
+    path_components1 = path1.split('/')
+    path_components2 = path2.split('/')
+    
+    # 确保路径组件足够比较（至少包含部分/年份/月份/日期/标题）
+    if len(path_components1) < 5 or len(path_components2) < 5:
+        # 如果路径结构不符合预期，回退到简单比较
+        return path1 == path2
+    
+    # 比较部分、年份、月份、日期和文章标题部分
+    # 去掉空字符串（路径开头的'/'导致的）
+    path_components1 = [comp for comp in path_components1 if comp]
+    path_components2 = [comp for comp in path_components2 if comp]
+    
+    # 检查前5个组件（部分/年份/月份/日期/标题）是否相同
+    # 如果组件数量不同，取较短的长度
+    min_length = min(len(path_components1), len(path_components2))
+    
+    # 至少比较4个组件（确保包含日期和部分标题）
+    comp_length = min(min_length, 5)
+    
+    return path_components1[:comp_length] == path_components2[:comp_length]
 
 # 截取屏幕（使用PIL截屏并转换为OpenCV格式）
 def capture_screen():

@@ -90,13 +90,13 @@ def find_image_on_screen(template, threshold=0.9):
     return None, None
 
 # 设置Chrome选项以提高性能
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
-    chrome_options.page_load_strategy = 'eager'  # 使用eager策略，DOM准备好就开始
+chrome_options = Options()
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
+chrome_options.page_load_strategy = 'eager'  # 使用eager策略，DOM准备好就开始
 
 # 设置 ChromeDriver
 service = Service(executable_path=chrome_driver_path)

@@ -177,14 +177,14 @@ function scrapeAndDownload() {
 
 // 专门处理WSJ的抓取
 function handleWSJScraping() {
-    // 第一次抓取但不下载
-    scrapeWSJ(false);
+    // // 第一次抓取但不下载
+    // scrapeWSJ(false);
 
-    // 2秒后进行第二次抓取并下载
-    setTimeout(() => {
-        console.log('执行WSJ的第二次抓取...');
-        scrapeWSJ(true);
-    }, 2000);
+    // // 2秒后进行第二次抓取并下载
+    // setTimeout(() => {
+    //     console.log('执行WSJ的第二次抓取...');
+    //     scrapeWSJ(true);
+    // }, 1000);
 }
 
 // 根据网站使用不同的事件监听方式
@@ -239,95 +239,3 @@ if (hostname.includes('bloomberg.com')) {
         }, 2 * 60 * 1000);
     }, 3000);
 }
-
-// 当页面加载完成后自动执行抓取
-// window.addEventListener('load', () => {
-//     console.log('News Scraper content script loaded for: ' + window.location.hostname);
-//     scrapeAndDownload();
-// });
-
-// 节流函数
-// function throttle(func, limit) {
-//     let inThrottle;
-//     return function () {
-//         const args = arguments;
-//         const context = this;
-//         if (!inThrottle) {
-//             func.apply(context, args);
-//             inThrottle = true;
-//             setTimeout(() => inThrottle = false, limit);
-//         }
-//     }
-// }
-
-// // 增强版抓取器
-// function enhancedScraper() {
-//     let lastScrapedContent = new Set();
-//     let isProcessing = false;
-
-//     const checkNewContent = throttle(() => {
-//         if (isProcessing) return;
-//         isProcessing = true;
-
-//         try {
-//             const hostname = window.location.hostname;
-//             if (hostname.includes('bloomberg.com')) {
-//                 const links = document.querySelectorAll("a[href*='/2025']");
-//                 const currentContent = new Set([...links].map(link => link.href));
-
-//                 const hasNewContent = [...currentContent].some(href => !lastScrapedContent.has(href));
-
-//                 if (hasNewContent) {
-//                     scrapeBloomberg();
-//                     lastScrapedContent = currentContent;
-//                 }
-//             } else if (hostname.includes('wsj.com')) {
-//                 const titleElements = document.querySelectorAll('h3.css-fsvegl a, article h2 a, .WSJTheme--headline--7VCzo7Ay a, .css-g4pnb7, .css-2pp34t');
-//                 const currentContent = new Set([...titleElements].map(elem => elem.href));
-
-//                 const hasNewContent = [...currentContent].some(href => !lastScrapedContent.has(href));
-
-//                 if (hasNewContent) {
-//                     scrapeWSJ();
-//                     lastScrapedContent = currentContent;
-//                 }
-//             }
-//         } finally {
-//             isProcessing = false;
-//         }
-//     }, 1000);
-
-//     // 初始加载执行
-//     window.addEventListener('load', () => {
-//         console.log('News Scraper content script loaded for: ' + window.location.hostname);
-//         checkNewContent();
-//     });
-
-//     // 设置 MutationObserver
-//     const observer = new MutationObserver(() => {
-//         checkNewContent();
-//     });
-
-//     // 配置 observer
-//     observer.observe(document.body, {
-//         childList: true,
-//         subtree: true,
-//         characterData: true
-//     });
-
-//     // 监听滚动事件
-//     window.addEventListener('scroll', checkNewContent);
-
-//     // 定期检查
-//     const intervalCheck = setInterval(checkNewContent, 5000);
-
-//     // 10分钟后清理
-//     setTimeout(() => {
-//         clearInterval(intervalCheck);
-//         observer.disconnect();
-//         window.removeEventListener('scroll', checkNewContent);
-//     }, 10 * 60 * 1000);
-// }
-
-// // 启动增强版抓取器
-// enhancedScraper();

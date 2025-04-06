@@ -130,19 +130,100 @@ def process_vtt_file(input_file, output_file):
             final_blocks.append(current_block)
             i += 1
     
-    # 添加编号
-    numbered_blocks = []
-    counter = 1
+    # 调整时间戳，确保当前块的开始时间不早于前一个块的结束时间
+    adjusted_blocks = []
+    prev_end_time = None
     
     for block in final_blocks:
         lines = block.strip().split('\n')
-        numbered_block = f"{counter}\n{block}"
+        timestamp_pattern = r'^\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}$'
+        
+        # 找到时间戳行
+        timestamp_line = None
+        timestamp_index = -1
+        for i, line in enumerate(lines):
+            if re.match(timestamp_pattern, line):
+                timestamp_line = line
+                timestamp_index = i
+                break
+        
+        if timestamp_line and timestamp_index != -1:
+            times = timestamp_line.split(' --> ')
+            start_time = times[0]
+            end_time = times[1]
+            
+            # 检查当前开始时间是否早于前一个结束时间
+            if prev_end_time and is_time_earlier(start_time, prev_end_time):
+                # 将当前开始时间设置为前一个结束时间加1毫秒
+                new_start_time = add_millisecond(prev_end_time)
+                new_timestamp = f"{new_start_time} --> {end_time}"
+                lines[timestamp_index] = new_timestamp
+                
+                # 如果新的开始时间晚于结束时间，将结束时间也调整
+                if is_time_earlier(end_time, new_start_time):
+                    lines[timestamp_index] = f"{new_start_time} --> {new_start_time}"
+            
+            prev_end_time = end_time
+        
+        adjusted_blocks.append('\n'.join(lines))
+    
+    # 添加编号并替换小数点为逗号
+    numbered_blocks = []
+    counter = 1
+    
+    for block in adjusted_blocks:
+        lines = block.strip().split('\n')
+        # 替换时间戳中的小数点为逗号
+        for i, line in enumerate(lines):
+            timestamp_pattern = r'^\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}$'
+            if re.match(timestamp_pattern, line):
+                lines[i] = line.replace('.', ',')
+        
+        numbered_block = f"{counter}\n{'\n'.join(lines)}"
         numbered_blocks.append(numbered_block)
         counter += 1
     
     # 写入处理后的内容到输出文件
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write('\n\n'.join(numbered_blocks))
+
+# 检查时间t1是否早于t2
+def is_time_earlier(t1, t2):
+    t1_parts = t1.split(':')
+    t2_parts = t2.split(':')
+    
+    # 转换为总毫秒数
+    t1_ms = (int(t1_parts[0]) * 3600 + int(t1_parts[1]) * 60 + float(t1_parts[2])) * 1000
+    t2_ms = (int(t2_parts[0]) * 3600 + int(t2_parts[1]) * 60 + float(t2_parts[2])) * 1000
+    
+    return t1_ms < t2_ms
+
+# 向时间添加1毫秒
+def add_millisecond(time_str):
+    hours, minutes, seconds = time_str.split(':')
+    
+    # 将字符串转换为数字
+    hours_int = int(hours)
+    minutes_int = int(minutes)
+    seconds_float = float(seconds)
+    
+    # 增加1毫秒(0.001秒)
+    seconds_float += 0.001
+    
+    # 处理进位
+    if seconds_float >= 60:
+        seconds_float -= 60
+        minutes_int += 1
+        if minutes_int >= 60:
+            minutes_int -= 60
+            hours_int += 1
+    
+    # 格式化时间并确保毫秒部分有3位
+    formatted_seconds = f"{seconds_float:.3f}"
+    if len(formatted_seconds.split('.')[0]) == 1:
+        formatted_seconds = f"0{formatted_seconds}"
+    
+    return f"{hours_int:02d}:{minutes_int:02d}:{formatted_seconds}"
 
 # 用法示例
 input_file = '/Users/yanzhang/Downloads/backup/local_video/output/transcript.vtt'

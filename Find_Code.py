@@ -17,7 +17,8 @@ searchFolders = [
     # "/Users/yanzhang/Documents/LuxuryBox",
     "/Users/yanzhang/Downloads/backup/TXT",
     "/Users/yanzhang/Documents/Books",
-    "/Users/yanzhang/Documents/News/done"
+    "/Users/yanzhang/Documents/News/done",
+    "/Users/yanzhang/Documents/Xcode/Indices/Finance"  # 添加Swift文件目录
     # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
 ]
 
@@ -274,7 +275,7 @@ def handle_file(root, name, directory, keywords, matched_files):  # 改为 keywo
         return
         
     # 检查文件内容
-    if item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md')):
+    if item_path.endswith(('.txt', '.py', '.json', '.js', '.css', '.html', '.csv', '.md', '.swift')):  # 添加 .swift
         try:
             with open(item_path, 'r', encoding='utf-8') as file:
                 content = file.read().lower()

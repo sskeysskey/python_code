@@ -167,7 +167,7 @@ def main():
             f.write(content)
             
     template_paths = {
-        "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
+        # "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
         "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
     }
@@ -183,46 +183,49 @@ def main():
     # 引入一个标志位来控制逻辑流转
     skip_to_clipboard = False
 
-    found = False
-    timeout_stop = time.time() + 5
-    while not found and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(templates["stop"])
-        if location:
-            found = True
-            print(f"找到图片位置: {location}")
-        else:
-            print("未找到图片，继续监控...")
-            pyautogui.scroll(-80)
-            sleep(1)
+    # found = False
+    # timeout_stop = time.time() + 5
+    # while not found and time.time() < timeout_stop:
+    #     location, shape = find_image_on_screen(templates["stop"])
+    #     if location:
+    #         found = True
+    #         print(f"找到图片位置: {location}")
+    #     else:
+    #         print("未找到图片，继续监控...")
+    #         pyautogui.scroll(-80)
+    #         sleep(1)
 
-    if time.time() > timeout_stop:
-        print("在15秒内未找到图片，退出程序。")
+    # if time.time() > timeout_stop:
+    #     print("在15秒内未找到图片，退出程序。")
 
     # 检查是否找到outofline图片
-    location, shape = find_image_on_screen(templates["outofline"])
-    if location:
-        print(f"找到outofline图片位置: {location}")
-        skip_to_clipboard = True  # 设置标志位，跳过后续部分
+    outfound = False
+    timeout_outstop = time.time() + 15
+    while not outfound and time.time() < timeout_outstop:
+        location, shape = find_image_on_screen(templates["outofline"])
+        if location:
+            print(f"找到outofline图片位置: {location}")
+            skip_to_clipboard = True  # 设置标志位，跳过后续部分
 
     if not skip_to_clipboard:
-        found_stop = True
-        timeout_pause = time.time() + 180
-        while found_stop and time.time() < timeout_pause:
-            location, shape = find_image_on_screen(templates["stop"])
-            if location:
-                print("找到stop图了，准备下一步...")
-                pyautogui.scroll(-80)
-                sleep(1)  # 继续监控
-            else:
-                print("没找到图片，继续执行...")
-                pyautogui.scroll(-80)
-                location, shape = find_image_on_screen(templates["stop"])
-                if not location:
-                    found_stop = False
+        # found_stop = True
+        # timeout_pause = time.time() + 180
+        # while found_stop and time.time() < timeout_pause:
+        #     location, shape = find_image_on_screen(templates["stop"])
+        #     if location:
+        #         print("找到stop图了，准备下一步...")
+        #         pyautogui.scroll(-80)
+        #         sleep(1)  # 继续监控
+        #     else:
+        #         print("没找到图片，继续执行...")
+        #         pyautogui.scroll(-80)
+        #         location, shape = find_image_on_screen(templates["stop"])
+        #         if not location:
+        #             found_stop = False
         
-        if time.time() > timeout_pause:
-            print("在2分钟内仍能找到图片，刷新页面。")
-            refresh_page()
+        # if time.time() > timeout_pause:
+        #     print("在2分钟内仍能找到图片，刷新页面。")
+        #     refresh_page()
 
         pyautogui.scroll(-80)
         sleep(1.5)

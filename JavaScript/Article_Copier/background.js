@@ -260,7 +260,7 @@ function extractAndCopy() {
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                  filename = `ft-${cleanedDescription}.jpg`;
+                  filename = `${cleanedDescription}.jpg`;
 
                   if (filename.length > 200) {
                     filename = filename.substring(0, 196) + '.jpg';
@@ -272,7 +272,7 @@ function extractAndCopy() {
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                  filename = `ft-${cleanedAlt}.jpg`;
+                  filename = `${cleanedAlt}.jpg`;
 
                   // 如果文件名超过200个字符，截取前196个字符
                   if (filename.length > 200) {
@@ -308,7 +308,7 @@ function extractAndCopy() {
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                  filename = `ft-${cleanedDescription}.jpg`;
+                  filename = `${cleanedDescription}.jpg`;
 
                   if (filename.length > 200) {
                     filename = filename.substring(0, 196) + '.jpg';
@@ -320,7 +320,7 @@ function extractAndCopy() {
                     .replace(/\s+/g, ' ')
                     .trim();
 
-                  filename = `ft-${cleanedAlt}.jpg`;
+                  filename = `${cleanedAlt}.jpg`;
 
                   if (filename.length > 200) {
                     filename = filename.substring(0, 196) + '.jpg';
@@ -486,15 +486,29 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (caption) {
-                // 如果没有alt但有caption，使用caption作为文件名
-                filename = `bloomberg-${caption
-                  .replace(/&nbsp;/g, ' ')
-                  .replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
+                // 修改：处理caption文本，移除"Photographer"及后面的内容
+                let cleanedCaption = caption.replace(/&nbsp;/g, ' ');
+
+                // 移除"Photographer"及其后的内容
+                const photographerIndex = cleanedCaption.indexOf('Photographer');
+                if (photographerIndex !== -1) {
+                  cleanedCaption = cleanedCaption.substring(0, photographerIndex).trim();
+                }
+
+                // 替换非法字符
+                filename = `${cleanedCaption.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else if (img.alt) {
-                // 使用alt文本作为文件名，并替换&nbsp;为空格
-                filename = `bloomberg-${img.alt
-                  .replace(/&nbsp;/g, ' ') // 替换&nbsp;为空格
-                  .replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
+                // 使用alt文本作为文件名
+                let cleanedAlt = img.alt.replace(/&nbsp;/g, ' ');
+
+                // 移除"Photographer"及其后的内容
+                const photographerIndex = cleanedAlt.indexOf('Photographer');
+                if (photographerIndex !== -1) {
+                  cleanedAlt = cleanedAlt.substring(0, photographerIndex).trim();
+                }
+
+                // 替换非法字符
+                filename = `${cleanedAlt.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else {
                 // 如果既没有alt也没有caption，使用时间戳
                 const timestamp = new Date().getTime();

@@ -22,7 +22,7 @@ def SRT_File(clipboard_content):
     match = re.search(r'^(\d+).*\n', clipboard_content, re.MULTILINE)
     
     # 固定文件名
-    file_path = '/Users/yanzhang/Movies/subtitle.srt'
+    file_path = '/Users/yanzhang/Downloads/金燕/subtitle.srt'
 
     if match:
         start_index = match.start()  # 获取匹配行的起始索引

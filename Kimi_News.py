@@ -230,7 +230,7 @@ def main():
         pyautogui.scroll(-80)
         sleep(1.5)
         found_copy = False
-        timeout_copy = time.time() + 30
+        timeout_copy = time.time() + 60
         while not found_copy and time.time() < timeout_copy:
             location, shape = find_image_on_screen(templates["copy"])
             if location:

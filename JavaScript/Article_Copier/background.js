@@ -884,7 +884,7 @@ function extractAndCopy() {
 
               if (imageDescription) {
                 // 使用图片描述作为文件名,替换非法字符,并加上时间戳
-                filename = `economist-${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}-${timestamp}.${fileExtension}`;
+                filename = `${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
               } else {
                 // 如果没有描述,使用image加时间戳
                 filename = `economist-image-${timestamp}.${fileExtension}`;

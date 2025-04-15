@@ -59,7 +59,7 @@ def click_retry_and_refresh():
     """
     print("找到poe_retry图片，执行页面刷新操作...")
     pyautogui.click(*SCREEN_CLICK_COORDS)
-    time.sleep(0.5)
+    time.sleep(4)
     refresh_page()
 
 
@@ -104,7 +104,7 @@ def main(mode):
         if location:
             print("找到poe_stop图片，继续监控...")
             pyautogui.scroll(SCROLL_AMOUNT_LARGE)
-            location_retry, shape_retry = find_image_on_screen(templates["retry"])
+            location_retry = find_image_on_screen(templates["retry"])
             if location_retry:
                 click_retry_and_refresh()
         else:
@@ -123,10 +123,6 @@ def main(mode):
             else:
                 print("未找到thumb图片，继续监控...")
                 pyautogui.scroll(SCROLL_AMOUNT)
-                # 如果retry出现则刷新
-                # location_retry, shape_retry = find_image_on_screen(templates["retry"])
-                # if location_retry:
-                #     click_retry_and_refresh()
                 time.sleep(1)
 
         if time.time() > timeout_thumb:
@@ -137,7 +133,7 @@ def main(mode):
         found_compare = False
         timeout_compare = time.time() + 25
         while not found_compare and time.time() < timeout_compare:
-            location_compare, shape_compare = find_image_on_screen(templates["compare"])
+            location_compare = find_image_on_screen(templates["compare"])
             if location_compare:
                 found_compare = True
             else:
@@ -174,9 +170,6 @@ def main(mode):
             else:
                 print(f"找到thumb图片位置: {location}")
                 pyautogui.scroll(SCROLL_AMOUNT)
-                # location_retry, shape_retry = find_image_on_screen(templates["retry"])
-                # if location_retry:
-                #     click_retry_and_refresh()
                 time.sleep(0.5)
 
     # 找 copy 图片，点击它

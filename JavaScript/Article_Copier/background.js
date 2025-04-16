@@ -495,6 +495,12 @@ function extractAndCopy() {
                   cleanedCaption = cleanedCaption.substring(0, photographerIndex).trim();
                 }
 
+                // 新增：移除"Source-"及其后的内容
+                const sourceIndex = cleanedCaption.indexOf('Source-');
+                if (sourceIndex !== -1) {
+                  cleanedCaption = cleanedCaption.substring(0, sourceIndex).trim();
+                }
+
                 // 替换非法字符
                 filename = `${cleanedCaption.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else if (img.alt) {
@@ -505,6 +511,12 @@ function extractAndCopy() {
                 const photographerIndex = cleanedAlt.indexOf('Photographer');
                 if (photographerIndex !== -1) {
                   cleanedAlt = cleanedAlt.substring(0, photographerIndex).trim();
+                }
+
+                // 新增：移除"Source-"及其后的内容
+                const sourceIndex = cleanedAlt.indexOf('Source-');
+                if (sourceIndex !== -1) {
+                  cleanedAlt = cleanedAlt.substring(0, sourceIndex).trim();
                 }
 
                 // 替换非法字符

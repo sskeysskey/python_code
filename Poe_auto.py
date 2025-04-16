@@ -1,5 +1,4 @@
 # o1优化后代码
-
 import cv2
 import time
 import argparse
@@ -104,7 +103,7 @@ def main(mode):
         if location:
             print("找到poe_stop图片，继续监控...")
             pyautogui.scroll(SCROLL_AMOUNT_LARGE)
-            location_retry = find_image_on_screen(templates["retry"])
+            location_retry, shape_retry = find_image_on_screen(templates["retry"])
             if location_retry:
                 click_retry_and_refresh()
         else:
@@ -133,7 +132,7 @@ def main(mode):
         found_compare = False
         timeout_compare = time.time() + 25
         while not found_compare and time.time() < timeout_compare:
-            location_compare = find_image_on_screen(templates["compare"])
+            location_compare, shape_compare = find_image_on_screen(templates["compare"])
             if location_compare:
                 found_compare = True
             else:

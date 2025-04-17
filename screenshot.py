@@ -103,11 +103,11 @@ class ScreenDetector:
                 if self.clickValue:
                     self._perform_click(location, shape)
                 print(f"找到图片 {template_name} 位置: {location}")
-                
+
                 # 只有当检测多个模板时才输出特殊标记
                 if len(self.template_name_list) > 1:
                     print(f"FOUND_IMAGE:{template_name}")
-                return template_name
+                return template_name            
             
             print("未找到任何目标图片，继续监控...")
             sleep(1)

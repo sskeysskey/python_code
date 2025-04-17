@@ -58,7 +58,7 @@ def click_retry_and_refresh():
     """
     print("找到poe_retry图片，执行页面刷新操作...")
     pyautogui.click(*SCREEN_CLICK_COORDS)
-    time.sleep(4)
+    time.sleep(0.5)
     refresh_page()
 
 
@@ -106,6 +106,7 @@ def main(mode):
             location_retry, shape_retry = find_image_on_screen(templates["retry"])
             if location_retry:
                 click_retry_and_refresh()
+                monitoring_stop = False
         else:
             print("Stop图片没有了...")
             monitoring_stop = False

@@ -20,6 +20,12 @@ class ScreenDetector:
         self.y_offset = y_offset
         self.nth_match = max(1, nth_match)
         
+        # 存储模板名称列表，用于判断是否有多个模板
+        if isinstance(template_names, str):
+            self.template_name_list = [name.strip() for name in template_names.split(',')]
+        else:
+            self.template_name_list = template_names
+        
         # 优化模板加载
         self._load_templates(template_names)
 
@@ -86,8 +92,8 @@ class ScreenDetector:
         
         pyautogui.click(center_x, center_y)
 
-    def run1(self) -> None:
-        """优化的运行方法1"""
+    def run1(self) -> str:
+        """优化的运行方法1，返回找到的图片名"""
         timeout = time.time() + 590
         
         while time.time() < timeout:
@@ -97,12 +103,17 @@ class ScreenDetector:
                 if self.clickValue:
                     self._perform_click(location, shape)
                 print(f"找到图片 {template_name} 位置: {location}")
-                break
+                
+                # 只有当检测多个模板时才输出特殊标记
+                if len(self.template_name_list) > 1:
+                    print(f"FOUND_IMAGE:{template_name}")
+                return template_name
             
             print("未找到任何目标图片，继续监控...")
             sleep(1)
-        else:
-            print("在590秒内未找到图片，退出程序。")
+        
+        print("在590秒内未找到图片，退出程序。")
+        return "TIMEOUT"
 
     def run2(self) -> None:
         """优化的运行方法2"""

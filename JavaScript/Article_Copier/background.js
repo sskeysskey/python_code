@@ -486,40 +486,25 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (caption) {
-                // 修改：处理caption文本，移除"Photographer"及后面的内容
-                let cleanedCaption = caption.replace(/&nbsp;/g, ' ');
+                let cleanedCaption = caption.replace(/&nbsp;/g, ' ')
+                  // 移除 Photographer 及其后的内容
+                  .replace(/Photographer[\s\S]*$/i, '');
 
-                // 移除"Photographer"及其后的内容
-                const photographerIndex = cleanedCaption.indexOf('Photographer');
-                if (photographerIndex !== -1) {
-                  cleanedCaption = cleanedCaption.substring(0, photographerIndex).trim();
-                }
+                // 一次性移除 Source- / Source: / Source— 等及其后面的所有内容
+                cleanedCaption = cleanedCaption
+                  .replace(/\s*(?:Source[-:–—]?)\s*.*$/i, '')
+                  .trim();
 
-                // 新增：移除"Source-"及其后的内容
-                const sourceIndex = cleanedCaption.indexOf('Source-');
-                if (sourceIndex !== -1) {
-                  cleanedCaption = cleanedCaption.substring(0, sourceIndex).trim();
-                }
-
-                // 替换非法字符
                 filename = `${cleanedCaption.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
-              } else if (img.alt) {
-                // 使用alt文本作为文件名
-                let cleanedAlt = img.alt.replace(/&nbsp;/g, ' ');
+              }
+              else if (img.alt) {
+                let cleanedAlt = img.alt.replace(/&nbsp;/g, ' ')
+                  .replace(/Photographer[\s\S]*$/i, '');
 
-                // 移除"Photographer"及其后的内容
-                const photographerIndex = cleanedAlt.indexOf('Photographer');
-                if (photographerIndex !== -1) {
-                  cleanedAlt = cleanedAlt.substring(0, photographerIndex).trim();
-                }
+                cleanedAlt = cleanedAlt
+                  .replace(/\s*(?:Source[-:–—]?)\s*.*$/i, '')
+                  .trim();
 
-                // 新增：移除"Source-"及其后的内容
-                const sourceIndex = cleanedAlt.indexOf('Source-');
-                if (sourceIndex !== -1) {
-                  cleanedAlt = cleanedAlt.substring(0, sourceIndex).trim();
-                }
-
-                // 替换非法字符
                 filename = `${cleanedAlt.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
               } else {
                 // 如果既没有alt也没有caption，使用时间戳

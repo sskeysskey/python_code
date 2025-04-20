@@ -1,4 +1,40 @@
 # ——————————————————————————————————————————————————————————————
+# "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
+
+# found = False
+    # timeout_stop = time.time() + 5
+    # while not found and time.time() < timeout_stop:
+    #     location, shape = find_image_on_screen(templates["stop"])
+    #     if location:
+    #         found = True
+    #         print(f"找到图片位置: {location}")
+    #     else:
+    #         print("未找到图片，继续监控...")
+    #         pyautogui.scroll(-80)
+    #         sleep(1)
+
+    # if time.time() > timeout_stop:
+    #     print("在15秒内未找到图片，退出程序。")
+
+# found_stop = True
+        # timeout_pause = time.time() + 180
+        # while found_stop and time.time() < timeout_pause:
+        #     location, shape = find_image_on_screen(templates["stop"])
+        #     if location:
+        #         print("找到stop图了，准备下一步...")
+        #         pyautogui.scroll(-80)
+        #         sleep(1)  # 继续监控
+        #     else:
+        #         print("没找到图片，继续执行...")
+        #         pyautogui.scroll(-80)
+        #         location, shape = find_image_on_screen(templates["stop"])
+        #         if not location:
+        #             found_stop = False
+        
+        # if time.time() > timeout_pause:
+        #     print("在2分钟内仍能找到图片，刷新页面。")
+        #     refresh_page()
+# ——————————————————————————————————————————————————————————————
 # 检查是否有head标签，如果没有则创建
 if not soup.head:
     head = soup.new_tag('head')

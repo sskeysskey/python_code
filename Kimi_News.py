@@ -9,7 +9,6 @@ import pyperclip
 import subprocess
 import pyautogui
 import numpy as np
-from time import sleep
 from PIL import ImageGrab
 from datetime import datetime
 
@@ -167,7 +166,6 @@ def main():
             f.write(content)
             
     template_paths = {
-        # "stop": "/Users/yanzhang/Documents/python_code/Resource/Kimi_stop.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
         "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
     }
@@ -180,80 +178,37 @@ def main():
             raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
         templates[key] = template
 
-    # 引入一个标志位来控制逻辑流转
-    skip_to_clipboard = False
+    timeout = time.time() + 60  # 60 秒后超时
+    found = False
+    while time.time() < timeout and not found:
+        # 1) 尝试找 outofline
+        loc_out, shape_out = find_image_on_screen(templates["outofline"])
+        if loc_out:
+            print(f"找到 outofline 图片位置: {loc_out}")
+            found = True
+            break
 
-    # found = False
-    # timeout_stop = time.time() + 5
-    # while not found and time.time() < timeout_stop:
-    #     location, shape = find_image_on_screen(templates["stop"])
-    #     if location:
-    #         found = True
-    #         print(f"找到图片位置: {location}")
-    #     else:
-    #         print("未找到图片，继续监控...")
-    #         pyautogui.scroll(-80)
-    #         sleep(1)
+        # 2) 再尝试找 copy
+        loc_cp, shape_cp = find_image_on_screen(templates["copy"])
+        if loc_cp:
+            print("找到 copy 图，准备点击 copy...")
+            # 计算图片中心
+            center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
+            center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
 
-    # if time.time() > timeout_stop:
-    #     print("在15秒内未找到图片，退出程序。")
+            # 如果想在中心稍微偏移几像素：
+            center_y -= 2
 
-    # 检查是否找到outofline图片
-    outfound = False
-    timeout_outstop = time.time() + 15
-    while not outfound and time.time() < timeout_outstop:
-        location, shape = find_image_on_screen(templates["outofline"])
-        if location:
-            print(f"找到outofline图片位置: {location}")
-            skip_to_clipboard = True  # 设置标志位，跳过后续部分
+            pyautogui.click(center_x, center_y)
+            found = True
+            break
 
-    if not skip_to_clipboard:
-        # found_stop = True
-        # timeout_pause = time.time() + 180
-        # while found_stop and time.time() < timeout_pause:
-        #     location, shape = find_image_on_screen(templates["stop"])
-        #     if location:
-        #         print("找到stop图了，准备下一步...")
-        #         pyautogui.scroll(-80)
-        #         sleep(1)  # 继续监控
-        #     else:
-        #         print("没找到图片，继续执行...")
-        #         pyautogui.scroll(-80)
-        #         location, shape = find_image_on_screen(templates["stop"])
-        #         if not location:
-        #             found_stop = False
-        
-        # if time.time() > timeout_pause:
-        #     print("在2分钟内仍能找到图片，刷新页面。")
-        #     refresh_page()
-
+        # 3) 两张都没找到，滚一点、等一点，然后再试
         pyautogui.scroll(-80)
-        sleep(1.5)
-        found_copy = False
-        timeout_copy = time.time() + 60
-        while not found_copy and time.time() < timeout_copy:
-            location, shape = find_image_on_screen(templates["copy"])
-            if location:
-                print("找到copy图了，准备点击copy...")
-                # 计算中心坐标
-                center_x = (location[0] + shape[1] // 2) // 2
-                center_y = (location[1] + shape[0] // 2) // 2
+        time.sleep(0.5)
 
-                modify_x = center_x
-                modify_y = center_y - 2
-
-                # 鼠标点击中心坐标
-                pyautogui.click(modify_x, modify_y)
-                found_copy = True
-            else:
-                print("没找到图片，继续执行...")
-                pyautogui.scroll(-80)
-                location, shape = find_image_on_screen(templates["outofline"])
-                if location:
-                    print(f"找到图片位置: {location}")
-                    skip_to_clipboard = True  # 设置标志位，跳过后续部分
-                    break  # 跳出循环
-    sleep(0.3)
+    if not found:
+        print("60秒内未找到 outofline 或 copy 图片，退出或执行兜底逻辑。")
 
     # 跳转到clipboard_content处理部分
     clipboard_content = get_clipboard_content()
@@ -290,7 +245,7 @@ def main():
         print(f"Error running AppleScript: {e}")
     
     move_and_record_images(url)
-    sleep(0.3)
+    time.sleep(0.3)
     os.remove(SEGMENT_FILE_PATH)
     os.remove(SITE_FILE_PATH)
 

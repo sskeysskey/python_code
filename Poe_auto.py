@@ -9,11 +9,10 @@ import sys
 from PIL import ImageGrab
 
 # 固定点击坐标与滚动值，可根据需要自行调整
-SCREEN_CLICK_COORDS = (591, 574)
+SCREEN_CLICK_COORDS = (355, 545)
 SCROLL_AMOUNT = -80
 SCROLL_AMOUNT_LARGE = -120
 SECONDARY_CLICK_COORDS = (618, 458)
-
 
 def capture_screen():
     """
@@ -21,7 +20,6 @@ def capture_screen():
     """
     screenshot = ImageGrab.grab()
     return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-
 
 def find_image_on_screen(template, threshold=0.9):
     """
@@ -37,6 +35,14 @@ def find_image_on_screen(template, threshold=0.9):
         return max_loc, template.shape
     return None, None
 
+def click_retry_and_refresh():
+    """
+    找到retry图片后，点击固定坐标并执行页面刷新
+    """
+    print("找到poe_retry图片，执行页面刷新操作...")
+    pyautogui.click(*SCREEN_CLICK_COORDS)
+    time.sleep(0.5)
+    refresh_page()
 
 def refresh_page():
     """
@@ -51,21 +57,9 @@ def refresh_page():
     # 给系统一点时间来完成操作
     time.sleep(0.5)
 
-
-def click_retry_and_refresh():
-    """
-    找到retry图片后，点击固定坐标并执行页面刷新
-    """
-    print("找到poe_retry图片，执行页面刷新操作...")
-    pyautogui.click(*SCREEN_CLICK_COORDS)
-    time.sleep(0.5)
-    refresh_page()
-
-
 def main(mode):
     # 定义模板路径字典
     template_paths = {
-        "stop": "/Users/yanzhang/Documents/python_code/Resource/poe_stop.png",
         "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
         "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
         "compare": "/Users/yanzhang/Documents/python_code/Resource/poe_compare.png",
@@ -81,35 +75,32 @@ def main(mode):
             raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
         templates[key] = template
 
-    # 第一阶段：在 10 秒内尝试找到 stop 图片
-    found_stop_image = False
-    timeout_stop = time.time() + 10
-    while not found_stop_image and time.time() < timeout_stop:
-        location, shape = find_image_on_screen(templates["stop"])
-        if location:
-            print(f"找到图片位置: {location}")
-            pyautogui.moveTo(*SCREEN_CLICK_COORDS)
-            found_stop_image = True
-        else:
-            print("未找到stop图片，继续监控...")
-            pyautogui.moveTo(*SCREEN_CLICK_COORDS)
-            pyautogui.scroll(SCROLL_AMOUNT)
-            time.sleep(1)
+    monitoring_stop = False
+    timeout_monitoring = time.time() + 65
+    while not monitoring_stop and time.time() < timeout_monitoring:
+        # 1. 找 retry
+        location_retry, shape_retry = find_image_on_screen(templates["retry"])
+        if location_retry:
+            print("找到 retry，执行重试并刷新")
+            click_retry_and_refresh()
+            time.sleep(0.5)
+            # 刷新后页面状态变化，需要重新从头寻找
+            monitoring_stop = True
 
-    # 第二阶段：一直检测“stop图片是否还在”，如果在则尝试找“retry”图片并刷新
-    monitoring_stop = True
-    while monitoring_stop:
-        location, shape = find_image_on_screen(templates["stop"])
+        # 2. 找 thumb
+        location, shape = find_image_on_screen(templates["thumb"])
         if location:
-            print("找到poe_stop图片，继续监控...")
-            pyautogui.scroll(SCROLL_AMOUNT_LARGE)
-            location_retry, shape_retry = find_image_on_screen(templates["retry"])
-            if location_retry:
-                click_retry_and_refresh()
-                monitoring_stop = False
-        else:
-            print("Stop图片没有了...")
-            monitoring_stop = False
+            print("找到 thumb，退出循环，继续后续逻辑")
+            monitoring_stop = True
+
+        # 3. 都没找到，就滚动屏幕再试
+        print("未找到 retry 或 thumb，滚动页面后重试...")
+        pyautogui.scroll(SCROLL_AMOUNT)
+        time.sleep(0.5)
+
+    if not monitoring_stop:
+        print("60秒内未找到 retry 或 thumb 图片，退出或执行兜底逻辑。")
+        sys.exit()
 
     # 如果模式是 long
     if mode == 'long':
@@ -199,7 +190,6 @@ def main(mode):
             found_success_image = True
         else:
             time.sleep(1)  # 每次检测间隔1秒
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process files based on the given mode.')

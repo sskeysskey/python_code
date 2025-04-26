@@ -996,7 +996,7 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (img.alt && img.alt.trim()) {
-                filename = `technologyreview-${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
+                filename = `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
               } else {
                 const timestamp = new Date().getTime();
                 filename = `technologyreview-image-${timestamp}`;

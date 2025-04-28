@@ -486,9 +486,12 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (caption) {
-                let cleanedCaption = caption.replace(/&nbsp;/g, ' ')
-                  // 移除 Photographer 及其后的内容
-                  .replace(/Photographer[\s\S]*$/i, '');
+                let cleanedCaption = caption
+                  .replace(/&nbsp;/g, ' ')
+                  // 移除 Photographer- 及其后的内容
+                  .replace(/Photographer-[\s\S]*$/i, '')
+                  // 移除 Photograph- 及其后的内容
+                  .replace(/Photograph-[\s\S]*$/i, '');
 
                 // 一次性移除 Source- / Source: / Source— 等及其后面的所有内容
                 cleanedCaption = cleanedCaption

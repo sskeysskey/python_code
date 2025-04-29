@@ -3,9 +3,9 @@ import pathlib
 import subprocess
 import logging
 import re
-from zipfile import ZipFile
+# from zipfile import ZipFile
 from typing import List, Dict, Any
-import json
+# import json
 
 import numpy as np
 import mlx.core as mx
@@ -38,11 +38,11 @@ LANGUAGES = {
     "es": "Spanish",
 }
 
-APP_DIR    = pathlib.Path(__file__).parent
-OUTPUT_DIR = APP_DIR / "output"
-TEMP_DIR   = APP_DIR / "temp"
-OUTPUT_DIR.mkdir(exist_ok=True)
-TEMP_DIR.mkdir(exist_ok=True)
+BASE_DIR    = pathlib.Path("/Users/yanzhang/Downloads")
+OUTPUT_DIR  = BASE_DIR
+TEMP_DIR   = pathlib.Path("/tmp")
+
+# /tmp 一般自带，无需 mkdir
 
 # 音频预处理参数
 AUDIO_PARAMS = {
@@ -250,6 +250,7 @@ def write_subtitles(segments: List[Dict[str, Any]],
                         t0 = prev_end + 0.001
                 write_subtitles.prev_end = t1
                 
+                # 这里只有 srt 和 vtt，实际只会调用 srt
                 if fmt == "srt":
                     f.write(f"{idx}\n")
                     f.write(f"{format_timestamp(t0)} --> {format_timestamp(t1)}\n")
@@ -259,16 +260,16 @@ def write_subtitles(segments: List[Dict[str, Any]],
                     f.write("\n".join(part) + "\n\n")
                 idx += 1
 
-def write_transcript_txt(segments: List[Dict[str, Any]],
-                         out_path: str,
-                         remove_fillers: bool = True) -> None:
-    with open(out_path, "w", encoding="utf-8") as f:
-        for seg in segments:
-            txt = seg.get("text", "")
-            if remove_fillers:
-                txt = re.sub(r"\b(um|uh|er|ah|oh)\b", "", txt).strip()
-            txt = post_process_text(txt)
-            f.write(txt + "\n")
+# def write_transcript_txt(segments: List[Dict[str, Any]],
+#                          out_path: str,
+#                          remove_fillers: bool = True) -> None:
+#     with open(out_path, "w", encoding="utf-8") as f:
+#         for seg in segments:
+#             txt = seg.get("text", "")
+#             if remove_fillers:
+#                 txt = re.sub(r"\b(um|uh|er|ah|oh)\b", "", txt).strip()
+#             txt = post_process_text(txt)
+#             f.write(txt + "\n")
 
 def run_pipeline(video_path: str,
                  model_key: str = "large-v3",
@@ -281,37 +282,37 @@ def run_pipeline(video_path: str,
         audio = prepare_audio(video_path)
         result = process_audio(model_repo, audio, language)
         
-        # 输出路径
-        base = OUTPUT_DIR / pathlib.Path(video_path).stem
-        vtt_path = f"{base}.vtt"
+        # 只输出 .srt
+        base     = OUTPUT_DIR / pathlib.Path(video_path).stem
+        # vtt_path = f"{base}.vtt"
         srt_path = f"{base}.srt"
-        txt_path = f"{base}.txt"
-        json_path = f"{base}.json"
-        zip_path = f"{base}.zip"
+        # txt_path = f"{base}.txt"
+        # json_path = f"{base}.json"
+        # zip_path = f"{base}.zip"
         
         # 保存原始结果
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
+        # with open(json_path, 'w', encoding='utf-8') as f:
+        #     json.dump(result, f, ensure_ascii=False, indent=2)
         
         # 写入字幕文件
-        write_subtitles(result["segments"], "vtt", vtt_path, remove_fillers=True)
+        # write_subtitles(result["segments"], "vtt", vtt_path, remove_fillers=True)
         write_subtitles(result["segments"], "srt", srt_path, remove_fillers=True)
-        write_transcript_txt(result["segments"], txt_path, remove_fillers=True)
+        # write_transcript_txt(result["segments"], txt_path, remove_fillers=True)
         
         # 打包
-        with ZipFile(zip_path, "w") as z:
-            for p in [vtt_path, srt_path, txt_path, json_path]:
-                z.write(p, os.path.basename(p))
+        # with ZipFile(zip_path, "w") as z:
+        #     for p in [vtt_path, srt_path, txt_path, json_path]:
+        #         z.write(p, os.path.basename(p))
         
-        logging.info(f"✔ 全部完成，结果保存在: {OUTPUT_DIR}")
-        logging.info(f"   - {vtt_path}\n   - {srt_path}\n   - {txt_path}\n   - {json_path}\n   - {zip_path}")
+        logging.info(f"✔ 转码完成，SRT 保存在: {srt_path}")
+        # logging.info(f"   - {vtt_path}\n   - {srt_path}\n   - {txt_path}\n   - {json_path}\n   - {zip_path}")
         
     except Exception as e:
         logging.error(f"处理过程中出错: {str(e)}")
         raise
     finally:
-        # 清理临时文件
-        for f in TEMP_DIR.glob("*"):
+        # 清理 /tmp 下的增强音频文件
+        for f in TEMP_DIR.glob("enhanced_*"):
             try:
                 f.unlink()
             except:

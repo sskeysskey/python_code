@@ -4,7 +4,8 @@ import subprocess
 import logging
 import re
 # from zipfile import ZipFile
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional # 增加了 Optional
+import platform # 增加了 platform
 # import json
 
 import numpy as np
@@ -331,6 +332,56 @@ def on_activate():
         chosen_lang  = None
         run_pipeline(path, chosen_model, chosen_lang)
 
+def select_video_file() -> Optional[str]:
+    """弹出文件选择对话框并返回所选视频文件的路径"""
+    root = tk.Tk()
+    root.withdraw() # 隐藏主窗口
+
+    # --- 尝试将对话框置于顶层 (macOS specific) ---
+    if platform.system() == "Darwin": # 检查是否为 macOS
+        try:
+            # 使用 AppleScript 尝试将 Python 应用激活到前台
+            # 这通常会使得随后弹出的对话框也出现在前面
+            script = 'tell app "System Events" to set frontmost of process "Python" to true'
+            # 注意：如果通过终端运行，进程名可能是 "Terminal" 或其他
+            # 可以尝试更通用的方法，比如激活当前应用
+            # script = 'tell application (path to frontmost application as text) to activate'
+            subprocess.run(['osascript', '-e', script], check=True, capture_output=True)
+            logging.debug("尝试使用 osascript 将应用置前。")
+        except FileNotFoundError:
+            logging.warning("osascript 未找到，无法尝试将对话框置前。")
+        except subprocess.CalledProcessError as e:
+            logging.warning(f"执行 osascript 将应用置前失败: {e.stderr.decode()}")
+        except Exception as e:
+            logging.warning(f"尝试将应用置前时发生未知错误: {e}")
+    # --- 结束置顶尝试 ---
+
+    path = filedialog.askopenfilename(
+        title="请选择一个视频文件进行转码",
+        filetypes=[("视频文件", "*.mp4 *.mov *.avi *.mkv *.wmv *.flv"), # 增加了更多格式
+                   ("所有文件", "*.*")]
+    )
+    root.destroy() # 关闭 Tkinter 实例
+    return path if path else None # 如果用户取消则返回 None
+
 if __name__ == "__main__":
-    logging.info("📺 请按 ⌘+⌥+C 选择视频并开始转码…")
-    on_activate()
+    print("正在启动视频选择器...") # 仅打印少量启动信息
+
+    video_path = select_video_file() # 首先调用文件选择
+
+    if video_path:
+        # 用户选择了文件，现在开始处理流程
+        print(f"已选择文件: {video_path}")
+        print("开始处理，请查看后续日志输出...")
+
+        # ---- 在这里可以选择模型和语言 ----
+        # 目前硬编码为 large-v3 和 自动检测
+        chosen_model = "large-v3"
+        chosen_lang  = None # None 表示自动检测
+        # --------------------------------
+
+        run_pipeline(video_path, chosen_model, chosen_lang)
+        print("\n处理完成。")
+    else:
+        # 用户取消了选择
+        print("用户取消了文件选择，程序退出。")

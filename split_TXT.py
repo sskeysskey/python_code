@@ -3,7 +3,6 @@ import os
 import sys
 import shutil
 import pyperclip
-import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QFileDialog, QMessageBox
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QTimer

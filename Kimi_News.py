@@ -192,16 +192,19 @@ def main():
         loc_cp, shape_cp = find_image_on_screen(templates["copy"])
         if loc_cp:
             print("找到 copy 图，准备点击 copy...")
-            # 计算图片中心
-            center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
-            center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
+            time.sleep(1.5)
+            loc_cp, shape_cp = find_image_on_screen(templates["copy"])
+            if loc_cp:
+                # 计算图片中心
+                center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
+                center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
 
-            # 如果想在中心稍微偏移几像素：
-            center_y -= 2
+                # 如果想在中心稍微偏移几像素：
+                center_y -= 2
 
-            pyautogui.click(center_x, center_y)
-            found = True
-            break
+                pyautogui.click(center_x, center_y)
+                found = True
+                break
 
         # 3) 两张都没找到，滚一点、等一点，然后再试
         pyautogui.scroll(-80)

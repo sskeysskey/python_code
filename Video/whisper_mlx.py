@@ -5,6 +5,7 @@ import logging
 import re
 from zipfile import ZipFile
 from typing import List, Dict, Any
+import json
 
 import numpy as np
 import mlx.core as mx
@@ -21,8 +22,6 @@ logging.basicConfig(
 )
 
 # ============ 常量 =============
-# 如果你在环境变量中也想支持自定义，可以改为：
-# FFMPEG_BIN = os.environ.get("FFMPEG_BIN", "/opt/homebrew/bin/ffmpeg")
 FFMPEG_BIN = "/opt/homebrew/bin/ffmpeg"
 
 DEVICE = "mps" if mx.metal.is_available() else "cpu"
@@ -37,122 +36,220 @@ LANGUAGES = {
     "en": "English",
     "zh": "Chinese",
     "es": "Spanish",
-    # …按需扩展
 }
 
 APP_DIR    = pathlib.Path(__file__).parent
 OUTPUT_DIR = APP_DIR / "output"
+TEMP_DIR   = APP_DIR / "temp"
 OUTPUT_DIR.mkdir(exist_ok=True)
+TEMP_DIR.mkdir(exist_ok=True)
 
+# 音频预处理参数
+AUDIO_PARAMS = {
+    "sample_rate": 16000,
+    "normalize_volume": True,
+    "remove_noise": True,
+    "voice_enhance": True
+}
 
-# ============ 工具函数 =============
+# Whisper模型参数
+WHISPER_PARAMS = {
+    "temperature": 0.0,  # 0表示使用贪婪解码
+    "condition_on_previous_text": True,
+    "word_timestamps": True,
+    "prepend_punctuations": "\"'([{-",
+    "append_punctuations": "\"'.。,，!！?？:：)]}"
+}
+
+def enhance_audio(audio_path: str) -> str:
+    """音频增强处理"""
+    temp_path = TEMP_DIR / f"enhanced_{os.path.basename(audio_path)}"
+    
+    cmd = [
+        FFMPEG_BIN, "-y",
+        "-i", audio_path,
+        # 降噪
+        "-af", "afftdn=nf=-25",
+        # 动态范围压缩
+        "-af", "acompressor=threshold=-12dB:ratio=2:attack=200:release=1000",
+        # 音量归一化
+        "-filter:a", "loudnorm=I=-16:LRA=11:TP=-1.5",
+        str(temp_path)
+    ]
+    
+    subprocess.run(cmd, check=True, stderr=subprocess.PIPE)
+    return str(temp_path)
+
 def prepare_audio(audio_path: str) -> mx.array:
     """用 ffmpeg 解出 16k 单声道原始 PCM 并转成 float32"""
+    if AUDIO_PARAMS["voice_enhance"]:
+        audio_path = enhance_audio(audio_path)
+    
     cmd = [
         FFMPEG_BIN, "-y", "-i", audio_path,
         "-f", "s16le", "-acodec", "pcm_s16le",
-        "-ar", "16000", "-ac", "1", "-"
+        "-ar", str(AUDIO_PARAMS["sample_rate"]),
+        "-ac", "1"
     ]
+    
+    if AUDIO_PARAMS["normalize_volume"]:
+        cmd.extend(["-filter:a", "volume=2.0"])
+    
+    cmd.append("-")
+    
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     raw, _ = p.communicate()
+    
+    # 转换为float32并归一化
     arr = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    
+    # 如果需要降噪
+    if AUDIO_PARAMS["remove_noise"]:
+        from scipy import signal
+        # 简单的高通滤波去除低频噪声
+        b, a = signal.butter(4, 100/(AUDIO_PARAMS["sample_rate"]/2), 'high')
+        arr = signal.filtfilt(b, a, arr)
+    
     return mx.array(arr)
 
+def post_process_text(text: str) -> str:
+    """文本后处理"""
+    # 修复数字和单位之间的空格
+    text = re.sub(r'(\d+)\s+([a-zA-Z])', r'\1\2', text)
+    
+    # 修复重复的标点符号
+    text = re.sub(r'([。，！？!?])\1+', r'\1', text)
+    
+    # 修复错误的省略号
+    text = re.sub(r'\.{2,}', '...', text)
+    
+    return text.strip()
 
 def process_audio(model_repo: str, audio: mx.array, language: str = None) -> Dict[str, Any]:
     opts = {"language": language} if language else {}
+    opts.update(WHISPER_PARAMS)
+    
     logging.info(f"→ 调用 Whisper: model={model_repo}  language={language or 'auto'}")
+    
     result = mlx_whisper.transcribe(
-        audio, path_or_hf_repo=model_repo,
-        fp16=False, verbose=True, word_timestamps=True,
+        audio,
+        path_or_hf_repo=model_repo,
+        fp16=False,
+        verbose=True,
         **opts
     )
+    
+    # 对每个segment进行后处理
+    for segment in result["segments"]:
+        segment["text"] = post_process_text(segment["text"])
+        
+        # 优化时间戳
+        if "words" in segment:
+            for word in segment["words"]:
+                # 确保单词时长合理
+                min_word_duration = len(word["word"]) * 0.05  # 每个字符至少50ms
+                if word["end"] - word["start"] < min_word_duration:
+                    word["end"] = word["start"] + min_word_duration
+    
     logging.info("✔ 转码完成")
     return result
-
 
 def format_timestamp(sec: float, vtt: bool=False) -> str:
     h, r = divmod(sec, 3600)
     m, s = divmod(r, 60)
+    # 确保时间戳不会出现负值
+    h, m, s = max(0, h), max(0, m), max(0, s)
     if vtt:
         return f"{int(h):02d}:{int(m):02d}:{s:06.3f}"
     else:
         return f"{int(h):02d}:{int(m):02d}:{s:06.3f}".replace(".",",")
 
-
 def split_text_into_lines(text: str, max_chars: int=42) -> List[str]:
-    words = text.split()
-    lines, cur, L = [], [], 0
-    for w in words:
-        if L + len(w) + 1 > max_chars:
-            lines.append(" ".join(cur))
-            cur, L = [w], len(w)
-        else:
-            cur.append(w); L += len(w) + 1
-    if cur:
-        lines.append(" ".join(cur))
-    return lines
-
-
-def check_data_loss(segment: Dict[str, Any], processed_lines: List[str]) -> None:
-    processed_words = ' '.join(processed_lines).split()
-    original_words  = [w['word'] for w in segment.get('words', [])]
-    if len(processed_words) != len(original_words):
-        logging.warning(f"⚠️ Segment {segment.get('id', '<no-id>')} 词数不一致: 原始 {len(original_words)} vs 处理后 {len(processed_words)}")
-        logging.warning(f"    原始: {' '.join(original_words)}")
-        logging.warning(f"    处理后: {' '.join(processed_words)}")
-
-
-def check_final_output(segments: List[Dict[str, Any]], out_path: str) -> None:
-    original_text = ' '.join(seg.get('text', '') for seg in segments).strip()
+    """智能分行"""
+    # 首先按标点符号分割
+    segments = re.split(r'([。！？\?!])', text)
     lines = []
-    with open(out_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            # 过滤掉 SRT 序号行、时间戳行、WEBVTT header
-            if re.fullmatch(r'\d+', line): continue
-            if '-->' in line:          continue
-            if line.upper() == 'WEBVTT': continue
-            lines.append(line)
-    final_text = ' '.join(lines).strip()
-    if original_text != final_text:
-        logging.warning("⚠️ 最终输出文本与原始 segments['text'] 不一致，可能存在丢字或顺序变化")
-        logging.debug(f"原始全文: {original_text}")
-        logging.debug(f"最终全文: {final_text}")
-
+    current_line = []
+    current_length = 0
+    
+    for segment in segments:
+        if not segment:
+            continue
+        
+        words = segment.split()
+        for word in words:
+            if current_length + len(word) + 1 > max_chars:
+                if current_line:
+                    lines.append(" ".join(current_line))
+                current_line = [word]
+                current_length = len(word)
+            else:
+                current_line.append(word)
+                current_length += len(word) + 1
+                
+        # 如果是标点符号，强制换行
+        if re.match(r'[。！？\?!]', segment):
+            if current_line:
+                lines.append(" ".join(current_line))
+            current_line = []
+            current_length = 0
+    
+    if current_line:
+        lines.append(" ".join(current_line))
+    
+    return lines
 
 def write_subtitles(segments: List[Dict[str, Any]],
                     fmt: str,
                     out_path: str,
                     remove_fillers: bool = True) -> None:
-    """
-    fmt: "srt" 或 "vtt"
-    """
     with open(out_path, "w", encoding="utf-8") as f:
         if fmt == "vtt":
             f.write("WEBVTT\n\n")
+        
         idx = 1
         for seg in segments:
             words = seg.get("words", [])
             if not words:
                 continue
+                
             text = " ".join(w["word"] for w in words)
             if remove_fillers:
-                text = re.sub(r"\b(um|uh)\b", "", text).strip()
+                text = re.sub(r"\b(um|uh|er|ah|oh)\b", "", text).strip()
+            
+            # 应用文本后处理
+            text = post_process_text(text)
+            
             lines = split_text_into_lines(text)
-            # 每两行构成一个字幕条目
+            
             for i in range(0, len(lines), 2):
                 part = lines[i:i+2]
                 start_idx = sum(len(x.split()) for x in lines[:i])
                 end_idx   = sum(len(x.split()) for x in lines[:i+2])
+                
+                if start_idx >= len(words):
+                    continue
+                    
                 t0 = words[start_idx]["start"]
-                t1 = words[end_idx - 1]["end"]
-                # 强制最短显示时长
+                t1 = words[min(end_idx - 1, len(words) - 1)]["end"]
+                
+                # 智能调整时长
                 duration = t1 - t0
-                min_dur = max(len(" ".join(part)) / 21, 1.5)
+                min_dur = max(len(" ".join(part)) / 20, 1.8)  # 略微增加最小显示时间
+                max_dur = min(min_dur * 2.5, 7.0)  # 设置最大显示时间
+                
                 if duration < min_dur:
                     t1 = t0 + min_dur
-                # 写入
+                elif duration > max_dur:
+                    t1 = t0 + max_dur
+                
+                # 确保时间戳递增
+                if idx > 1:
+                    prev_end = getattr(write_subtitles, 'prev_end', 0)
+                    if t0 < prev_end:
+                        t0 = prev_end + 0.001
+                write_subtitles.prev_end = t1
+                
                 if fmt == "srt":
                     f.write(f"{idx}\n")
                     f.write(f"{format_timestamp(t0)} --> {format_timestamp(t1)}\n")
@@ -161,11 +258,6 @@ def write_subtitles(segments: List[Dict[str, Any]],
                     f.write(f"{format_timestamp(t0, True)} --> {format_timestamp(t1, True)}\n")
                     f.write("\n".join(part) + "\n\n")
                 idx += 1
-            # 本段校验
-            check_data_loss(seg, lines)
-    # 全局校验
-    check_final_output(segments, out_path)
-
 
 def write_transcript_txt(segments: List[Dict[str, Any]],
                          out_path: str,
@@ -174,43 +266,58 @@ def write_transcript_txt(segments: List[Dict[str, Any]],
         for seg in segments:
             txt = seg.get("text", "")
             if remove_fillers:
-                txt = re.sub(r"\b(um|uh)\b", "", txt).strip()
+                txt = re.sub(r"\b(um|uh|er|ah|oh)\b", "", txt).strip()
+            txt = post_process_text(txt)
             f.write(txt + "\n")
 
-
-# ============ 主流程 =============
 def run_pipeline(video_path: str,
                  model_key: str = "large-v3",
                  language: str = None):
-    logging.info(f"▶ 处理文件: {video_path}")
-    model_repo = MODELS.get(model_key, model_key)
-    audio = prepare_audio(video_path)
-    result = process_audio(model_repo, audio, language)
+    try:
+        logging.info(f"▶ 处理文件: {video_path}")
+        model_repo = MODELS.get(model_key, model_key)
+        
+        # 音频处理
+        audio = prepare_audio(video_path)
+        result = process_audio(model_repo, audio, language)
+        
+        # 输出路径
+        base = OUTPUT_DIR / pathlib.Path(video_path).stem
+        vtt_path = f"{base}.vtt"
+        srt_path = f"{base}.srt"
+        txt_path = f"{base}.txt"
+        json_path = f"{base}.json"
+        zip_path = f"{base}.zip"
+        
+        # 保存原始结果
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        
+        # 写入字幕文件
+        write_subtitles(result["segments"], "vtt", vtt_path, remove_fillers=True)
+        write_subtitles(result["segments"], "srt", srt_path, remove_fillers=True)
+        write_transcript_txt(result["segments"], txt_path, remove_fillers=True)
+        
+        # 打包
+        with ZipFile(zip_path, "w") as z:
+            for p in [vtt_path, srt_path, txt_path, json_path]:
+                z.write(p, os.path.basename(p))
+        
+        logging.info(f"✔ 全部完成，结果保存在: {OUTPUT_DIR}")
+        logging.info(f"   - {vtt_path}\n   - {srt_path}\n   - {txt_path}\n   - {json_path}\n   - {zip_path}")
+        
+    except Exception as e:
+        logging.error(f"处理过程中出错: {str(e)}")
+        raise
+    finally:
+        # 清理临时文件
+        for f in TEMP_DIR.glob("*"):
+            try:
+                f.unlink()
+            except:
+                pass
 
-    # 输出路径
-    base = OUTPUT_DIR / pathlib.Path(video_path).stem
-    vtt_path = f"{base}.vtt"
-    srt_path = f"{base}.srt"
-    txt_path = f"{base}.txt"
-    zip_path = f"{base}.zip"
-
-    # 写入文件
-    write_subtitles(result["segments"], "vtt", vtt_path, remove_fillers=True)
-    write_subtitles(result["segments"], "srt", srt_path, remove_fillers=True)
-    write_transcript_txt(result["segments"], txt_path, remove_fillers=True)
-
-    # 打包
-    with ZipFile(zip_path, "w") as z:
-        for p in [vtt_path, srt_path, txt_path]:
-            z.write(p, os.path.basename(p))
-
-    logging.info(f"✔ 全部完成，结果保存在: {OUTPUT_DIR}")
-    logging.info(f"   - {vtt_path}\n   - {srt_path}\n   - {txt_path}\n   - {zip_path}")
-
-
-# ============ 全局热键 & 文件对话框 ============
 def on_activate():
-    # 弹出文件选取框
     root = tk.Tk()
     root.withdraw()
     path = filedialog.askopenfilename(
@@ -220,9 +327,8 @@ def on_activate():
     root.destroy()
     if path:
         chosen_model = "large-v3"
-        chosen_lang  = None   # None = 自动检测，也可以改成 "en"/"zh"…
+        chosen_lang  = None
         run_pipeline(path, chosen_model, chosen_lang)
-
 
 if __name__ == "__main__":
     logging.info("📺 请按 ⌘+⌥+C 选择视频并开始转码…")

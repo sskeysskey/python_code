@@ -1,4 +1,3 @@
-import sys
 import argparse
 import tkinter as tk
 

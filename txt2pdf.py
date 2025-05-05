@@ -11,7 +11,10 @@ import glob
 import shutil
 import io
 import math
+import subprocess # 新增：用于调用外部命令 (osascript)
+import sys       # 新增：用于检查操作系统
 
+# --- 你原来的函数保持不变 ---
 def find_all_news_files(directory):
     pattern = os.path.join(directory, "News_*.txt")
     return sorted(glob.glob(pattern))
@@ -54,10 +57,14 @@ def parse_article_copier(file_path):
     url_images = {}
     current_url = None
     valid_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif')
-    
-    with open(file_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        
+
+    try: # 增加错误处理，防止文件不存在
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        print(f"警告: article_copier 文件未找到: {file_path}")
+        return {} # 返回空字典
+
     for line in lines:
         line = line.strip()
         if not line:
@@ -100,12 +107,13 @@ def find_images_for_content(content, url_images):
             print(f"\nArticle URL: {url}")
             
             for article_url, images in url_images.items():
+                # 使用更宽松的匹配，检查 URL 是否相互包含
                 if url in article_url or article_url in url:
                     print(f"Matched with: {article_url}")
                     print(f"Images found: {images}")
                     article_images.append((article, images))
-                    break
-    
+                    break # 找到匹配后即可停止内层循环
+
     return article_images
 
 def distribute_images_in_content(content, url_images):
@@ -584,8 +592,104 @@ def extract_site_name(url):
         return site_name
         
     except Exception as e:
-        print(f"提取网站名称时出错: {str(e)}")
-        return "Other"
+        print(f"提取网站名称时出错 ({url}): {str(e)}")
+        return "Other" # 出错时返回 Other
+
+# --- 新增功能 1: 移动 article_copier 文件 ---
+def move_article_copier_files(source_dir, backup_parent_dir):
+    """
+    将 source_dir 下所有 article_copier_*.txt 文件移动到 backup_parent_dir/backup 目录下。
+    如果目标文件已存在，则重命名以避免覆盖。
+    """
+    backup_dir = os.path.join(backup_parent_dir, "backup") # 目标是 News/backup
+    os.makedirs(backup_dir, exist_ok=True) # 确保 backup 目录存在
+
+    pattern = os.path.join(source_dir, "article_copier_*.txt")
+    files_to_move = glob.glob(pattern)
+
+    if not files_to_move:
+        print(f"在 {source_dir} 未找到 article_copier_*.txt 文件。")
+        return
+
+    print(f"\n--- 开始移动 article_copier 文件到 {backup_dir} ---")
+    moved_count = 0
+    for source_path in files_to_move:
+        filename = os.path.basename(source_path)
+        target_path = os.path.join(backup_dir, filename)
+
+        # 检查重名冲突
+        counter = 1
+        base, ext = os.path.splitext(filename)
+        while os.path.exists(target_path):
+            new_filename = f"{base}_copy_{counter}{ext}"
+            target_path = os.path.join(backup_dir, new_filename)
+            print(f"警告: 文件 {filename} 已存在于备份目录，尝试重命名为 {new_filename}")
+            counter += 1
+
+        # 移动文件
+        try:
+            shutil.move(source_path, target_path)
+            print(f"成功移动: {filename} -> {os.path.basename(target_path)}")
+            moved_count += 1
+        except Exception as e:
+            print(f"移动文件 {filename} 时出错: {str(e)}")
+
+    print(f"--- 完成移动 article_copier 文件，共移动 {moved_count} 个文件 ---")
+
+
+# --- 新增功能 2: 移动 news_image 目录到废纸篓 (macOS) ---
+def move_news_image_dirs_to_trash(downloads_dir):
+    """
+    查找 downloads_dir 下所有 news_image_* 目录，并将它们移动到 macOS 的废纸篓。
+    此功能仅在 macOS 上有效。
+    """
+    if sys.platform != 'darwin':
+        print("\n警告: 移动到废纸篓功能仅支持 macOS。跳过此步骤。")
+        return
+
+    pattern = os.path.join(downloads_dir, "news_image_*")
+    potential_items = glob.glob(pattern)
+    dirs_to_trash = [item for item in potential_items if os.path.isdir(item)]
+
+    if not dirs_to_trash:
+        print(f"\n在 {downloads_dir} 未找到 news_image_* 目录。")
+        return
+
+    print(f"\n--- 开始移动 news_image 目录到废纸篓 ---")
+    trashed_count = 0
+    for dir_path in dirs_to_trash:
+        dir_name = os.path.basename(dir_path)
+        # 使用 AppleScript 将目录移动到废纸篓
+        # 需要传递绝对路径给 AppleScript
+        absolute_dir_path = os.path.abspath(dir_path)
+        # 构建 AppleScript 命令
+        # 使用 POSIX file 来处理路径，更可靠
+        script = f'tell application "Finder" to move POSIX file "{absolute_dir_path}" to trash'
+        print(f"准备移动目录到废纸篓: {dir_name}")
+
+        try:
+            # 执行 osascript 命令
+            process = subprocess.run(['osascript', '-e', script],
+                                     capture_output=True, text=True, check=False) # check=False 允许我们检查 stderr
+
+            if process.returncode == 0:
+                print(f"成功移动目录到废纸篓: {dir_name}")
+                trashed_count += 1
+            else:
+                # 如果命令失败，打印错误信息
+                print(f"移动目录 {dir_name} 到废纸篓时出错:")
+                print(f"  返回码: {process.returncode}")
+                print(f"  错误输出: {process.stderr.strip()}")
+                print(f"  标准输出: {process.stdout.strip()}") # 有时错误信息在 stdout
+
+        except FileNotFoundError:
+            print("错误: 'osascript' 命令未找到。请确保你在 macOS 上运行，并且系统环境正常。")
+            break # 如果 osascript 找不到，后续也无法执行
+        except Exception as e:
+            print(f"执行 AppleScript 移动 {dir_name} 时发生未知错误: {str(e)}")
+
+    print(f"--- 完成移动 news_image 目录，共移动 {trashed_count} 个目录到废纸篓 ---")
+
 
 if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")
@@ -593,16 +697,41 @@ if __name__ == "__main__":
     article_copier_path = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
     image_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
     downloads_path = '/Users/yanzhang/Downloads'
-    
+
+    # 1. 主要处理流程：TXT 转 PDF
+    print("="*10 + " 开始 TXT 转 PDF 处理 " + "="*10)
     process_all_files(news_directory, article_copier_path, image_dir)
+    print("="*10 + " 完成 TXT 转 PDF 处理 " + "="*10)
+
+    # 2. 移动 TodayCNH 文件 (如果需要)
+    print("\n" + "="*10 + " 开始移动 TodayCNH 文件 " + "="*10)
     move_cnh_file(news_directory)
+    print("="*10 + " 完成移动 TodayCNH 文件 " + "="*10)
 
+    # 3. 清理 Downloads 目录下的 .html 文件
+    print("\n" + "="*10 + " 开始清理 Downloads 中的 HTML 文件 " + "="*10)
     html_files = [f for f in os.listdir(downloads_path) if f.endswith('.html')]
+    if html_files:
+        for file in html_files:
+            file_path = os.path.join(downloads_path, file)
+            try:
+                os.remove(file_path)
+                print(f'成功删除 HTML 文件: {file}')
+            except OSError as e:
+                print(f'删除 HTML 文件失败 {file}: {e}')
+    else:
+        print("Downloads 目录下没有找到 .html 文件。")
+    print("="*10 + " 完成清理 Downloads 中的 HTML 文件 " + "="*10)
 
-    for file in html_files:
-        file_path = os.path.join(downloads_path, file)
-        try:
-            os.remove(file_path)
-            print(f'成功删除: {file}')
-        except OSError as e:
-            print(f'删除失败 {file}: {e}')
+    # 4. 新增：移动 article_copier 文件到 backup
+    print("\n" + "="*10 + " 开始移动 article_copier 文件 " + "="*10)
+    # 注意：第二个参数是 backup 目录的 *父* 目录
+    move_article_copier_files(news_directory, news_directory)
+    print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
+
+    # 5. 新增：移动 news_image 目录到废纸篓 (macOS only)
+    print("\n" + "="*10 + " 开始清理 news_image 目录 " + "="*10)
+    move_news_image_dirs_to_trash(downloads_path)
+    print("="*10 + " 完成清理 news_image 目录 " + "="*10)
+
+    print("\n所有任务执行完毕。")

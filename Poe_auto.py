@@ -1,4 +1,3 @@
-# o1优化后代码
 import cv2
 import time
 import argparse

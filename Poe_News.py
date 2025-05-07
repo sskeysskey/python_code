@@ -67,12 +67,11 @@ def get_clipboard_content() -> str:
         return ""
     
     lines = [line.strip() for line in content.splitlines() if line.strip()]
-    if len(lines) < 3:
-        return "\n".join(lines)
     
-    # 移除最后一行
-    filtered_lines = lines[:-1]
-    return "\n".join(filtered_lines)
+    # 移除第一行和最后一行
+    # filtered_lines = lines[1:-1]
+    
+    return "\n".join(lines)
 
 def read_file(file_path: str) -> str:
     """

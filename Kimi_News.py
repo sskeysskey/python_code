@@ -7,7 +7,7 @@ import glob
 import sys
 import pyperclip
 import subprocess
-import pyautogui
+# import pyautogui
 import numpy as np
 from PIL import ImageGrab
 from datetime import datetime
@@ -63,13 +63,23 @@ def refresh_page():
     time.sleep(0.5)
 
 def get_clipboard_content():
-    content = pyperclip.paste()
+    content = pyperclip.paste()  # 从剪贴板获取原始内容
     
     if not content:  # 检查剪贴板是否为空
         return ""
     
-    # 处理多行内容，去除空行和首尾空白
-    return '\n'.join(line.strip() for line in content.splitlines() if line.strip())
+    # —— 新增：如果存在“新闻简报订阅”，则截断并删除它及其后面的所有内容 —— 
+    marker = "新闻简报订阅"
+    idx = content.find(marker)
+    if idx != -1:
+        content = content[:idx]
+    # —— 新增结束 —— 
+    
+    # 原来的多行去空行、去首尾空白逻辑
+    lines = [line.strip() for line in content.splitlines()]
+    # 过滤掉空行
+    lines = [line for line in lines if line]
+    return "\n".join(lines)
 
 def read_file(file_path):
     with open(file_path, 'r', encoding='utf-8-sig') as file:
@@ -165,53 +175,53 @@ def main():
         with open(record_file, 'a', encoding='utf-8') as f:
             f.write(content)
             
-    template_paths = {
-        "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
-        "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
-    }
+    # template_paths = {
+    #     "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
+    #     "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
+    # }
 
-    # 读取所有模板图片，并存储在字典中
-    templates = {}
-    for key, path in template_paths.items():
-        template = cv2.imread(path, cv2.IMREAD_COLOR)
-        if template is None:
-            raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
-        templates[key] = template
+    # # 读取所有模板图片，并存储在字典中
+    # templates = {}
+    # for key, path in template_paths.items():
+    #     template = cv2.imread(path, cv2.IMREAD_COLOR)
+    #     if template is None:
+    #         raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
+    #     templates[key] = template
 
-    timeout = time.time() + 60  # 60 秒后超时
-    found = False
-    while time.time() < timeout and not found:
-        # 1) 尝试找 outofline
-        loc_out, shape_out = find_image_on_screen(templates["outofline"])
-        if loc_out:
-            print(f"找到 outofline 图片位置: {loc_out}")
-            found = True
-            break
+    # timeout = time.time() + 60  # 60 秒后超时
+    # found = False
+    # while time.time() < timeout and not found:
+    #     # 1) 尝试找 outofline
+    #     loc_out, shape_out = find_image_on_screen(templates["outofline"])
+    #     if loc_out:
+    #         print(f"找到 outofline 图片位置: {loc_out}")
+    #         found = True
+    #         break
 
-        # 2) 再尝试找 copy
-        loc_cp, shape_cp = find_image_on_screen(templates["copy"])
-        if loc_cp:
-            print("找到 copy 图，准备点击 copy...")
-            time.sleep(1.5)
-            loc_cp, shape_cp = find_image_on_screen(templates["copy"])
-            if loc_cp:
-                # 计算图片中心
-                center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
-                center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
+    #     # 2) 再尝试找 copy
+    #     loc_cp, shape_cp = find_image_on_screen(templates["copy"])
+    #     if loc_cp:
+    #         print("找到 copy 图，准备点击 copy...")
+    #         time.sleep(1.5)
+    #         loc_cp, shape_cp = find_image_on_screen(templates["copy"])
+    #         if loc_cp:
+    #             # 计算图片中心
+    #             center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
+    #             center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
 
-                # 如果想在中心稍微偏移几像素：
-                center_y -= 2
+    #             # 如果想在中心稍微偏移几像素：
+    #             center_y -= 2
 
-                pyautogui.click(center_x, center_y)
-                found = True
-                break
+    #             pyautogui.click(center_x, center_y)
+    #             found = True
+    #             break
 
-        # 3) 两张都没找到，滚一点、等一点，然后再试
-        pyautogui.scroll(-80)
-        time.sleep(0.5)
+    #     # 3) 两张都没找到，滚一点、等一点，然后再试
+    #     pyautogui.scroll(-80)
+    #     time.sleep(0.5)
 
-    if not found:
-        print("60秒内未找到 outofline 或 copy 图片，退出或执行兜底逻辑。")
+    # if not found:
+    #     print("60秒内未找到 outofline 或 copy 图片，退出或执行兜底逻辑。")
 
     # 跳转到clipboard_content处理部分
     clipboard_content = get_clipboard_content()

@@ -113,123 +113,6 @@ def prepare_audio(audio_path: str) -> mx.array:
     
     return mx.array(arr)
 
-# def chunked_transcribe(audio: mx.array,
-#                        model_repo: str,
-#                        sr: int = 16000,
-#                        chunk_s: int = 200,
-#                        overlap_s: int = 5,
-#                        **whisper_opts) -> Dict[str, Any]:
-#     """
-#     把超长音频拆成若干 chunk（长度 chunk_s 秒，重叠 overlap_s 秒）逐个调用 whisper，
-#     最后把所有 segments 按时间戳拼回去并返回 {"segments": [...]}
-#     """
-#     # 先把 mx.array 拿回 numpy
-#     arr = audio.asnumpy() if hasattr(audio, "asnumpy") else np.array(audio)
-#     hop = chunk_s - overlap_s
-#     total_samples = arr.shape[0]
-#     all_segments: List[Dict[str, Any]] = []
-#     offset_sec = 0.0
-
-#     for start_sample in range(0, total_samples, hop * sr):
-#         end_sample = start_sample + chunk_s * sr
-#         chunk = arr[start_sample:end_sample]
-#         if chunk.size < sr:  # 少于 1 秒就不做了
-#             break
-
-#         # 调用 whisper transcribe
-#         result = mlx_whisper.transcribe(
-#             mx.array(chunk),
-#             path_or_hf_repo=model_repo,
-#             fp16=False,
-#             **whisper_opts
-#         )
-#         # 把每段的时间戳加上偏移
-#         for seg in result["segments"]:
-#             seg["start"] += offset_sec
-#             seg["end"]   += offset_sec
-
-#         all_segments.extend(result["segments"])
-#         offset_sec += hop
-
-#     # 最后按 start 排序，去重或合并逻辑视需要自行补充
-#     all_segments.sort(key=lambda x: x["start"])
-#     return {"segments": all_segments}
-
-def chunked_transcribe(audio: mx.array,
-                       model_repo: str,
-                       sr: int = 16000,
-                       chunk_s: int = 200,
-                       overlap_s: int = 5,
-                       **whisper_opts) -> Dict[str, Any]:
-    """
-    把超长音频拆成若干 chunk（长度 chunk_s 秒，重叠 overlap_s 秒）逐个调用 whisper，
-    最后把所有 segments 按时间戳拼回去并返回 {"segments": [...]}
-    已加：
-      - 分段进度提示
-      - 丢弃重叠区段的重复
-      - 给 word 时间戳也加上 offset
-    """
-    # 把 mx.array 拿回 numpy
-    arr = audio.asnumpy() if hasattr(audio, "asnumpy") else np.array(audio)
-    hop = chunk_s - overlap_s
-    total_samples = arr.shape[0]
-    step = hop * sr
-    # 所有 chunk 的起始 sample 列表
-    starts = list(range(0, total_samples, step))
-    num_chunks = len(starts)
-
-    all_segments: List[Dict[str, Any]] = []
-    offset_sec = 0.0
-
-    for ci, start_sample in enumerate(starts):
-        end_sample = start_sample + chunk_s * sr
-        chunk = arr[start_sample:end_sample]
-        if chunk.size < sr:
-            logging.info(f"Chunk {ci+1}/{num_chunks}: 剩余不足 1s，跳过")
-            break
-
-        # 日志：开始转录这个 chunk
-        t0 = start_sample / sr
-        t1 = min(end_sample, total_samples) / sr
-        logging.info(f"Chunk {ci+1}/{num_chunks}: 时间段 {t0:.1f}s ~ {t1:.1f}s → 调用 Whisper 转录")
-
-        result = mlx_whisper.transcribe(
-            mx.array(chunk),
-            path_or_hf_repo=model_repo,
-            fp16=False,
-            **whisper_opts
-        )
-
-        raw_segs = result["segments"]
-
-        # 丢弃重叠区间里重复的 segments：对第 0 段保留所有，
-        # 从第二段开始，丢掉那些 start < overlap_s 的
-        if ci > 0:
-            before = len(raw_segs)
-            raw_segs = [seg for seg in raw_segs if seg["start"] >= overlap_s]
-            dropped = before - len(raw_segs)
-            if dropped:
-                logging.debug(f"  丢弃了 {dropped} 个重叠区段")
-
-        # 对每段的时间戳和每个 word 的时间戳都加上 offset
-        for seg in raw_segs:
-            seg["start"] += offset_sec
-            seg["end"]   += offset_sec
-            if "words" in seg:
-                for w in seg["words"]:
-                    w["start"] += offset_sec
-                    w["end"]   += offset_sec
-
-        all_segments.extend(raw_segs)
-
-        # 更新下一个 chunk 的偏移量
-        offset_sec += hop
-
-    # 最后按 start 排序
-    all_segments.sort(key=lambda x: x["start"])
-    logging.info(f"✅ 分段转录完成，共 {len(all_segments)} 段")
-    return {"segments": all_segments}
-
 def post_process_text(text: str) -> str:
     """文本后处理"""
     # 修复数字和单位之间的空格
@@ -321,45 +204,36 @@ def write_subtitles(segments: List[Dict[str, Any]],
                     fmt: str,
                     out_path: str,
                     remove_fillers: bool = True) -> None:
-    """
-    写入 .srt/.vtt 字幕文件，已加：
-      - 每一条字幕写入时的日志
-    """
     with open(out_path, "w", encoding="utf-8") as f:
         if fmt == "vtt":
             f.write("WEBVTT\n\n")
-
+        
         idx = 1
-        # 用于保证时间戳单调
-        prev_end = 0.0
-
         for seg in segments:
             words = seg.get("words", [])
             if not words:
                 continue
-
+                
             text = " ".join(w["word"] for w in words)
             if remove_fillers:
                 text = re.sub(r"\b(um|uh|er|ah|oh)\b", "", text).strip()
             
             # 应用文本后处理
             text = post_process_text(text)
+            
             lines = split_text_into_lines(text)
-
-            # 将一个 segment 拆成若干字幕条
-            word_count = len(words)
-            for block in range(0, len(lines), 2):
-                part = lines[block:block+2]
-                # 计算这一条的首末 word idx
-                start_idx = sum(len(x.split()) for x in lines[:block])
-                end_idx   = sum(len(x.split()) for x in lines[:block+2])
-
-                if start_idx >= word_count:
+            
+            for i in range(0, len(lines), 2):
+                part = lines[i:i+2]
+                start_idx = sum(len(x.split()) for x in lines[:i])
+                end_idx   = sum(len(x.split()) for x in lines[:i+2])
+                
+                if start_idx >= len(words):
                     continue
-
+                    
                 t0 = words[start_idx]["start"]
-                t1 = words[min(end_idx-1, word_count-1)]["end"]
-
+                t1 = words[min(end_idx - 1, len(words) - 1)]["end"]
+                
                 # 智能调整时长
                 duration = t1 - t0
                 min_dur = max(len(" ".join(part)) / 20, 1.8)  # 略微增加最小显示时间
@@ -369,13 +243,15 @@ def write_subtitles(segments: List[Dict[str, Any]],
                     t1 = t0 + min_dur
                 elif duration > max_dur:
                     t1 = t0 + max_dur
-
-                # 保证单调递增
-                if t0 < prev_end:
-                    t0 = prev_end + 0.001
-                prev_end = t1
-
-                # 写入文件
+                
+                # 确保时间戳递增
+                if idx > 1:
+                    prev_end = getattr(write_subtitles, 'prev_end', 0)
+                    if t0 < prev_end:
+                        t0 = prev_end + 0.001
+                write_subtitles.prev_end = t1
+                
+                # 这里只有 srt 和 vtt，实际只会调用 srt
                 if fmt == "srt":
                     f.write(f"{idx}\n")
                     f.write(f"{format_timestamp(t0)} --> {format_timestamp(t1)}\n")
@@ -383,15 +259,7 @@ def write_subtitles(segments: List[Dict[str, Any]],
                 else:  # vtt
                     f.write(f"{format_timestamp(t0, True)} --> {format_timestamp(t1, True)}\n")
                     f.write("\n".join(part) + "\n\n")
-
-                # 日志：每写入一条字幕
-                logging.info(
-                    f"字幕 {idx}: “{' / '.join(part)}” "
-                    f"[{format_timestamp(t0)} --> {format_timestamp(t1)}]"
-                )
                 idx += 1
-
-        logging.info(f"✅ 字幕写入完成: {out_path}")
 
 # def write_transcript_txt(segments: List[Dict[str, Any]],
 #                          out_path: str,
@@ -413,27 +281,7 @@ def run_pipeline(video_path: str,
         
         # 音频处理
         audio = prepare_audio(video_path)
-        # 改用分段转录
-        whisper_opts = {"language": language} if language else {}
-        whisper_opts.update(WHISPER_PARAMS)
-        logging.info(f"→ 分段调用 Whisper，每段 {200}s，重叠 {5}s")
-        result = chunked_transcribe(
-            audio,
-            model_repo=model_repo,
-            sr=AUDIO_PARAMS["sample_rate"],
-            chunk_s=200,
-            overlap_s=5,
-            **whisper_opts
-        )
-        # 对每个 segment 继续做后处理
-        for segment in result["segments"]:
-            segment["text"] = post_process_text(segment["text"])
-            if "words" in segment:
-                for word in segment["words"]:
-                    min_dur = len(word["word"]) * 0.05
-                    if word["end"] - word["start"] < min_dur:
-                        word["end"] = word["start"] + min_dur
-        logging.info("✔ 分段转录并拼接完成")
+        result = process_audio(model_repo, audio, language)
         
         # 只输出 .srt
         base     = OUTPUT_DIR / pathlib.Path(video_path).stem

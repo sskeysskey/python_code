@@ -15,9 +15,6 @@ def process_clipboard_content():
     else:
         processed_content = clipboard_content
     
-    # # 删除类似URL格式的字段，匹配 https://*.com、https://*.com/ 和 http://*.com 等格式
-    # url_pattern = r'https?://\S+\.com(?:/\S*)?'
-    
     # 删除URL
     url_pattern = r'https?://[^\s<>"]+?(?:\.[^\s<>"]+)+(?:/[^\s<>"]*)?'
     processed_content = re.sub(url_pattern, '', processed_content)

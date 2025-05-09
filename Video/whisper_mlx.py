@@ -114,7 +114,7 @@ def prepare_audio(audio_path: str) -> mx.array:
     arr = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
 
     if AUDIO_PARAMS["remove_noise"]:
-        from scipy import signal
+        from scipy import signal # scipy 是一个额外的依赖
         b, a = signal.butter(4, 100/(AUDIO_PARAMS["sample_rate"]/2), 'high')
         arr = signal.filtfilt(b, a, arr)
 
@@ -163,47 +163,92 @@ def write_subtitles(segments: List[Dict[str, Any]],
                     fmt: str,
                     out_path: str,
                     remove_fillers: bool = True) -> None:
+    """
+    1) 先把每个 segment 拆成若干 subtitle block（带 start/end/text）
+    2) 再合并相邻、文本相同的 block
+    3) 过滤和调整时间不合逻辑的 block:
+       - 丢弃 end <= start 的 block
+       - 如果某 block 的 start <= 上一个 block 的 end，则把它的 start 调整为 prev_end + 0.001，
+         若此时 start >= end，则丢弃该 block
+    4) 最后一次性写入文件
+    """
+    # ———— 一、收集所有小块 ————
+    blocks = []
+    for seg in segments:
+        words = seg.get("words", [])
+        if not words:
+            continue
+        # 拼文本
+        text = " ".join(w["word"] for w in words)
+        if remove_fillers:
+            text = re.sub(r"\b(um|uh|er|ah|oh)\b", "", text).strip()
+        text = post_process_text(text)
+        # 拆行
+        lines = split_text_into_lines(text)
+        # 每两行（或最后一行）做一个 block
+        for i in range(0, len(lines), 2):
+            part = lines[i:i+2]
+            # 计算这一块在 word 列表里的起止词索引
+            start_idx = sum(len(x.split()) for x in lines[:i])
+            end_idx   = sum(len(x.split()) for x in lines[:i+2])
+            if start_idx >= len(words):
+                continue
+            t0 = words[start_idx]["start"]
+            t1 = words[min(end_idx - 1, len(words) - 1)]["end"]
+            # 保证最短和最长时长
+            dur = t1 - t0
+            min_dur = max(len(" ".join(part)) / 20, 1.8)
+            max_dur = min(min_dur * 2.5, 7.0)
+            if dur < min_dur:
+                t1 = t0 + min_dur
+            elif dur > max_dur:
+                t1 = t0 + max_dur
+            blocks.append({
+                "start": t0,
+                "end":   t1,
+                "text":  "\n".join(part)
+            })
+
+    # ———— 二、合并相邻且文本相同的 blocks ————
+    merged = []
+    for b in blocks:
+        if merged and merged[-1]["text"] == b["text"]:
+            # 直接把前一块的 end 推到这一块的 end
+            merged[-1]["end"] = b["end"]
+        else:
+            merged.append(b)
+
+    # ———— 三、过滤 & 调整时间不合逻辑的 blocks ————
+    cleaned = []
+    prev_end = 0.0
+    delta = 0.001  # 1ms
+    for b in merged:
+        # 丢弃 end <= start
+        if b["end"] <= b["start"]:
+            continue
+        # 如果与前一条重叠或开始早于前一条结束，则调整 start
+        if b["start"] <= prev_end:
+            b["start"] = prev_end + delta
+            # 调整后仍然不合理，则丢弃
+            if b["start"] >= b["end"]:
+                continue
+        cleaned.append(b)
+        prev_end = b["end"]
+
+    # ———— 四、写入文件 ————
     with open(out_path, "w", encoding="utf-8") as f:
         if fmt == "vtt":
             f.write("WEBVTT\n\n")
-        idx = 1
-        for seg in segments:
-            words = seg.get("words", [])
-            if not words:
-                continue
-            text = " ".join(w["word"] for w in words)
-            if remove_fillers:
-                text = re.sub(r"\b(um|uh|er|ah|oh)\b", "", text).strip()
-            text = post_process_text(text)
-            lines = split_text_into_lines(text)
-            for i in range(0, len(lines), 2):
-                part = lines[i:i+2]
-                start_idx = sum(len(x.split()) for x in lines[:i])
-                end_idx   = sum(len(x.split()) for x in lines[:i+2])
-                if start_idx >= len(words):
-                    continue
-                t0 = words[start_idx]["start"]
-                t1 = words[min(end_idx - 1, len(words) - 1)]["end"]
-                dur = t1 - t0
-                min_dur = max(len(" ".join(part)) / 20, 1.8)
-                max_dur = min(min_dur * 2.5, 7.0)
-                if dur < min_dur:
-                    t1 = t0 + min_dur
-                elif dur > max_dur:
-                    t1 = t0 + max_dur
-                if idx > 1:
-                    prev_end = getattr(write_subtitles, 'prev_end', 0)
-                    if t0 < prev_end:
-                        t0 = prev_end + 0.001
-                write_subtitles.prev_end = t1
-                if fmt == "srt":
-                    f.write(f"{idx}\n")
-                    f.write(f"{format_timestamp(t0)} --> {format_timestamp(t1)}\n")
-                    f.write("\n".join(part) + "\n\n")
-                else:
-                    f.write(f"{format_timestamp(t0, True)} --> {format_timestamp(t1, True)}\n")
-                    f.write("\n".join(part) + "\n\n")
-                idx += 1
+        for idx, b in enumerate(cleaned, start=1):
+            start_ts = format_timestamp(b["start"], vtt=(fmt=="vtt"))
+            end_ts   = format_timestamp(b["end"],   vtt=(fmt=="vtt"))
+            if fmt == "srt":
+                f.write(f"{idx}\n")
+                f.write(f"{start_ts} --> {end_ts}\n")
+                f.write(b["text"] + "\n\n")
+            else:  # vtt
+                f.write(f"{start_ts} --> {end_ts}\n")
+                f.write(b["text"] + "\n\n")
 
 
 def chunked_transcribe(audio: mx.array,

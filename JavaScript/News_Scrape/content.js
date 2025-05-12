@@ -96,6 +96,89 @@ function scrapeBloomberg() {
     }
 }
 
+// reuters 抓取函数
+function scrapeReuters() {
+    const now = new Date();
+    const currentDatetime = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+        String(now.getHours()).padStart(2, '0'),
+    ].join('_');
+
+    // 先把所有 href*='-2025-' 的 a 拿出来
+    const allLinks = Array.from(
+        document.querySelectorAll("a[href*='-2025-']")
+    );
+
+    // 要排除的路径片段
+    const excludePaths = ['/podcasts/', '/sports/', '/africa/'];
+
+    const seen = new Set();
+    const newRows = [];
+
+    allLinks.forEach(link => {
+        const href = link.href;
+
+        // 1) 排除“媒体图片”链接
+        if (link.dataset.testid === 'MediaImageLink') return;
+
+        // 2) 排除带 <img> 的链接
+        if (link.querySelector('img')) return;
+
+        // 3) 排除特定板块的链接
+        if (excludePaths.some(p => href.includes(p))) return;
+
+        // 4) 去重
+        if (seen.has(href)) return;
+        seen.add(href);
+
+        // 5) 提取标题
+        let titleText = '';
+        // 优先 span[data-testid="TitleHeading"]
+        const heading = link.querySelector("[data-testid='TitleHeading']");
+        if (heading) {
+            titleText = heading.textContent.trim();
+        }
+        // 万一有 <a data-testid="Title">…</a>
+        else if (link.dataset.testid === 'Title') {
+            titleText = link.textContent.trim();
+        }
+        // 兜底：任何文本
+        else {
+            titleText = link.textContent.trim();
+        }
+
+        if (titleText) {
+            newRows.push([currentDatetime, titleText, href]);
+        }
+    });
+
+    if (newRows.length === 0) return;
+
+    // --------- 和你现有的 downloadHTML 部分一模一样 ---------
+    const html = generateHTML(newRows, 'Reuters');
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const timestamp = now
+        .toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        })
+        .replace(/[/: ]/g, '_');
+
+    chrome.runtime.sendMessage({
+        action: "downloadHTML",
+        url,
+        filename: `reuters_${timestamp}.html`
+    });
+}
+
 // WSJ 抓取函数
 function scrapeWSJ(shouldDownload = true) {
     const now = new Date();
@@ -214,4 +297,9 @@ if (hostname.includes('bloomberg.com')) {
             observer.disconnect();
         }, 2 * 60 * 1000);
     }, 3000);
+} else if (hostname.includes('reuters.com')) {
+    window.addEventListener('load', () => {
+        console.log('Reuters Scraper loaded');
+        scrapeReuters();
+    });
 }

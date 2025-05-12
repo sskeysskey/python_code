@@ -1,9 +1,9 @@
 // 处理标题是否有效的函数
-function isValidTitle(titleText) {
+function isValidTitle_Bloomberg(titleText) {
     const invalidPhrases = [
-        'Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP', 'Photos:',
-        'Photo illustration', 'Source:', '/AFP', 'NurPhoto', 'SOurce:', 'WireImage',
-        'Podcast:'
+        'Illustration:', '/Bloomberg', 'Getty Images', '/AP Photo', '/AP',
+        'Photos:', 'Photo illustration', 'Source:', '/AFP', 'NurPhoto',
+        'SOurce:', 'WireImage', 'Podcast:'
     ];
 
     // 过滤掉仅包含 "LIVE" 的标题
@@ -69,7 +69,7 @@ function scrapeBloomberg() {
             return;
         }
 
-        if (isValidTitle(titleText) && href) {
+        if (isValidTitle_Bloomberg(titleText) && href) {
             newRows.push([currentDatetime, titleText, href]);
         }
     });
@@ -161,30 +161,6 @@ function scrapeWSJ(shouldDownload = true) {
     }
 
     return newRows.length;
-}
-
-// 主抓取函数
-function scrapeAndDownload() {
-    const hostname = window.location.hostname;
-
-    if (hostname.includes('bloomberg.com')) {
-        scrapeBloomberg();
-    } else if (hostname.includes('wsj.com')) {
-        // WSJ的处理在专门的函数中进行
-        handleWSJScraping();
-    }
-}
-
-// 专门处理WSJ的抓取
-function handleWSJScraping() {
-    // // 第一次抓取但不下载
-    // scrapeWSJ(false);
-
-    // // 2秒后进行第二次抓取并下载
-    // setTimeout(() => {
-    //     console.log('执行WSJ的第二次抓取...');
-    //     scrapeWSJ(true);
-    // }, 1000);
 }
 
 // 根据网站使用不同的事件监听方式

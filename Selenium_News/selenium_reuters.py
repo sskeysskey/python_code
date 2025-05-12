@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 
 def is_similar(url1, url2):
     """
@@ -27,15 +29,30 @@ formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 # ChromeDriver 路径
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
+chrome_options = Options()
+
 # 设置 ChromeDriver
 service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
-# 打开 FT 网站
-driver.get("https://www.ft.com/")
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.7049.115" # 你可以更新为一个最新的Chrome User-Agent
+chrome_options.add_argument(f'user-agent={user_agent}')
+chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+chrome_options.add_experimental_option('useAutomationExtension', False)
+
+# --- 性能相关设置 ---
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
+
+# 打开 Reuters 网站
+driver.get("https://www.reuters.com/")
 
 # 查找旧的 html 文件
-file_pattern = "/Users/yanzhang/Documents/News/backup/site/ft.html"
+file_pattern = "/Users/yanzhang/Documents/News/backup/site/reuters.html"
 old_file_list = glob.glob(file_pattern)
 
 old_content = []
@@ -69,8 +86,23 @@ new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
 try:
-    css_selector = "a[href*='/content/']"
+    css_selector = "a[href*='/world/'], a[href*='/business/'], a[href*='/pictures/'], a[href*='/breakingviews/'], a[href*='/markets/']"
     titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
+
+    # 定义不希望抓取的顶级分类路径 (使用集合以便快速查找)
+    # 包含带斜杠和不带斜杠的两种形式，以防万一
+    excluded_base_paths = {
+        '/world/', '/world/americas/',
+        '/business/', '/breakingviews/',
+        '/markets/', '/pictures/',
+        '/business/tariffs/', '/world/middle-east/',
+        '/world/india/', '/world/africa/',
+        '/business/retail-consumer/',
+        '/business/autos-transportation/',
+        '/business/healthcare-pharmaceuticals/',
+        '/business/energy/', '/world/europe/', '/world/us/',
+        '/world/asia-pacific/',
+    }
 
     for title_element in titles_elements:
         href = title_element.get_attribute('href')
@@ -78,18 +110,20 @@ try:
 
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
+             # 解析URL，获取其路径部分
+            parsed_url = urlparse(href)
+            path = parsed_url.path
 
-            if ('podcasts' not in title_text and 
-                "film" not in title_text and 
-                "FT News Briefing." not in title_text and 
-                title_text != "opinion content." and
-                title_text != "FT Series." and
-                title_text != "Review." and
-                title_text != "HTSI."):
+            # 如果链接的路径正好是我们要排除的基础路径之一，则跳过
+            if path in excluded_base_paths:
+                # print(f"Skipping base path link: {href}") # 可以取消注释这行来调试
+                continue  # 跳过当前循环，处理下一个元素
+
+            if ('podcasts' not in title_text and "sports" not in title_text and "/africa/" not in title_text and "/quote/" not in title_text):
                 if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                     if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                         new_rows.append([formatted_datetime, title_text, href])
-                        new_rows1.append(["FT", title_text, href])
+                        new_rows1.append(["Reuters", title_text, href])
                         all_links.append(href)  # 添加到所有链接的列表中
 
 except Exception as e:
@@ -106,7 +140,7 @@ if old_file_list:
         print(f"错误: {e.strerror}. 文件 {old_file_path} 无法删除。")
 
 # 创建 HTML 文件
-new_html_path = f"/Users/yanzhang/Documents/News/backup/site/ft.html"
+new_html_path = f"/Users/yanzhang/Documents/News/backup/site/reuters.html"
 with open(new_html_path, 'w', encoding='utf-8') as html_file:
     # 写入 HTML 基础结构和表格开始标签
     html_file.write("<html><body><table border='1'>\n")

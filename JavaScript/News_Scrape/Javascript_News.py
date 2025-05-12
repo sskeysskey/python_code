@@ -368,12 +368,3 @@ if __name__ == "__main__":
         "/Users/yanzhang/Documents/News/backup/site/bloomberg.html",
         today_html_path
     )
-    
-    # 汇总结果
-    total_new_articles = len(bloomberg_new_rows) + len(wsj_new_rows)
-    
-    # display_notification(f"共{total_new_articles}篇，WSJ({len(wsj_new_rows)})、Bloomberg({len(bloomberg_new_rows)})！")
-    
-    print(f"\nSummary: Added {total_new_articles} new articles in total")
-    print(f"- Bloomberg: {len(bloomberg_new_rows)} articles")
-    print(f"- WSJ: {len(wsj_new_rows)} articles")

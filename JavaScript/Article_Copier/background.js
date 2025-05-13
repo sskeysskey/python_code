@@ -1042,62 +1042,125 @@ function extractAndCopy() {
       textContent = textLines.join('\n\n');
 
       // 2. 如果有正文，再去抓图片
-      if (textContent) {
+      if (textContent) { // 或者可以改为 if (true) 来总是尝试抓取图片，即使文本内容为空
         const processedUrls = new Set();
+        // 更精确地选择图片，可以先尝试轮播图图片，再尝试其他文章图片
+        // 或者直接使用一个通用选择器，如果页面结构不保证所有图片都在 ArticleBody 下
         const images = Array.from(articleBody.querySelectorAll('img'));
+        console.log('Found images count:', images.length);
+
 
         if (images.length === 0) {
-          chrome.runtime.sendMessage({ action: 'noImages' });
+          chrome.runtime.sendMessage({ action: 'noImagesFoundInArticleBody' }); // 更明确的消息
         } else {
           images.forEach((img, idx) => {
-            let url = img.src || '';
-            if (!url) return;
+            console.log(`Processing image ${idx}:`, img.outerHTML.substring(0, 300));
 
-            // 从 srcset 中选最高分辨率
+            let url = '';
+            // 优先直接的 src (如果它不是一个小的内联数据URI)
+            if (img.src && !img.src.startsWith('data:image/') && img.src !== window.location.href) {
+              url = img.src;
+            }
+
+            // 尝试 data attributes (常见的懒加载模式)
+            if (!url || url.startsWith('data:image/')) {
+              url = img.dataset.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || '';
+            }
+
+            // 从 srcset 中选最高分辨率 (这个逻辑通常是最可靠的)
             if (img.srcset) {
               const candidates = img.srcset
                 .trim().split(',')
                 .map(entry => {
-                  const [u, w] = entry.trim().split(/\s+/);
+                  const parts = entry.trim().split(/\s+/);
+                  const u = parts[0];
+                  const w = parts[1] ? parts[1].replace('w', '') : '0';
+                  if (!u || u.startsWith('data:image/')) return { url: u, width: 0 };
                   return { url: u, width: parseInt(w) || 0 };
                 })
-                .filter(c => c.width > 0)
+                .filter(c => c.width > 0 && c.url && !c.url.startsWith('data:image/'))
                 .sort((a, b) => b.width - a.width);
-              if (candidates[0]) url = candidates[0].url;
-            }
-            url = url.replace(/\s+/g, '');
-
-            if (processedUrls.has(url)) return;
-            processedUrls.add(url);
-
-            // 提取 caption：Reuters 图注在 <span>…</span> 内，需要去掉 “REUTERS/…” 及其后
-            let caption = '';
-            const fig = img.closest('[data-testid="primary-image"]') ||
-              img.closest('figure');
-            if (fig) {
-              const span = fig.parentElement.querySelector('span');
-              if (span && span.textContent) {
-                caption = span.textContent
-                  .replace(/REUTERS\/.*/i, '')  // 去掉 REUTERS/ 后面内容
-                  .replace(/^["“]+|["”]+$/g, '') // 去掉首尾引号
-                  .trim();
+              if (candidates.length > 0 && candidates[0].url) {
+                url = candidates[0].url; // srcset 的高优先级
               }
             }
-            // fallback alt
+
+            // 如果 URL 是相对路径, 转换为绝对路径
+            if (url && url.startsWith('/')) {
+              try {
+                url = new URL(url, window.location.origin).href;
+              } catch (e) {
+                console.error('Error creating absolute URL:', e);
+                url = ''; // 无效的相对URL
+              }
+            }
+
+            url = url.replace(/\s+/g, ''); // 清理URL中的任何空格 (理论上不应存在)
+
+            if (!url || url.startsWith('data:image/') || url === window.location.href) { // 最终检查
+              console.log(`Image ${idx} skipped: no valid/usable URL found. Final URL attempt: '${url}'`);
+              return; // 跳过这个图片
+            }
+
+            if (processedUrls.has(url)) {
+              console.log(`Image ${idx} skipped: URL already processed: ${url}`);
+              return;
+            }
+            processedUrls.add(url);
+
+            // --- 改进的标题提取逻辑 ---
+            let caption = '';
+            // 优先尝试 Figure > Figcaption 结构 (常见于主图)
+            const figureElement = img.closest('figure[data-testid="Figure"]');
+            if (figureElement) {
+              const captionSpan = figureElement.querySelector('[data-testid="Caption"] span, figcaption span'); // 更通用的选择器
+              if (captionSpan && captionSpan.textContent) {
+                caption = captionSpan.textContent;
+              }
+            }
+
+            // 如果上述未找到，尝试原始代码中的逻辑 (可能针对特定但不太标准的结构)
+            // 但要注意 img.closest('[data-testid="primary-image"]') 的用法
+            // primary-image 通常是图片容器，其父元素未必是标题的直接容器
+            if (!caption) {
+              const primaryImageDiv = img.closest('[data-testid="primary-image"]');
+              const figForPrimary = primaryImageDiv ? primaryImageDiv.closest('figure') : null; // primary-image 可能在 figure 内
+              const actualFig = figForPrimary || img.closest('figure'); // 回退到任意 figure
+
+              if (actualFig) {
+                // 尝试从 actualFig 的父元素或兄弟元素找 span (如原始逻辑，但要小心)
+                // 或者更可能是 actualFig 的子元素 (如 figcaption)
+                const spanInParent = actualFig.parentElement ? actualFig.parentElement.querySelector('span') : null;
+                // 这里需要更精确的判断，这个 span 是否真的是标题
+                // 这是一个非常脆弱的选择器，除非 DOM 结构非常固定且已知
+                // if (spanInParent && spanInParent.textContent.length > 10 && !spanInParent.querySelector('a, button')) { // 粗略判断
+                //    caption = spanInParent.textContent;
+                // }
+                // 更安全的还是依赖 figcaption 或 alt
+              }
+            }
+
+            if (caption) { // 清理提取到的 caption
+              caption = caption.replace(/REUTERS\/.*/i, '')
+                .replace(/^["“]+|["”]+$/g, '')
+                .trim();
+            }
+
+            // Fallback to alt text
             if (!caption && img.alt) {
               caption = img.alt.trim();
             }
+            // --- 结束标题提取 ---
 
-            // 生成文件名
-            const ext = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
-              ? url.match(/\.(png|jpe?g|gif|webp)/i)[1]
-              : 'jpg';
+            const extMatch = url.match(/\.(png|jpe?g|gif|webp)(\?|$)/i);
+            const ext = extMatch ? extMatch[1] : 'jpg';
+
             let filename = caption
-              ? caption.replace(/[/\\?%*:|"<>]/g, '-')
+              ? caption.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 180) // 缩短一点以防路径过长
               : `reuters-image-${Date.now()}-${idx}`;
-            filename = filename.substring(0, 190) + '.' + ext;
+            filename = filename + '.' + ext;
 
-            // 发送下载
+            console.log(`Image ${idx} attempting download. URL: ${url}, Filename: ${filename}, Caption: '${caption}'`);
             chrome.runtime.sendMessage({
               action: 'downloadImage',
               url: url,
@@ -1105,10 +1168,16 @@ function extractAndCopy() {
             });
           });
         }
+      } else {
+        // 如果没有文本内容，但仍可能想下载图片 (例如图库页面)
+        // 可以复制上面的图片下载逻辑到这里，或者调整 if 条件
+        console.log('No text content found, checking for images separately if needed.');
+        // 如果确定无文本则无图，这条消息是合适的：
+        // chrome.runtime.sendMessage({ action: 'noTextContentHenceNoImages' });
       }
     } else {
-      // 如果未找到正文，认为无图片
-      chrome.runtime.sendMessage({ action: 'noImages' });
+      // 如果未找到 articleBody 或 article
+      chrome.runtime.sendMessage({ action: 'articleStructureNotFound' });
     }
   }
 

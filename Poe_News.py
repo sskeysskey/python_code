@@ -26,7 +26,8 @@ SEGMENT_TO_HTML_FILE = {
     "bloomberg": "bloomberg.html",
     "hbr": "hbr.html",
     "ft": "ft.html",
-    "wsj": "wsj.html"
+    "wsj": "wsj.html",
+    "reuters": "reuters.html"
 }
 
 def is_english_char(char: str) -> bool:

@@ -1048,9 +1048,10 @@ function extractAndCopy() {
         const processedUrls = new Set();
         // 更精确地选择图片，可以先尝试轮播图图片，再尝试其他文章图片
         // 或者直接使用一个通用选择器，如果页面结构不保证所有图片都在 ArticleBody 下
-        const images = Array.from(articleBody.querySelectorAll('img'));
+        const images = Array.from(
+          articleBody.querySelectorAll('img:not([sizes="110px"])')
+        );
         console.log('Found images count:', images.length);
-
 
         if (images.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImagesFoundInArticleBody' }); // 更明确的消息
@@ -1215,65 +1216,75 @@ function extractAndCopy() {
             chrome.runtime.sendMessage({ action: 'noImages' });
           } else {
             const seen = new Set();
-            imageBlocks.forEach((block, idx) => {
-              // 3.1 拿到图片 URL
-              let url = '';
-              const pic = block.querySelector('picture');
-              if (pic) {
-                pic.querySelectorAll('source[srcset]').forEach(src => {
-                  src.srcset.split(',')
-                    .map(s => s.trim().split(' ')[0])
-                    .forEach(u => { if (u.length > url.length) url = u; });
-                });
-                if (!url) {
-                  const img = pic.querySelector('img');
-                  url = img ? img.src : '';
+
+            imageBlocks.forEach((block, blockIdx) => {
+              // 2.1 收集所有 <picture>，如果有 standalone <img>（没被 <picture> 包），也加进来
+              const pics = Array.from(block.querySelectorAll('picture'));
+              Array.from(block.querySelectorAll('img'))
+                .filter(img => !img.closest('picture'))
+                .forEach(img => pics.push(img));
+
+              pics.forEach((picOrImg, picIdx) => {
+                // --- 选最高分辨率 URL ---
+                let url = '';
+                if (picOrImg.tagName === 'PICTURE') {
+                  picOrImg.querySelectorAll('source[srcset]').forEach(src => {
+                    src.srcset
+                      .split(',')
+                      .map(s => s.trim().split(' ')[0])
+                      .forEach(u => { if (u.length > url.length) url = u; });
+                  });
+                  if (!url) {
+                    const img = picOrImg.querySelector('img');
+                    url = img ? img.src : '';
+                  }
+                } else {
+                  // standalone <img>
+                  url = picOrImg.src || '';
                 }
-              } else {
-                const img = block.querySelector('img');
-                url = img ? img.src : '';
-              }
-              if (!url) return;
-              const base = url.split('?')[0];
-              if (seen.has(base)) return;
-              seen.add(base);
+                if (!url) return;
 
-              // 2.2 通用提取 caption
-              let caption = '';
-              const figcap = block.querySelector('figcaption');
-              if (figcap) {
-                caption = figcap.textContent.trim();
-              } else {
-                // fallback 到 alt
-                const img = block.querySelector('img');
-                caption = img && img.alt ? img.alt.trim() : '';
-              }
+                // --- 去重 ---
+                const base = url.split('?')[0];
+                if (seen.has(base)) return;
+                seen.add(base);
 
-              // 3.3 生成安全文件名
-              const sanitize = s => s
-                .replace(/[/\\?%*:|"<>]/g, '-')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .substring(0, 180);
-              const name = sanitize(caption || `nytimes-image-${Date.now()}-${idx}`);
-              const filename = name + '.jpg';
+                // --- 提取 Caption ---
+                let caption = '';
+                // 优先看同一 <figure> 下的 <figcaption>
+                const figure = picOrImg.closest('figure');
+                if (figure) {
+                  const figcap = figure.querySelector('figcaption');
+                  if (figcap) caption = figcap.textContent.trim();
+                }
+                // 再 fallback 到 img.alt
+                if (!caption && picOrImg.tagName === 'PICTURE') {
+                  const img = picOrImg.querySelector('img');
+                  caption = img && img.alt ? img.alt.trim() : '';
+                } else if (!caption && picOrImg.tagName === 'IMG') {
+                  caption = picOrImg.alt ? picOrImg.alt.trim() : '';
+                }
 
-              // 3.4 发送下载消息
-              chrome.runtime.sendMessage({
-                action: 'downloadImage',
-                url: url.trim(),
-                filename
+                // --- 生成安全文件名 ---
+                const safe = str => str
+                  .replace(/[/\\?%*:|"<>]/g, '-')
+                  .replace(/\s+/g, ' ')
+                  .trim()
+                  .substring(0, 180);
+                const name = caption || `nytimes-image-${Date.now()}-${blockIdx}-${picIdx}`;
+                const filename = safe(name) + '.jpg';
+
+                // --- 发送下载消息 ---
+                chrome.runtime.sendMessage({
+                  action: 'downloadImage',
+                  url: url.trim(),
+                  filename
+                });
               });
             });
           }
         }
-      } else {
-        // 找不到 <section name="articleBody">
-        chrome.runtime.sendMessage({ action: 'noImages' });
       }
-    } else {
-      // 找不到 article
-      chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }
 

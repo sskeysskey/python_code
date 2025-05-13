@@ -1288,6 +1288,79 @@ function extractAndCopy() {
     }
   }
 
+  // 新增：Washington Post 处理
+  else if (window.location.hostname.includes("washingtonpost.com")) {
+    // ① 先取最可能的文章容器，fallback 到 body
+    const container = document.querySelector('article') || document.body;
+
+    // 1. 提取正文：所有 data-apitype="text" 的段落
+    const paras = Array.from(container.querySelectorAll('p[data-apitype="text"]'));
+    textContent = paras
+      .map(p => p.textContent.trim())
+      .filter(t => t && t.length > 1 && !/^[•@∞]/.test(t))
+      .join('\n\n');
+
+    // 2. 提取并下载图片
+    if (textContent) {
+      // 找到所有 figure
+      const figures = Array.from(container.querySelectorAll('figure'));
+      if (figures.length === 0) {
+        chrome.runtime.sendMessage({ action: 'noImages' });
+      } else {
+        const processedUrls = new Set();
+        const processedFiles = new Set();
+        figures.forEach((fig, idx) => {
+          const img = fig.querySelector('img');
+          if (!img) return;
+
+          // 拿最高分辨率的 URL
+          let bestUrl = img.src;
+          if (img.srcset) {
+            const entries = img.srcset
+              .split(',')
+              .map(s => s.trim().split(/\s+/))
+              .map(([url, w]) => ({ url, w: parseInt(w, 10) || 0 }))
+              .sort((a, b) => b.w - a.w);
+            if (entries[0] && entries[0].url) bestUrl = entries[0].url;
+          }
+
+          if (processedUrls.has(bestUrl)) return;
+          processedUrls.add(bestUrl);
+
+          // caption 或 alt 或时间戳
+          let name = '';
+          const capEl = fig.querySelector('figcaption');
+          if (capEl) {
+            name = capEl.textContent.trim();
+          } else if (img.alt) {
+            name = img.alt.trim();
+          }
+          if (!name) name = `wp-image-${Date.now()}-${idx}`;
+
+          // 清洗文件名
+          let filename = name
+            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim()
+            + '.jpg';
+          if (filename.length > 200) {
+            filename = filename.slice(0, 196) + '.jpg';
+          }
+          if (processedFiles.has(filename)) return;
+          processedFiles.add(filename);
+
+          chrome.runtime.sendMessage({
+            action: 'downloadImage',
+            url: bestUrl,
+            filename
+          });
+        });
+      }
+    } else {
+      chrome.runtime.sendMessage({ action: 'noImages' });
+    }
+  }
+
   if (textContent) {
     // 创建一个隐藏的 textarea 元素以复制文本
     const textarea = document.createElement('textarea');

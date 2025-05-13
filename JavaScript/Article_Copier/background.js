@@ -9,7 +9,9 @@ chrome.action.onClicked.addListener(async (tab) => {
     tab.url.includes("wsj.com") ||
     tab.url.includes("economist.com") ||
     tab.url.includes("technologyreview.com") ||
-    tab.url.includes("reuters.com") // 新增对 reuters.com 的支持
+    tab.url.includes("reuters.com") ||
+    tab.url.includes("nytimes.com") ||
+    tab.url.includes("washingtonpost.com")
   ) {
     try {
       // 执行文本提取与复制操作
@@ -1178,6 +1180,82 @@ function extractAndCopy() {
     } else {
       // 如果未找到 articleBody 或 article
       chrome.runtime.sendMessage({ action: 'articleStructureNotFound' });
+    }
+  }
+
+  // 处理 nytimes.com
+  else if (window.location.hostname.includes("nytimes.com")) {
+    // 1. 文本提取
+    const article = document.querySelector('main#site-content article, article#story');
+    if (article) {
+      // 只抓取正文段落
+      const paras = article.querySelectorAll(
+        'section[name="articleBody"] p[class*="css-at9mcl"], ' +
+        'section[name="articleBody"] p[class*="css-at9mc1"]'
+      );
+      textContent = Array.from(paras)
+        .map(p => p.textContent.trim())
+        .filter(t => t && t.length > 5 && !/^[@•]/.test(t))
+        .join('\n\n');
+
+      // 2. 只有文章文本抓取成功后，才执行图片下载
+      if (textContent) {
+        const imageBlocks = article.querySelectorAll('[data-testid^="ImageBlock"]');
+        if (imageBlocks.length === 0) {
+          chrome.runtime.sendMessage({ action: 'noImages' });
+        } else {
+          const processed = new Set();
+          imageBlocks.forEach((block, idx) => {
+            // 找到 <picture> 或 <img>
+            const pic = block.querySelector('picture');
+            let url = '', ext = 'jpg';
+            if (pic) {
+              // 优先从 <source> 的 srcset 中取最高分辨率
+              const srcsets = pic.querySelectorAll('source[srcset]');
+              srcsets.forEach(src => {
+                src.srcset.split(',')
+                  .map(s => s.trim().split(' ')[0])
+                  .forEach(u => { if (u.length > url.length) url = u; });
+              });
+              if (!url) {
+                const img = pic.querySelector('img');
+                url = img ? img.src : '';
+              }
+            } else {
+              const img = block.querySelector('img');
+              url = img ? img.src : '';
+            }
+            if (!url) return;
+            // 过滤重复
+            const base = url.split('?')[0];
+            if (processed.has(base)) return;
+            processed.add(base);
+            // 提取 caption
+            let caption = '';
+            const figcap = block.querySelector('figcaption span.css-jevhma');
+            if (figcap) caption = figcap.textContent.trim();
+            else {
+              const img = block.querySelector('img');
+              caption = img && img.alt ? img.alt.trim() : '';
+            }
+            // 清理文件名
+            const safe = (s) => s
+              .replace(/[/\\?%*:|"<>]/g, '-')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .substring(0, 180);
+            let filename = safe(caption || `nytimes-image-${Date.now()}-${idx}`) + '.jpg';
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: url.trim(),
+              filename
+            });
+          });
+        }
+      }
+    } else {
+      // 没找到 article
+      chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }
 

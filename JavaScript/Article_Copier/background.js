@@ -1207,7 +1207,10 @@ function extractAndCopy() {
 
         // 3. 只有文本抓取成功，才继续下载图片
         if (textContent) {
-          const imageBlocks = article.querySelectorAll('[data-testid^="ImageBlock"]');
+          // 2. 图片：同时抓 ImageBlock-# + header 主图
+          const imageBlocks = article.querySelectorAll(
+            '[data-testid^="ImageBlock"], [data-testid="imageblock-wrapper"], [data-testid^="CardDeckBlock"]'
+          );
           if (imageBlocks.length === 0) {
             chrome.runtime.sendMessage({ action: 'noImages' });
           } else {
@@ -1235,11 +1238,13 @@ function extractAndCopy() {
               if (seen.has(base)) return;
               seen.add(base);
 
-              // 3.2 提取描述
+              // 2.2 通用提取 caption
               let caption = '';
-              const capSpan = block.querySelector('figcaption span.css-jevhma');
-              if (capSpan) caption = capSpan.textContent.trim();
-              else {
+              const figcap = block.querySelector('figcaption');
+              if (figcap) {
+                caption = figcap.textContent.trim();
+              } else {
+                // fallback 到 alt
                 const img = block.querySelector('img');
                 caption = img && img.alt ? img.alt.trim() : '';
               }

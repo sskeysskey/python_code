@@ -283,6 +283,33 @@ def open_webpage_and_monitor_wsj():
     
     # 关闭页面
     close_browser_tabs(1)
+
+def open_webpage_and_monitor_reuters():
+    """
+    打开reuters页面并监控下载文件
+    """
+    # 清理已存在的wsj文件
+    clean_files("reuters")
+    
+    # 打开WSJ页面
+    print("Opening reuters main page...")
+    pyautogui.moveTo(591, 574)
+    webbrowser.open("https://www.reuters.com/")
+    for i in range(5):
+        pyautogui.scroll(-80)
+        time.sleep(0.5)
+    
+    # 等待文件下载
+    print("Waiting for reuters file download...")
+    while count_files("reuters") < 1:
+        time.sleep(2)
+        print(".", end="", flush=True)
+    
+    print("\nreuters file detected!")
+    print("reuters file downloaded. Processing...")
+    
+    # 关闭页面
+    close_browser_tabs(1)
     
 def close_browser_tabs(num_tabs):
     """
@@ -366,5 +393,13 @@ if __name__ == "__main__":
     bloomberg_new_rows = process_news_source(
         "Bloomberg", 
         "/Users/yanzhang/Documents/News/backup/site/bloomberg.html",
+        today_html_path
+    )
+
+    # 处理reuters
+    open_webpage_and_monitor_reuters()
+    wsj_new_rows = process_news_source(
+        "Reuters", 
+        "/Users/yanzhang/Documents/News/backup/site/reuters.html",
         today_html_path
     )

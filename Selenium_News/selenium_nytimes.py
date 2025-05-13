@@ -1,12 +1,15 @@
 import os
 import re
+import time
 import glob
+import pyautogui
 import webbrowser
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
 def open_html_file(file_path):
@@ -40,11 +43,27 @@ formatted_datetime = current_datetime.strftime("%Y_%m_%d_%H")
 chrome_driver_path = "/Users/yanzhang/Downloads/backup/chromedriver"
 
 # 设置 ChromeDriver
+chrome_options = Options()
 service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service)
+driver = webdriver.Chrome(service=service, options=chrome_options)
+
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.7049.115" # 你可以更新为一个最新的Chrome User-Agent
+chrome_options.add_argument(f'user-agent={user_agent}')
+chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+chrome_options.add_experimental_option('useAutomationExtension', False)
+
+# --- 性能相关设置 ---
+chrome_options.add_argument("--disable-extensions")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
 
 # 打开 nytimes 网站
 driver.get("https://www.nytimes.com/")
+
+pyautogui.moveTo(400, 522)
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/backup/site/nytimes.html"
@@ -85,6 +104,10 @@ new_rows = []
 new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
+for _ in range(4):
+    pyautogui.scroll(-80)
+    time.sleep(0.2)
+
 try:
     css_selector = f"a[href*='/{current_year}/'] .indicate-hover"
     title_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
@@ -100,11 +123,26 @@ try:
         # 此处添加移除阅读时间标记的逻辑
         title_text = re.sub(r'\d+ MIN READ', '', title_text).strip()
 
+        blacklist = [
+            'podcasts',
+            'theathletic',
+            'movies',
+            'eat',
+            'television',
+            'sports',
+            'music',
+            'new-books-recommendations',
+            'THE EDITORIAL BOARD',
+            'THE INTERVIEW',
+            '/live/',
+            'athletic',
+        ]
+
         if href and title_text:
             #print(f"标题: {title_text}, 链接: {href}")
 
             if len(title_text) >= 6:
-                if 'podcasts' not in href and "theathletic" not in href and "movies" not in href and "eat" not in href and "television" not in href and "sports" not in href and "music" not in href and "new-books-recommendations" not in href and "THE EDITORIAL BOARD" not in href and "THE INTERVIEW" not in href:
+                if not any(sub in href for sub in blacklist):
                     if not any(is_similar(href, old_link) for _, _, old_link in old_content):
                         if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
                             new_rows.append([formatted_datetime, title_text, href])
@@ -183,5 +221,3 @@ if new_rows1:
         with open(today_html_path, 'a', encoding='utf-8') as html_file:
             html_file.write(append_content)
             html_file.write("</table></body></html>")
-
-# open_new_html_file()

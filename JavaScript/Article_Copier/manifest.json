@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Article Copier",
-  "version": "1.0",
-  "description": "Copy FT Bloomberg WSJ Economist technologyreview content to clipboard",
+  "name": "Image Downloader & Article Copier",
+  "version": "1.1",
+  "description": "Copy FT Bloomberg WSJ Economist technologyreview REUTERS content to clipboard",
   "permissions": [
     "activeTab",
     "clipboardWrite",
@@ -15,7 +15,8 @@
     "*://*.bloomberg.com/*",
     "*://*.wsj.com/*",
     "*://*.economist.com/*",
-    "*://*.technologyreview.com/*"
+    "*://*.technologyreview.com/*",
+    "*://*.reuters.com/*"
   ],
   "action": {
     "default_title": "Copy Article"

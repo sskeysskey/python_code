@@ -8,7 +8,8 @@ chrome.action.onClicked.addListener(async (tab) => {
     tab.url.includes("bloomberg.com") ||
     tab.url.includes("wsj.com") ||
     tab.url.includes("economist.com") ||
-    tab.url.includes("technologyreview.com")
+    tab.url.includes("technologyreview.com") ||
+    tab.url.includes("reuters.com") // 新增对 reuters.com 的支持
   ) {
     try {
       // 执行文本提取与复制操作
@@ -1023,6 +1024,91 @@ function extractAndCopy() {
           });
         }
       }
+    }
+  }
+
+  // 处理 reuters.com
+  else if (window.location.hostname.includes("reuters.com")) {
+    const articleBody = document.querySelector('[data-testid="ArticleBody"]');
+    const article = document.querySelector('article[data-testid="Article"]');
+    if (articleBody && article) {
+      // 1. 按 DOM 顺序一次性抓取所有 Heading 和 段落
+      const contentNodes = articleBody.querySelectorAll(
+        'h2[data-testid="Heading"], [data-testid^="paragraph-"]'
+      );
+      const textLines = Array.from(contentNodes)
+        .map(el => el.textContent.trim())
+        .filter(t => t.length > 0);
+      textContent = textLines.join('\n\n');
+
+      // 2. 如果有正文，再去抓图片
+      if (textContent) {
+        const processedUrls = new Set();
+        const images = Array.from(articleBody.querySelectorAll('img'));
+
+        if (images.length === 0) {
+          chrome.runtime.sendMessage({ action: 'noImages' });
+        } else {
+          images.forEach((img, idx) => {
+            let url = img.src || '';
+            if (!url) return;
+
+            // 从 srcset 中选最高分辨率
+            if (img.srcset) {
+              const candidates = img.srcset
+                .trim().split(',')
+                .map(entry => {
+                  const [u, w] = entry.trim().split(/\s+/);
+                  return { url: u, width: parseInt(w) || 0 };
+                })
+                .filter(c => c.width > 0)
+                .sort((a, b) => b.width - a.width);
+              if (candidates[0]) url = candidates[0].url;
+            }
+            url = url.replace(/\s+/g, '');
+
+            if (processedUrls.has(url)) return;
+            processedUrls.add(url);
+
+            // 提取 caption：Reuters 图注在 <span>…</span> 内，需要去掉 “REUTERS/…” 及其后
+            let caption = '';
+            const fig = img.closest('[data-testid="primary-image"]') ||
+              img.closest('figure');
+            if (fig) {
+              const span = fig.parentElement.querySelector('span');
+              if (span && span.textContent) {
+                caption = span.textContent
+                  .replace(/REUTERS\/.*/i, '')  // 去掉 REUTERS/ 后面内容
+                  .replace(/^["“]+|["”]+$/g, '') // 去掉首尾引号
+                  .trim();
+              }
+            }
+            // fallback alt
+            if (!caption && img.alt) {
+              caption = img.alt.trim();
+            }
+
+            // 生成文件名
+            const ext = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)
+              ? url.match(/\.(png|jpe?g|gif|webp)/i)[1]
+              : 'jpg';
+            let filename = caption
+              ? caption.replace(/[/\\?%*:|"<>]/g, '-')
+              : `reuters-image-${Date.now()}-${idx}`;
+            filename = filename.substring(0, 190) + '.' + ext;
+
+            // 发送下载
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: url,
+              filename: filename
+            });
+          });
+        }
+      }
+    } else {
+      // 如果未找到正文，认为无图片
+      chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }
 

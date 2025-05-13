@@ -1171,14 +1171,98 @@ function extractAndCopy() {
             });
           });
         }
-      } else {
-        // 如果没有文本内容，但仍可能想下载图片 (例如图库页面)
-        // 可以复制上面的图片下载逻辑到这里，或者调整 if 条件
-        console.log('No text content found, checking for images separately if needed.');
-        // 如果确定无文本则无图，这条消息是合适的：
-        // chrome.runtime.sendMessage({ action: 'noTextContentHenceNoImages' });
       }
-    } else {
+    } else if (window.location.pathname.includes('/pictures/')) {
+      // 2.1 抓文字描述（SingleImageHero 顶部描述）
+      let textContent = '';
+      const heroDesc = document.querySelector(
+        'div[data-testid="SingleImageHeroSubSection"] p[data-testid="Body"]'
+      );
+      if (heroDesc) {
+        textContent = heroDesc.textContent.trim();
+        // 如果你要把文字传给 background，再发一条消息
+        chrome.runtime.sendMessage({ action: 'sendText', text: textContent });
+      }
+
+      // 2.2 抓所有图片
+      const processedUrls = new Set();
+      // 选出 hero 图 和 event-gallery 图集里的 <img>
+      const images = Array.from(
+        document.querySelectorAll(
+          'div[data-testid="SingleImageHero"] img, ' +
+          'div[data-testid="EventGalleryImageImage"] img'
+        )
+      );
+      console.log('Pictures page: found images count:', images.length);
+
+      images.forEach((img, idx) => {
+        // —— 复用你原来的 URL 提取逻辑 —————————————————————
+        let url = '';
+        if (img.src && !img.src.startsWith('data:image/') && img.src !== window.location.href) {
+          url = img.src;
+        }
+        if ((!url || url.startsWith('data:image/')) && img.dataset.src) {
+          url = img.dataset.src;
+        }
+        if (img.srcset) {
+          const candidates = img.srcset.trim().split(',')
+            .map(entry => {
+              const [u, w] = entry.trim().split(/\s+/);
+              return { url: u, width: parseInt(w) || 0 };
+            })
+            .filter(c => c.url && c.width > 0 && !c.url.startsWith('data:image/'))
+            .sort((a, b) => b.width - a.width);
+          if (candidates.length) url = candidates[0].url;
+        }
+        if (url.startsWith('/')) {
+          try { url = new URL(url, location.origin).href; }
+          catch (e) { url = ''; }
+        }
+        url = url.replace(/\s+/g, '');
+
+        if (!url || url.startsWith('data:image/') || url === location.href) {
+          console.log(`skip img ${idx}, bad url`, url);
+          return;
+        }
+        if (processedUrls.has(url)) {
+          console.log(`skip img ${idx}, dup url`, url);
+          return;
+        }
+        processedUrls.add(url);
+
+        // —— 针对图集页面的 Caption 提取 —————————————————————
+        let caption = '';
+        // 先找 figcaption 里的 span
+        const fig = img.closest('figure');
+        if (fig) {
+          const span = fig.querySelector('figcaption span, [data-testid="ImageCaption"] span');
+          if (span) caption = span.textContent.trim();
+        }
+        // 再 fallback 用 alt
+        if (!caption && img.alt) caption = img.alt.trim();
+
+        // 清洗 caption
+        caption = caption.replace(/REUTERS\/.*/i, '')
+          .replace(/^["“]+|["”]+$/g, '')
+          .trim();
+
+        // 构造文件名
+        const extMatch = url.match(/\.(png|jpe?g|gif|webp)(\?|$)/i);
+        const ext = extMatch ? extMatch[1] : 'jpg';
+        let filename = caption
+          ? caption.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 180)
+          : `reuters-pic-${Date.now()}-${idx}`;
+        filename += '.' + ext;
+
+        console.log(`download img ${idx}:`, url, filename, caption);
+        chrome.runtime.sendMessage({
+          action: 'downloadImage',
+          url,
+          filename
+        });
+      });
+    }
+    else {
       // 如果未找到 articleBody 或 article
       chrome.runtime.sendMessage({ action: 'articleStructureNotFound' });
     }

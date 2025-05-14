@@ -193,7 +193,7 @@ function scrapeWSJ(shouldDownload = true) {
         const href = titleElement.href;
 
         // 跳过包含 livecoverage 或 buyside 的链接
-        if (!href || href.toLowerCase().includes('livecoverage') || href.toLowerCase().includes('wsj.com/buyside') || href.toLowerCase().includes('wsj.com/video')) {
+        if (!href || href.toLowerCase().includes('livecoverage') || href.toLowerCase().includes('wsj.com/buyside') || href.toLowerCase().includes('wsj.com/video') || href.toLowerCase().includes('wsj.com/sports')) {
             return;
         }
 

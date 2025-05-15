@@ -1,7 +1,5 @@
 import os
 import glob
-import time
-import pyautogui
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.parse import urlparse
@@ -69,10 +67,6 @@ if old_file_list:
 new_rows = []
 new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
-
-for _ in range(4):
-    pyautogui.scroll(-80)
-    time.sleep(0.2)
 
 try:
     css_selector = "a[href*='/content/']"

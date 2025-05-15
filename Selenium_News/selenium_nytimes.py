@@ -104,6 +104,7 @@ new_rows = []
 new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
+time.sleep(1)
 for _ in range(4):
     pyautogui.scroll(-80)
     time.sleep(0.2)

@@ -157,10 +157,6 @@ new_rows = []
 new_rows1 = []
 all_links = [old_link for _, _, old_link in old_content]  # 既有的所有链接
 
-for _ in range(4):
-    pyautogui.scroll(-80)
-    time.sleep(0.2)
-
 try:
     # 查找今年内的链接
     titles_elements = driver.find_elements(By.CSS_SELECTOR, f"a[href*='/{datetime.now().year}/']")

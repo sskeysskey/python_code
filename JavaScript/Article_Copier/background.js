@@ -115,6 +115,59 @@ chrome.downloads.onChanged.addListener((delta) => {
   }
 });
 
+function showNotification(message) {
+  // 如果未添加通知相关的样式，则创建一次
+  if (!document.getElementById('notification-style')) {
+    const style = document.createElement('style');
+    style.id = 'notification-style';
+    style.textContent = `
+      #notification-container {
+    position: fixed;
+    top: 20px;
+      left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .copy-notification {
+        background-color: #4CAF50;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    }
+  `;
+    document.head.appendChild(style);
+  }
+
+  // 创建通知容器（如果尚未创建）
+  let container = document.getElementById('notification-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'notification-container';
+    document.body.appendChild(container);
+  }
+
+  // 创建新的通知元素
+  const notification = document.createElement('div');
+  notification.className = 'copy-notification';
+  notification.textContent = message;
+  container.appendChild(notification);
+
+  // 持续显示7秒后直接移除通知
+  setTimeout(() => {
+    notification.remove();
+    // 如果容器内没有其他通知则移除容器
+    if (container.children.length === 0) {
+      container.remove();
+    }
+  }, 7000);
+}
+
 function extractAndCopy() {
   let textContent = '';
 
@@ -1648,57 +1701,4 @@ function extractAndCopy() {
     }
   }
   return false;
-}
-
-function showNotification(message) {
-  // 如果未添加通知相关的样式，则创建一次
-  if (!document.getElementById('notification-style')) {
-    const style = document.createElement('style');
-    style.id = 'notification-style';
-    style.textContent = `
-      #notification-container {
-    position: fixed;
-    top: 20px;
-      left: 50%;
-        transform: translateX(-50%);
-        z-index: 2147483647;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-      }
-      .copy-notification {
-        background-color: #4CAF50;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 4px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    font-size: 14px;
-    }
-  `;
-    document.head.appendChild(style);
-  }
-
-  // 创建通知容器（如果尚未创建）
-  let container = document.getElementById('notification-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'notification-container';
-    document.body.appendChild(container);
-  }
-
-  // 创建新的通知元素
-  const notification = document.createElement('div');
-  notification.className = 'copy-notification';
-  notification.textContent = message;
-  container.appendChild(notification);
-
-  // 持续显示7秒后直接移除通知
-  setTimeout(() => {
-    notification.remove();
-    // 如果容器内没有其他通知则移除容器
-    if (container.children.length === 0) {
-      container.remove();
-    }
-  }, 7000);
 }

@@ -1272,95 +1272,238 @@ function extractAndCopy() {
 
   // 处理 nytimes.com
   else if (window.location.hostname.includes("nytimes.com")) {
-    // 1. 找到文章主体
-    const article = document.querySelector('main#site-content article, article#story');
-    if (article) {
-      const bodySection = article.querySelector('section[name="articleBody"]');
-      if (bodySection) {
-        // 2. 按自然顺序，收集所有 p 和 h2
-        const nodes = Array.from(
-          bodySection.querySelectorAll('p.css-at9mcl, p.css-at9mc1, h2')
-        );
-        textContent = nodes
-          .map(node => node.textContent.trim())
-          // 过滤空串、单字符、特殊符号开头
-          .filter(t =>
-            t &&
-            t.length > 1 &&
-            !/^[@•∞]/.test(t) &&
-            t !== "Editors’ Picks"
-          )
-          .join('\n\n');
+    // 尝试新的互动式文章结构
+    const interactiveArticleBody = document.querySelector('article#interactive div.birdkit-body, section[data-testid="inline-interactive"] div.birdkit-body');
 
-        // 3. 只有文本抓取成功，才继续下载图片
-        if (textContent) {
-          // 2. 图片：同时抓 ImageBlock-# + header 主图
-          const imageBlocks = article.querySelectorAll(
-            '[data-testid^="ImageBlock"], [data-testid="imageblock-wrapper"], [data-testid^="CardDeckBlock"]'
-          );
-          if (imageBlocks.length === 0) {
-            chrome.runtime.sendMessage({ action: 'noImages' });
+    if (interactiveArticleBody) {
+      // --- 新的互动式文章处理逻辑 ---
+      console.log('NYTimes: Detected interactive article structure.');
+
+      // 1. 提取正文
+      const paragraphs = interactiveArticleBody.querySelectorAll('p.g-text.svelte-wbgwfj');
+      textContent = Array.from(paragraphs)
+        .map(p => {
+          let currentText = '';
+          // 遍历所有子节点，只连接文本节点的内容
+          for (const childNode of p.childNodes) {
+            if (childNode.nodeType === Node.TEXT_NODE) {
+              currentText += childNode.textContent;
+            }
+          }
+          return currentText.replace(/<[^>]*>/g, '').trim(); // 移除可能残留的HTML标记并trim
+        })
+        .filter(t =>
+          t &&
+          t.length > 1 && // 确保文本有实际意义
+          !/^[@•∞]/.test(t) && // 排除特殊符号开头的
+          !/^\s*$/.test(t) && // 排除纯空白
+          !t.match(/^[\s\W]*$/) && // 排除只包含非字母数字的短文本
+          t !== "Editors’ Picks"
+        )
+        .join('\n\n');
+      console.log('NYTimes (Interactive) Text Content Extracted (first 200 chars):', textContent.substring(0, 200));
+
+      // 2. 提取图片 (无论是否有文本内容，都尝试提取图片)
+      const imageContainers = interactiveArticleBody.querySelectorAll('div[id^="g-"][class*="ai2html"], figure.g-wrapper'); // 包括 ai2html 和更通用的 figure
+      console.log('NYTimes (Interactive) Image Containers Found:', imageContainers.length);
+
+      if (imageContainers.length === 0 && !textContent) { // 仅当没有文本且没有图片容器时才发 noImages
+        chrome.runtime.sendMessage({ action: 'noImages' });
+      } else if (imageContainers.length > 0) {
+        const seenUrls = new Set();
+        const seenFilenames = new Set();
+
+        imageContainers.forEach((container, idx) => {
+          const imgElement = container.querySelector('img[data-src], img[src]');
+          if (!imgElement) {
+            console.log(`NYTimes (Interactive) Image ${idx}: No img element found in container.`);
+            return;
+          }
+
+          let imageUrl = imgElement.dataset.src || imgElement.src;
+          if (!imageUrl || imageUrl.startsWith('data:') || imageUrl === window.location.href + '#') {
+            console.log(`NYTimes (Interactive) Image ${idx}: Invalid or data URL: ${imageUrl}`);
+            return;
+          }
+          try {
+            imageUrl = new URL(imageUrl, window.location.href).href; // 确保是绝对路径
+          } catch (e) {
+            console.error(`NYTimes (Interactive) Image ${idx}: Invalid URL ${imageUrl}`, e);
+            return;
+          }
+
+
+          const baseUrl = imageUrl.split('?')[0];
+          if (seenUrls.has(baseUrl)) {
+            console.log(`NYTimes (Interactive) Image ${idx}: URL already processed: ${baseUrl}`);
+            return;
+          }
+          seenUrls.add(baseUrl);
+
+          let caption = '';
+          // 优先从用户指定的 ai2html 结构中寻找描述文本
+          const specificCaptionElement = container.querySelector('.g-aiAbs.g-aiPointText p[class*="g-pstyle"], .g-aiAbs p[class*="g-pstyle"]');
+          if (specificCaptionElement && specificCaptionElement.textContent.trim()) {
+            caption = specificCaptionElement.textContent.trim();
           } else {
-            const seen = new Set();
+            // 尝试更通用的描述选择器，例如 figure > figcaption
+            const figcaptionElement = imgElement.closest('figure')?.querySelector('figcaption');
+            if (figcaptionElement && figcaptionElement.textContent.trim()) {
+              caption = figcaptionElement.textContent.trim();
+            } else {
+              // 备选：ai2html 内部的其他可能文本元素
+              const genericCaptionElements = container.querySelectorAll('.g-text-shadow p, .g-text-glow p, .g-aiAbs p, div[class*="g-aiPointText"] p');
+              const potentialCaptions = Array.from(genericCaptionElements)
+                .map(el => el.textContent.trim())
+                .filter(text => text && text.length > 1 && text.length < 150); // 过滤噪音
+              if (potentialCaptions.length > 0) {
+                caption = potentialCaptions.join('; '); // 如果有多个，用分号隔开
+              }
+            }
+          }
+          // 最后回退到 alt 文本
+          if (!caption && imgElement.alt && imgElement.alt.trim()) {
+            caption = imgElement.alt.trim();
+          }
+          caption = caption.trim();
+          console.log(`NYTimes (Interactive) Image ${idx}: URL: ${imageUrl}, Raw Caption: "${caption}"`);
+
+          const safe = str => str
+            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 180); // 限制基础文件名长度
+
+          let filenameBase = safe(caption || `nytimes-interactive-${Date.now()}-${idx}`);
+          let filename = filenameBase + '.jpg';
+
+          // 防止文件名重复
+          let counter = 1;
+          while (seenFilenames.has(filename)) {
+            filename = `${filenameBase}(${counter}).jpg`;
+            counter++;
+          }
+          seenFilenames.add(filename);
+
+          console.log(`NYTimes (Interactive) Image ${idx}: Downloading. URL: ${imageUrl}, Filename: ${filename}`);
+          chrome.runtime.sendMessage({
+            action: 'downloadImage',
+            url: imageUrl,
+            filename: filename
+          });
+        });
+        if (seenUrls.size === 0 && imageContainers.length > 0 && !textContent) { // 有容器但没提取到有效图片URL，且无文本
+          chrome.runtime.sendMessage({ action: 'noImages' });
+        }
+      } else if (!textContent) { // 没有图片容器，也没有文本
+        chrome.runtime.sendMessage({ action: 'noImages' });
+      }
+
+    } else {
+      // --- 原有的 NYTimes 标准文章处理逻辑 ---
+      console.log('NYTimes: Using standard article structure.');
+      const article = document.querySelector('main#site-content article, article#story');
+      if (article) {
+        const bodySection = article.querySelector('section[name="articleBody"]');
+        if (bodySection) {
+          const nodes = Array.from(
+            bodySection.querySelectorAll('p.css-at9mcl, p.css-at9mc1, h2, p[data-testid="drop-cap-letter"] + p')
+          );
+          textContent = nodes
+            .map(node => {
+              let fullText = '';
+              if (node.previousElementSibling && node.previousElementSibling.dataset.testid === "drop-cap-letter") {
+                fullText = (node.previousElementSibling.textContent || "").trim() + (node.textContent || "").trim();
+              } else {
+                fullText = (node.textContent || "").trim();
+              }
+              return fullText;
+            })
+            .filter(t =>
+              t &&
+              t.length > 1 &&
+              !/^[@•∞]/.test(t) &&
+              !t.match(/^[\s\W]*$/) &&
+              t !== "Editors’ Picks"
+            )
+            .join('\n\n');
+          console.log('NYTimes (Standard) Text Content Extracted (first 200 chars):', textContent.substring(0, 200));
+
+          // 图片提取 (无论是否有文本内容)
+          const imageBlocks = article.querySelectorAll(
+            '[data-testid^="ImageBlock"], [data-testid="imageblock-wrapper"], [data-testid^="CardDeckBlock"], figure[data-testid="image"], figure.interactive-asset' // 增加了 figure.interactive-asset
+          );
+
+          if (imageBlocks.length === 0 && !textContent) {
+            chrome.runtime.sendMessage({ action: 'noImages' });
+          } else if (imageBlocks.length > 0) {
+            const seenUrls = new Set();
+            const seenFilenames = new Set();
 
             imageBlocks.forEach((block, blockIdx) => {
-              // 2.1 收集所有 <picture>，如果有 standalone <img>（没被 <picture> 包），也加进来
-              const pics = Array.from(block.querySelectorAll('picture'));
-              Array.from(block.querySelectorAll('img'))
-                .filter(img => !img.closest('picture'))
-                .forEach(img => pics.push(img));
+              const picsAndImgs = [];
+              block.querySelectorAll('picture').forEach(p => picsAndImgs.push(p));
+              block.querySelectorAll('img').forEach(img => {
+                if (!img.closest('picture')) { // 只添加没有被picture包裹的独立img
+                  picsAndImgs.push(img);
+                }
+              });
 
-              pics.forEach((picOrImg, picIdx) => {
-                // --- 选最高分辨率 URL ---
+              picsAndImgs.forEach((picOrImg, picIdx) => {
                 let url = '';
+                let actualImgElement = null;
+
                 if (picOrImg.tagName === 'PICTURE') {
+                  actualImgElement = picOrImg.querySelector('img');
                   picOrImg.querySelectorAll('source[srcset]').forEach(src => {
                     src.srcset
                       .split(',')
                       .map(s => s.trim().split(' ')[0])
-                      .forEach(u => { if (u.length > url.length) url = u; });
+                      .forEach(u => { if (u && u.length > url.length && !u.startsWith('data:')) url = u; });
                   });
-                  if (!url) {
-                    const img = picOrImg.querySelector('img');
-                    url = img ? img.src : '';
+                  if ((!url || url.startsWith('data:')) && actualImgElement && actualImgElement.src) {
+                    url = actualImgElement.src;
                   }
-                } else {
-                  // standalone <img>
+                } else { // standalone <img>
+                  actualImgElement = picOrImg;
                   url = picOrImg.src || '';
                 }
-                if (!url) return;
 
-                // --- 去重 ---
+                if (!url || url.startsWith('data:') || url === window.location.href + '#') return;
+                try {
+                  url = new URL(url, window.location.href).href;
+                } catch (e) { return; }
+
+
                 const base = url.split('?')[0];
-                if (seen.has(base)) return;
-                seen.add(base);
+                if (seenUrls.has(base)) return;
+                seenUrls.add(base);
 
-                // --- 提取 Caption ---
                 let caption = '';
-                // 优先看同一 <figure> 下的 <figcaption>
                 const figure = picOrImg.closest('figure');
                 if (figure) {
-                  const figcap = figure.querySelector('figcaption');
-                  if (figcap) caption = figcap.textContent.trim();
+                  const figcap = figure.querySelector('figcaption, [data-testid="image-caption"], .caption-text'); // 增加 .caption-text
+                  if (figcap) caption = (figcap.textContent || "").trim();
                 }
-                // 再 fallback 到 img.alt
-                if (!caption && picOrImg.tagName === 'PICTURE') {
-                  const img = picOrImg.querySelector('img');
-                  caption = img && img.alt ? img.alt.trim() : '';
-                } else if (!caption && picOrImg.tagName === 'IMG') {
-                  caption = picOrImg.alt ? picOrImg.alt.trim() : '';
+                if (!caption && actualImgElement && actualImgElement.alt) {
+                  caption = actualImgElement.alt.trim();
                 }
 
-                // --- 生成安全文件名 ---
                 const safe = str => str
                   .replace(/[/\\?%*:|"<>]/g, '-')
                   .replace(/\s+/g, ' ')
                   .trim()
                   .substring(0, 180);
-                const name = caption || `nytimes-image-${Date.now()}-${blockIdx}-${picIdx}`;
-                const filename = safe(name) + '.jpg';
 
-                // --- 发送下载消息 ---
+                let filenameBase = safe(caption || `nytimes-standard-${Date.now()}-${blockIdx}-${picIdx}`);
+                let filename = filenameBase + '.jpg';
+                let counter = 1;
+                while (seenFilenames.has(filename)) {
+                  filename = `${filenameBase}(${counter}).jpg`;
+                  counter++;
+                }
+                seenFilenames.add(filename);
+
                 chrome.runtime.sendMessage({
                   action: 'downloadImage',
                   url: url.trim(),
@@ -1368,8 +1511,46 @@ function extractAndCopy() {
                 });
               });
             });
+            if (seenUrls.size === 0 && imageBlocks.length > 0 && !textContent) {
+              chrome.runtime.sendMessage({ action: 'noImages' });
+            }
+          } else if (!textContent) { // 没有图片容器，也没有文本
+            chrome.runtime.sendMessage({ action: 'noImages' });
+          }
+        } else {
+          // article 存在但 bodySection 未找到
+          console.log('NYTimes (Standard): articleBody section not found.');
+          if (!article.querySelector('img')) { // 如果文章内完全没有图片
+            chrome.runtime.sendMessage({ action: 'noImages' });
+          } else { // 尝试从整个 article 范围抓取图片作为最后手段
+            const fallbackImages = article.querySelectorAll('img');
+            let foundFallback = false;
+            const seenUrls = new Set();
+            const seenFilenames = new Set();
+            fallbackImages.forEach((img, idx) => {
+              let imgUrl = img.src;
+              if (!imgUrl || imgUrl.startsWith('data:') || imgUrl === window.location.href + '#') return;
+              try { imgUrl = new URL(imgUrl, window.location.href).href; } catch (e) { return; }
+              const base = imgUrl.split('?')[0];
+              if (seenUrls.has(base)) return;
+              seenUrls.add(base);
+              foundFallback = true;
+              let caption = img.alt || `nytimes-fallback-${Date.now()}-${idx}`;
+              const safe = str => str.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, ' ').trim().substring(0, 180);
+              let filenameBase = safe(caption);
+              let filename = filenameBase + '.jpg';
+              let counter = 1;
+              while (seenFilenames.has(filename)) { filename = `${filenameBase}(${counter}).jpg`; counter++; }
+              seenFilenames.add(filename);
+              chrome.runtime.sendMessage({ action: 'downloadImage', url: imgUrl, filename });
+            });
+            if (!foundFallback) chrome.runtime.sendMessage({ action: 'noImages' });
           }
         }
+      } else {
+        // article 未找到
+        console.log('NYTimes: Article element not found.');
+        chrome.runtime.sendMessage({ action: 'noImages' });
       }
     }
   }

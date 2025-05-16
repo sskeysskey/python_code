@@ -183,7 +183,8 @@ def write_subtitles(segments: List[Dict[str, Any]],
         if remove_fillers:
             text = re.sub(r"\b(um|uh|er|ah|oh)\b", "", text).strip()
         text = post_process_text(text)
-        # 拆行
+
+        # 这里依然按你原来拆行、分块的逻辑来做
         lines = split_text_into_lines(text)
         # 每两行（或最后一行）做一个 block
         for i in range(0, len(lines), 2):
@@ -242,13 +243,17 @@ def write_subtitles(segments: List[Dict[str, Any]],
         for idx, b in enumerate(cleaned, start=1):
             start_ts = format_timestamp(b["start"], vtt=(fmt=="vtt"))
             end_ts   = format_timestamp(b["end"],   vtt=(fmt=="vtt"))
+
+            # [这里是关键改动] 把换行统统换成空格
+            one_line = b["text"].replace("\n", " ").strip()
+
             if fmt == "srt":
                 f.write(f"{idx}\n")
                 f.write(f"{start_ts} --> {end_ts}\n")
-                f.write(b["text"] + "\n\n")
+                f.write(one_line + "\n\n")
             else:  # vtt
                 f.write(f"{start_ts} --> {end_ts}\n")
-                f.write(b["text"] + "\n\n")
+                f.write(one_line + "\n\n")
 
 
 def chunked_transcribe(audio: mx.array,

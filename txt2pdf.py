@@ -9,10 +9,14 @@ import re
 import os
 import glob
 import shutil
-import io
 import math
 import subprocess # 新增：用于调用外部命令 (osascript)
 import sys       # 新增：用于检查操作系统
+
+MAJOR_SITES = {s.upper() for s in (
+    'FT','WSJ','BLOOMBERG','REUTERS','NYTIMES',
+    'WASHINGTONPOST','ECONOMIST','TECHNOLOGYREVIEW','OTHER'
+)}
 
 # --- 你原来的函数保持不变 ---
 def find_all_news_files(directory):
@@ -440,11 +444,27 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                         
             else:
                 # 处理文本段落
+                # text = paragraph.strip()
+                # 处理文本段落
                 text = paragraph.strip()
+                # 去掉 BOM、常见中英文标点
+                text = text.lstrip('\ufeff').strip("：:。.，,")
+                upper = text.upper()
 
                 # 检查是否是主要新闻网站名称
-                major_news_sites = {'FT', 'WSJ', 'BLOOMBERG', 'TECHNOLOGYREVIEW', 'ECONOMIST', "Other"}
-                if text.upper() in {site.upper() for site in major_news_sites}:
+                # major_news_sites = {
+                #     'FT',
+                #     'WSJ',
+                #     'BLOOMBERG',
+                #     'REUTERS',
+                #     'NYTIMES',
+                #     'WASHINGTONPOST',
+                #     'ECONOMIST',
+                #     'TECHNOLOGYREVIEW',
+                #     'OTHER',
+                # }
+                # if text.upper() in {site.upper() for site in major_news_sites}:
+                if any(upper.startswith(site) for site in MAJOR_SITES):
                     # 保存当前字体设置和颜色
                     current_font_size = font_size
                     
@@ -572,6 +592,12 @@ def extract_site_name(url):
             return 'WSJ'
         elif 'bloomberg.com' in url:
             return 'BLOOMBERG'
+        elif 'reuters.com' in url:
+            return 'REUTERS'
+        elif 'nytimes.com' in url:
+            return 'NYTIMES'
+        elif 'washingtonpost.com' in url:
+            return 'WASHINGTONPOST'
         elif 'economist.com' in url:
             return 'ECONOMIST'
         elif 'technologyreview.com' in url:

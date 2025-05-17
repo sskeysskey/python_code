@@ -184,7 +184,92 @@ if os.path.exists(wsj_file):
         for row in table_today_cnh.find_all('tr')[1:]:  # 跳过表头
             table_wsj.append(row)
 
-        # 将合并后的内容保存到一个新文件中
+        # 合并完表格，准备写入文件前，插入自定义 CSS
+        css = """
+        /* 全局字体和背景 */
+        body {
+            font-size: 18px;
+            /* 或者 1.125rem */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #333;
+            background: #f9f9f9;
+            margin: 0;
+            padding: 1rem;
+            line-height: 1.6;
+        }
+
+        /* 容器居中 */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+
+        /* 美化表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th,
+        td {
+            padding: .75rem .5rem;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        thead th {
+            background: #4a90e2;
+            color: #fff;
+            text-transform: uppercase;
+            font-size: .875rem;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+
+        tbody tr:hover {
+            background: #e6f7ff;
+        }
+
+        /* 去掉所有链接默认下划线，hover 时加下划线提示 */
+        a {
+            color: #4a90e2;
+            /* 保持和表头一样的主题色，也可根据需要改色 */
+            text-decoration: none;
+            /* 取消下划线 */
+        }
+
+        a:hover,
+        a:focus {
+            text-decoration: none;
+            /* 取消下划线 */
+        }
+        """
+
+        # 确保 <head> 节点存在
+        if not soup_wsj.head:
+            # 如果找不到 <head>，则强制创建一个
+            head_tag = soup_wsj.new_tag("head")
+            # 如果有 <html>，就插到它下面；否则插到最前面
+            if soup_wsj.html:
+                soup_wsj.html.insert(0, head_tag)
+            else:
+                soup_wsj.insert(0, head_tag)
+        else:
+            head_tag = soup_wsj.head
+
+        # 创建 <style> 并插入
+        style_tag = soup_wsj.new_tag("style")
+        style_tag.string = css
+        head_tag.append(style_tag)
+
+        # 最后写入合并并插入了 CSS 的 HTML
         with open(txt_file_path, 'w', encoding='utf-8') as f:
             f.write(str(soup_wsj))
 

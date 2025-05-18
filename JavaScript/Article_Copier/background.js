@@ -691,10 +691,8 @@ function extractAndCopy() {
           // 排除SVG和小图标
           if (imgSrc.toLowerCase().endsWith('.svg') ||
             imgSrc.includes('/icons/') ||
-            imgSrc.includes('/icons') ||
             imgSrc.includes('/social') ||
             imgSrc.includes('/ui/') ||
-            imgSrc.includes('/ui') ||
             img.closest('button, .share-button, .toolbar')) {
             return false;
           }

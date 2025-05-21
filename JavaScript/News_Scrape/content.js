@@ -65,7 +65,7 @@ function scrapeBloomberg() {
             titleText = titleText.substring(11);
         }
 
-        if (href.includes('/videos/2025')) {
+        if (href.includes('/videos/2025') || href.includes('/podcast')) {
             return;
         }
 

@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Bloomberg、WSJ、Reuters Scraper",
-    "version": "2.0",
+    "version": "2.1",
     "description": "自动抓取Bloomberg、WSJ和Reuters网站新闻内容并下载HTML文件",
     "permissions": [
         "storage",

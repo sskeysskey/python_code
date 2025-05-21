@@ -1611,19 +1611,26 @@ function extractAndCopy() {
     // ① 先取最可能的文章容器，fallback 到 body
     const container = document.querySelector('article') || document.body;
 
-    // 1. 提取正文：所有 data-apitype="text" 的段落
-    const paras = Array.from(container.querySelectorAll('p[data-apitype="text"]'));
+    // 1. 提取正文：尝试新选择器，如果失败则回退到旧选择器
+    let paras = Array.from(container.querySelectorAll('p[data-component="Text"]')); // 尝试新选择器
+
+    // 如果使用新选择器没有找到段落，则尝试旧选择器
+    if (paras.length === 0) {
+      console.log("[WP Parser] New selector 'p[data-component=\"Text\"]' found no paragraphs. Trying old selector 'p[data-apitype=\"text\"]'.");
+      paras = Array.from(container.querySelectorAll('p[data-apitype="text"]')); // 尝试旧选择器
+    }
+
     textContent = paras
       .map(p => p.textContent.trim())
       .filter(t => t && t.length > 1 && !/^[•@∞]/.test(t))
       .join('\n\n');
 
-    // 2. 提取并下载图片
+    // 2. 提取并下载图片 (后续逻辑保持不变)
     if (textContent) {
       // 找到所有 figure
       const figures = Array.from(container.querySelectorAll('figure'));
       if (figures.length === 0) {
-        chrome.runtime.sendMessage({ action: 'noImages' });
+        chrome.runtime.sendMessage({ action: 'noImages', reason: 'No figure elements found.' });
       } else {
         const processedUrls = new Set();
         const processedFiles = new Set();
@@ -1636,10 +1643,49 @@ function extractAndCopy() {
           if (img.srcset) {
             const entries = img.srcset
               .split(',')
-              .map(s => s.trim().split(/\s+/))
-              .map(([url, w]) => ({ url, w: parseInt(w, 10) || 0 }))
-              .sort((a, b) => b.w - a.w);
-            if (entries[0] && entries[0].url) bestUrl = entries[0].url;
+              .map(s => {
+                const parts = s.trim().split(/\s+/);
+                const url = parts[0];
+                // 处理 "1x", "2x" 或 "300w", "1024w" 等格式
+                let w = 0;
+                if (parts.length > 1) {
+                  const w_str = parts[parts.length - 1];
+                  if (w_str.endsWith('w')) {
+                    w = parseInt(w_str.slice(0, -1), 10) || 0;
+                  } else if (w_str.endsWith('x')) {
+                    // 对于 'x' 描述符，我们可以给一个权重，例如 1x=1, 2x=2
+                    // 但 'w' 描述符通常更精确，优先使用 'w'
+                    // 如果只有 'x'，可以简单地取最后一个 'x' 的值
+                    // 或者，如果混合使用，需要更复杂的逻辑。
+                    // 这里简化处理：如果srcset中主要是 'w'，则 'x' 的权重可能不那么重要
+                    // 如果只有 'x'，则可以按 'x' 的值排序
+                    w = (parseInt(w_str.slice(0, -1), 10) || 0) * 1000; // 给 'x' 一个较大的基数以便排序
+                  }
+                }
+                return { url, w };
+              })
+              .sort((a, b) => b.w - a.w); // 宽度大的优先
+
+            if (entries[0] && entries[0].url && (entries[0].url.startsWith('http:') || entries[0].url.startsWith('https:'))) {
+              bestUrl = entries[0].url;
+            } else if (entries[0] && entries[0].url) {
+              console.warn(`[WP Parser] srcset URL '${entries[0].url}' might be invalid or not better. Keeping src: '${img.src}'`);
+            }
+          }
+
+          // 确保URL是绝对路径且协议有效
+          try {
+            // 如果 bestUrl 已经是绝对路径，new URL 会正确处理
+            // 如果 bestUrl 是相对路径，它会相对于 window.location.href 解析
+            const absoluteUrl = new URL(bestUrl, window.location.href);
+            if (!['http:', 'https:'].includes(absoluteUrl.protocol)) {
+              console.warn(`[WP Parser] Skipping image with invalid protocol: ${bestUrl}`);
+              return;
+            }
+            bestUrl = absoluteUrl.href;
+          } catch (e) {
+            console.warn(`[WP Parser] Skipping image due to invalid URL '${bestUrl}':`, e);
+            return;
           }
 
           if (processedUrls.has(bestUrl)) return;
@@ -1648,23 +1694,50 @@ function extractAndCopy() {
           // caption 或 alt 或时间戳
           let name = '';
           const capEl = fig.querySelector('figcaption');
-          if (capEl) {
+          if (capEl && capEl.textContent.trim()) {
             name = capEl.textContent.trim();
-          } else if (img.alt) {
+          } else if (img.alt && img.alt.trim()) {
             name = img.alt.trim();
           }
-          if (!name) name = `wp-image-${Date.now()}-${idx}`;
+
+          if (!name || name.toLowerCase() === 'image' || name.toLowerCase() === 'photo' || name.toLowerCase().startsWith('loading')) {
+            name = `wp-image-${Date.now()}-${idx}`;
+          }
 
           // 清洗文件名
           let filename = name
             .replace(/[/\\?%*:|"<>]/g, '-')
-            .replace(/\s+/g, ' ')
-            .trim()
-            + '.jpg';
-          if (filename.length > 200) {
-            filename = filename.slice(0, 196) + '.jpg';
+            .replace(/\s+/g, '_')
+            .replace(/[^\w.-]/g, '')
+            .trim();
+
+          const MAX_FILENAME_BASE_LENGTH = 180;
+          if (filename.length > MAX_FILENAME_BASE_LENGTH) {
+            filename = filename.slice(0, MAX_FILENAME_BASE_LENGTH);
           }
-          if (processedFiles.has(filename)) return;
+          filename = filename.replace(/[-._]+$/, '');
+
+          if (!filename) {
+            filename = `wp-image-${Date.now()}-${idx}`;
+          }
+          filename += '.jpg';
+
+
+          if (processedFiles.has(filename)) {
+            const namePart = filename.substring(0, filename.lastIndexOf('.'));
+            const extPart = filename.substring(filename.lastIndexOf('.'));
+            let counter = 1;
+            let newFilenameTry;
+            do {
+              newFilenameTry = `${namePart}_${counter}${extPart}`;
+              counter++;
+            } while (processedFiles.has(newFilenameTry) && counter < 100);
+            filename = newFilenameTry;
+            if (processedFiles.has(filename)) {
+              console.warn(`[WP Parser] Filename conflict for ${name}, could not resolve. Skipping.`);
+              return;
+            }
+          }
           processedFiles.add(filename);
 
           chrome.runtime.sendMessage({
@@ -1675,7 +1748,7 @@ function extractAndCopy() {
         });
       }
     } else {
-      chrome.runtime.sendMessage({ action: 'noImages' });
+      chrome.runtime.sendMessage({ action: 'noImages', reason: 'Text content could not be extracted with either new or old selectors.' });
     }
   }
 

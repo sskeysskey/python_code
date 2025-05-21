@@ -11,6 +11,98 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from html.parser import HTMLParser
 
+def add_css_to_soup(soup, css_string):
+    """将CSS字符串添加到BeautifulSoup对象的<head>中"""
+    if not soup.head:
+        head_tag = soup.new_tag("head")
+        if soup.html: # 检查是否存在<html>标签
+            soup.html.insert(0, head_tag)
+        else: # 如果没有<html>标签，直接在soup对象顶部插入<head>
+            soup.insert(0, head_tag)
+    else:
+        head_tag = soup.head
+    
+    # 可选：检查是否已存在相同的 style 标签以避免重复添加
+    # for style in head_tag.find_all("style"):
+    #     if style.string and style.string.strip() == css_string.strip():
+    #         print("CSS样式已存在，跳过添加。")
+    #         return
+
+    style_tag = soup.new_tag("style")
+    style_tag.string = css_string
+    head_tag.append(style_tag)
+
+# ==============================================================================
+# 请将您的CSS字符串定义移到这里或脚本的其他全局位置
+# 例如:
+css = """
+/* 全局字体和背景 */
+body {
+    font-size: 18px;
+    /* 或者 1.125rem */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #333;
+    background: #f9f9f9;
+    margin: 0;
+    padding: 1rem;
+    line-height: 1.6;
+}
+
+/* 容器居中 */
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+/* 美化表格 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+th,
+td {
+    padding: .75rem .5rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+thead th {
+    background: #4a90e2;
+    color: #fff;
+    text-transform: uppercase;
+    font-size: .875rem;
+}
+
+tbody tr:nth-child(even) {
+    background: #f2f2f2;
+}
+
+tbody tr:hover {
+    background: #e6f7ff;
+}
+
+/* 去掉所有链接默认下划线，hover 时加下划线提示 */
+a {
+    color: #4a90e2;
+    /* 保持和表头一样的主题色，也可根据需要改色 */
+    text-decoration: none;
+    /* 取消下划线 */
+}
+
+a:hover,
+a:focus {
+    text-decoration: none;
+    /* 取消下划线 */
+}
+"""
+# ==============================================================================
+
 def delete_done_txt_files(directory):
     # 确保提供的目录路径是存在的
     if not os.path.exists(directory):
@@ -163,130 +255,234 @@ except IndexError as e:
 # 定义文件路径
 wsj_file = '/Users/yanzhang/Documents/News/today_wsjcn.html'
 
-if os.path.exists(wsj_file):
-    try:
-        # 读取两个文件的内容
-        with open(wsj_file, 'r', encoding='utf-8') as f:
-            wsj_html = f.read()
+# if os.path.exists(wsj_file):
+#     try:
+#         # 读取两个文件的内容
+#         with open(wsj_file, 'r', encoding='utf-8') as f:
+#             wsj_html = f.read()
 
-        with open(txt_file_path, 'r', encoding='utf-8') as f:
-            today_cnh_html = f.read()
+#         with open(txt_file_path, 'r', encoding='utf-8') as f:
+#             today_cnh_html = f.read()
 
-        # 使用BeautifulSoup解析HTML
-        soup_wsj = BeautifulSoup(wsj_html, 'html.parser')
-        soup_today_cnh = BeautifulSoup(today_cnh_html, 'html.parser')
+#         # 使用BeautifulSoup解析HTML
+#         soup_wsj = BeautifulSoup(wsj_html, 'html.parser')
+#         soup_today_cnh = BeautifulSoup(today_cnh_html, 'html.parser')
 
-        # 找到两个文件中的表格
-        table_wsj = soup_wsj.find('table')
-        table_today_cnh = soup_today_cnh.find('table')
+#         # 找到两个文件中的表格
+#         table_wsj = soup_wsj.find('table')
+#         table_today_cnh = soup_today_cnh.find('table')
 
-        # 将today_cnh的表格内容加到wsj的表格末尾
-        for row in table_today_cnh.find_all('tr')[1:]:  # 跳过表头
-            table_wsj.append(row)
+#         # 将today_cnh的表格内容加到wsj的表格末尾
+#         for row in table_today_cnh.find_all('tr')[1:]:  # 跳过表头
+#             table_wsj.append(row)
 
-        # 合并完表格，准备写入文件前，插入自定义 CSS
-        css = """
-        /* 全局字体和背景 */
-        body {
-            font-size: 18px;
-            /* 或者 1.125rem */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            color: #333;
-            background: #f9f9f9;
-            margin: 0;
-            padding: 1rem;
-            line-height: 1.6;
-        }
+#         # 合并完表格，准备写入文件前，插入自定义 CSS
+#         css = """
+#         /* 全局字体和背景 */
+#         body {
+#             font-size: 18px;
+#             /* 或者 1.125rem */
+#             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+#             color: #333;
+#             background: #f9f9f9;
+#             margin: 0;
+#             padding: 1rem;
+#             line-height: 1.6;
+#         }
 
-        /* 容器居中 */
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
-        }
+#         /* 容器居中 */
+#         .container {
+#             max-width: 960px;
+#             margin: 0 auto;
+#             background: #fff;
+#             padding: 1.5rem;
+#             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+#             border-radius: 4px;
+#         }
 
-        /* 美化表格 */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
+#         /* 美化表格 */
+#         table {
+#             width: 100%;
+#             border-collapse: collapse;
+#             margin-top: 1rem;
+#         }
 
-        th,
-        td {
-            padding: .75rem .5rem;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
+#         th,
+#         td {
+#             padding: .75rem .5rem;
+#             border: 1px solid #ddd;
+#             text-align: left;
+#         }
 
-        thead th {
-            background: #4a90e2;
-            color: #fff;
-            text-transform: uppercase;
-            font-size: .875rem;
-        }
+#         thead th {
+#             background: #4a90e2;
+#             color: #fff;
+#             text-transform: uppercase;
+#             font-size: .875rem;
+#         }
 
-        tbody tr:nth-child(even) {
-            background: #f2f2f2;
-        }
+#         tbody tr:nth-child(even) {
+#             background: #f2f2f2;
+#         }
 
-        tbody tr:hover {
-            background: #e6f7ff;
-        }
+#         tbody tr:hover {
+#             background: #e6f7ff;
+#         }
 
-        /* 去掉所有链接默认下划线，hover 时加下划线提示 */
-        a {
-            color: #4a90e2;
-            /* 保持和表头一样的主题色，也可根据需要改色 */
-            text-decoration: none;
-            /* 取消下划线 */
-        }
+#         /* 去掉所有链接默认下划线，hover 时加下划线提示 */
+#         a {
+#             color: #4a90e2;
+#             /* 保持和表头一样的主题色，也可根据需要改色 */
+#             text-decoration: none;
+#             /* 取消下划线 */
+#         }
 
-        a:hover,
-        a:focus {
-            text-decoration: none;
-            /* 取消下划线 */
-        }
-        """
+#         a:hover,
+#         a:focus {
+#             text-decoration: none;
+#             /* 取消下划线 */
+#         }
+#         """
 
-        # 确保 <head> 节点存在
-        if not soup_wsj.head:
-            # 如果找不到 <head>，则强制创建一个
-            head_tag = soup_wsj.new_tag("head")
-            # 如果有 <html>，就插到它下面；否则插到最前面
-            if soup_wsj.html:
-                soup_wsj.html.insert(0, head_tag)
+#         # 确保 <head> 节点存在
+#         if not soup_wsj.head:
+#             # 如果找不到 <head>，则强制创建一个
+#             head_tag = soup_wsj.new_tag("head")
+#             # 如果有 <html>，就插到它下面；否则插到最前面
+#             if soup_wsj.html:
+#                 soup_wsj.html.insert(0, head_tag)
+#             else:
+#                 soup_wsj.insert(0, head_tag)
+#         else:
+#             head_tag = soup_wsj.head
+
+#         # 创建 <style> 并插入
+#         style_tag = soup_wsj.new_tag("style")
+#         style_tag.string = css
+#         head_tag.append(style_tag)
+
+#         # 最后写入合并并插入了 CSS 的 HTML
+#         with open(txt_file_path, 'w', encoding='utf-8') as f:
+#             f.write(str(soup_wsj))
+
+#         print(f"合并后的文件已保存为: {txt_file_path}")
+#         os.remove(wsj_file)
+#     except Exception as e:
+#         print(f"合并文件时发生错误: {e}")
+# else:
+#     print("未找到WSJ文件，继续执行其他操作。")
+
+# # 打开文件和调整大小
+# if os.path.exists(txt_file_path):
+#     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+#     time.sleep(0.5)
+#     # 循环5次模拟按下Command + '='快捷键
+#     for _ in range(4):
+#         pyautogui.hotkey('command', '=')
+#         time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
+# else:
+#     print("文件不存在，无法打开。")
+
+# 确保 txt_file_path 变量已定义并且对应的文件存在
+if 'txt_file_path' in locals() and os.path.exists(txt_file_path):
+    
+    # --- 步骤 1: 处理 WSJ 文件合并 (如果存在) ---
+    if os.path.exists(wsj_file):
+        try:
+            print(f"找到WSJ文件 {wsj_file}，准备合并。")
+            with open(wsj_file, 'r', encoding='utf-8') as f_wsj:
+                wsj_html_content = f_wsj.read()
+            
+            # 读取 txt_file_path 的当前内容 (即 TodayCNH_{time_str}.html)
+            with open(txt_file_path, 'r', encoding='utf-8') as f_cnh:
+                today_cnh_html_content = f_cnh.read()
+
+            # 解析两个HTML内容
+            soup_wsj_base = BeautifulSoup(wsj_html_content, 'html.parser')
+            soup_today_cnh_to_merge = BeautifulSoup(today_cnh_html_content, 'html.parser')
+
+            # 找到各自的表格
+            table_in_wsj = soup_wsj_base.find('table')
+            table_in_cnh = soup_today_cnh_to_merge.find('table')
+
+            if table_in_wsj and table_in_cnh:
+                # 将 CNH 表格的行 (除了表头) 追加到 WSJ 表格
+                # 使用 .extract() 可以确保移动节点而不是复制，如果源soup不再需要这些行
+                for row in table_in_cnh.find_all('tr')[1:]: 
+                    table_in_wsj.append(row.extract()) 
+                print("CNH表格内容已合并到WSJ表格。")
             else:
-                soup_wsj.insert(0, head_tag)
-        else:
-            head_tag = soup_wsj.head
+                missing_tables_info = []
+                if not table_in_wsj: missing_tables_info.append("WSJ文件中的表格")
+                if not table_in_cnh: missing_tables_info.append("CNH文件中的表格（用于合并）")
+                print(f"警告：未能找到 { ' 和 '.join(missing_tables_info) }。表格合并步骤已跳过。")
+            
+            # 将修改后的 WSJ 内容 (可能已合并 CNH 表格) 写回 txt_file_path，覆盖它
+            # 此时还未添加全局CSS
+            with open(txt_file_path, 'w', encoding='utf-8') as f_out:
+                f_out.write(str(soup_wsj_base))
+            print(f"WSJ相关内容已处理并保存到 {txt_file_path}。")
+            
+            # 删除原始WSJ文件
+            try:
+                os.remove(wsj_file)
+                print(f"已删除原始WSJ文件：{wsj_file}")
+            except OSError as e_remove:
+                print(f"删除WSJ文件 {wsj_file} 失败: {e_remove}")
 
-        # 创建 <style> 并插入
-        style_tag = soup_wsj.new_tag("style")
-        style_tag.string = css
-        head_tag.append(style_tag)
+        except Exception as e_wsj:
+            print(f"处理WSJ文件 {wsj_file} 时发生错误: {e_wsj}")
+            print(f"{txt_file_path} 将保留其在WSJ处理前的内容。")
+            # 如果WSJ处理失败，txt_file_path 仍然包含原始的CNH内容。
+            # CSS将在下一步添加到这个内容中。
+    else:
+        print(f"WSJ文件 {wsj_file} 未找到。将直接对 {txt_file_path} 的现有内容添加CSS。")
 
-        # 最后写入合并并插入了 CSS 的 HTML
-        with open(txt_file_path, 'w', encoding='utf-8') as f:
-            f.write(str(soup_wsj))
+    # --- 步骤 2: 向 txt_file_path 的当前内容添加 CSS ---
+    # 此时, txt_file_path 包含:
+    #   a) 原始的 CNH 内容 (如果 wsj_file 不存在, 或合并失败且未覆盖 txt_file_path)
+    #   b) WSJ 的内容 (可能合并了 CNH 表格) (如果 wsj_file 存在且处理成功覆盖了 txt_file_path)
+    try:
+        print(f"准备为文件 {txt_file_path} 添加CSS样式。")
+        with open(txt_file_path, 'r', encoding='utf-8') as f_current_html:
+            html_content_for_css = f_current_html.read()
+        
+        soup_for_final_css = BeautifulSoup(html_content_for_css, 'html.parser')
+        
+        # 使用之前定义的 add_css_to_soup 函数和 css 字符串
+        add_css_to_soup(soup_for_final_css, css) # 此函数会修改 soup_for_final_css 对象
 
-        print(f"合并后的文件已保存为: {txt_file_path}")
-        os.remove(wsj_file)
-    except Exception as e:
-        print(f"合并文件时发生错误: {e}")
+        # 将添加了CSS的最终HTML写回文件
+        with open(txt_file_path, 'w', encoding='utf-8') as f_final_output:
+            f_final_output.write(str(soup_for_final_css))
+        print(f"CSS样式已成功添加到 {txt_file_path}。")
+
+    except FileNotFoundError:
+        # 这个错误理论上不应该发生，因为我们在外部的if条件中已经检查过 txt_file_path 的存在
+        print(f"严重错误：在尝试添加CSS之前，文件 {txt_file_path} 未找到。")
+    except Exception as e_css_addition:
+        print(f"为 {txt_file_path} 添加CSS时发生错误: {e_css_addition}。文件可能未更新CSS。")
+
 else:
-    print("未找到WSJ文件，继续执行其他操作。")
+    # 如果 txt_file_path 变量未定义，或者定义了但文件在之前的步骤中未能成功创建
+    if 'txt_file_path' in locals():
+        print(f"错误：主要HTML文件 {txt_file_path} 在处理流程后不存在。无法进行WSJ合并或CSS添加。")
+    else:
+        print("错误：主要HTML文件路径 (txt_file_path) 未定义。通常表示初始HTML生成步骤失败。无法进行后续处理。")
 
-# 打开文件和调整大小
-if os.path.exists(txt_file_path):
+# --- 后续操作：打开文件和调整大小 ---
+if 'txt_file_path' in locals() and os.path.exists(txt_file_path):
+    print(f"准备在浏览器中打开文件: {txt_file_path}")
     webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
-    time.sleep(0.5)
-    # 循环5次模拟按下Command + '='快捷键
-    for _ in range(4):
-        pyautogui.hotkey('command', '=')
-        time.sleep(0.2)  # 在连续按键之间添加小延迟，以模拟自然按键速度
+    time.sleep(0.5) # 给浏览器一点时间加载
+    try:
+        # 循环几次模拟按下Command + '='快捷键来放大页面
+        for _ in range(4): #原代码是4次
+            pyautogui.hotkey('command', '=')
+            time.sleep(0.2) 
+        print("已尝试放大浏览器页面。")
+    except Exception as e_pyautogui:
+        print(f"使用pyautogui控制浏览器缩放时出错: {e_pyautogui}")
+        print("请确保您的环境允许pyautogui控制应用程序，并且目标浏览器窗口是激活的。")
 else:
-    print("文件不存在，无法打开。")
+    print("最终HTML文件不存在或路径未定义，无法在浏览器中打开。")

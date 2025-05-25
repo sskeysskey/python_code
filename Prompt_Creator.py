@@ -3,10 +3,9 @@ import os
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QTextEdit, QPushButton, QLabel, QFileDialog,
-    QSizePolicy, QDialog, QMessageBox, QSpacerItem,
-    QCheckBox, QDialogButtonBox
+    QSizePolicy, QDialog, QMessageBox, QCheckBox, QDialogButtonBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
 
 # --- 自定义查找/替换对话框 ---

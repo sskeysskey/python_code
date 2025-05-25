@@ -5,8 +5,9 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QTextEdit, QPushButton, QLabel, QFileDialog,
-    QSizePolicy, QDialog, QMessageBox, 
-    QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem
+    QSizePolicy, QDialog, QMessageBox,
+    QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem,
+    QSplitter # 引入 QSplitter
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
@@ -302,11 +303,15 @@ class HistoryDialog(QDialog):
     def __init__(self, history_data, parent=None):
         super().__init__(parent)
         self.setWindowTitle("历史记录")
-        self.setMinimumSize(500, 300)
+        self.setMinimumSize(800, 500) # 增大对话框尺寸以容纳预览区
         self.history_data = history_data # 存储完整的历史数据列表
 
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self) # 主垂直布局
 
+        # 使用 QSplitter 来创建可调整大小的左右两栏
+        splitter = QSplitter(Qt.Horizontal)
+
+        # 左侧：列表
         self.list_widget = QListWidget()
         # 倒序显示，最新的在最上面
         for i, record in enumerate(reversed(self.history_data)):
@@ -320,22 +325,70 @@ class HistoryDialog(QDialog):
             self.list_widget.addItem(item)
 
         self.list_widget.itemDoubleClicked.connect(self.load_selected_record)
-        layout.addWidget(self.list_widget)
+        self.list_widget.currentItemChanged.connect(self.update_preview) # 连接信号
+        splitter.addWidget(self.list_widget)
 
+        # 右侧：预览区
+        preview_group = QWidget() # 使用一个QWidget来容纳标签和文本框
+        preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setContentsMargins(0,0,0,0)
+        preview_layout.addWidget(QLabel("最终Prompt指令预览:"))
+        self.prompt_preview_edit = QTextEdit()
+        self.prompt_preview_edit.setReadOnly(True)
+        self.prompt_preview_edit.setPlaceholderText("在此预览选定记录的Prompt指令...")
+        preview_layout.addWidget(self.prompt_preview_edit)
+        splitter.addWidget(preview_group)
+
+        # 设置 splitter 的初始大小比例 (可选)
+        splitter.setSizes([250, 550]) # 左侧250，右侧550
+
+        main_layout.addWidget(splitter) # 将splitter添加到主布局
+
+        # 按钮
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("加载选中记录")
         buttons.accepted.connect(self.load_selected_record)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        main_layout.addWidget(buttons)
+
+        # 初始化时，如果列表有内容，默认选中第一项并更新预览
+        if self.list_widget.count() > 0:
+            self.list_widget.setCurrentRow(0)
+            self.update_preview(self.list_widget.currentItem())
+
+
+    def update_preview(self, current_item, previous_item=None):
+        """当列表选中项改变时，更新右侧的预览文本框"""
+        # `previous_item` 参数是 currentItemChanged 信号自带的，这里我们不需要用它
+        if current_item:
+            original_index = current_item.data(Qt.UserRole)
+            if 0 <= original_index < len(self.history_data):
+                selected_record_data = self.history_data[original_index]
+                prompt_content = selected_record_data.get("final_prompt", "")
+                self.prompt_preview_edit.setPlainText(prompt_content)
+            else:
+                self.prompt_preview_edit.clear()
+                self.prompt_preview_edit.setPlaceholderText("无法获取记录数据。")
+        else:
+            self.prompt_preview_edit.clear()
+            self.prompt_preview_edit.setPlaceholderText("请选择一条历史记录以预览其Prompt。")
+
 
     def load_selected_record(self):
         current_item = self.list_widget.currentItem()
         if current_item:
             # 获取存储在item中的原始记录的索引
             original_index = current_item.data(Qt.UserRole)
-            selected_record_data = self.history_data[original_index]
-            self.record_selected.emit(selected_record_data) # 发射信号
-            self.accept() # 关闭对话框
+            if 0 <= original_index < len(self.history_data):
+                selected_record_data = self.history_data[original_index]
+                self.record_selected.emit(selected_record_data) # 发射信号
+                self.accept() # 关闭对话框
+            else:
+                QMessageBox.warning(self, "错误", "无法加载选中的记录，索引无效。")
+        else:
+            # 如果是通过双击空的列表区域或者没有选中项时按OK，则不执行任何操作或提示
+            # QMessageBox.information(self, "提示", "请先选择一条记录。")
+            pass # 或者你可以选择在这里 self.reject() 如果不希望OK按钮在无选择时起作用
 
 
 # --- 主窗口 ---
@@ -348,15 +401,22 @@ class MainWindow(QWidget):
 
     def _ensure_history_file_exists(self):
         if not os.path.exists(HISTORY_FILE):
-            with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-                json.dump([], f) # 创建一个空的JSON数组
+            try:
+                with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump([], f) # 创建一个空的JSON数组
+            except IOError as e:
+                QMessageBox.critical(self, "错误", f"无法创建历史记录文件: {HISTORY_FILE}\n{e}")
+
 
     def _load_history_from_file(self):
         try:
+            if not os.path.exists(HISTORY_FILE):
+                return [] # 如果文件不存在，返回空列表
             with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
                 history = json.load(f)
             return history if isinstance(history, list) else []
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+            QMessageBox.warning(self, "加载历史失败", f"无法加载历史记录文件: {e}")
             return []
 
     def _save_record_to_file(self, record_data):

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QTextEdit, QPushButton, QLabel, QFileDialog,
     QSizePolicy, QDialog, QMessageBox,
     QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem,
-    QSplitter, QAbstractItemView # 引入 QAbstractItemView
+    QSplitter, QAbstractItemView
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence

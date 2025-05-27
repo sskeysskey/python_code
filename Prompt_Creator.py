@@ -228,14 +228,15 @@ class FileBlockWidget(QWidget):
             _, file_extension = os.path.splitext(f_path) # 获取文件扩展名
 
             # 检查文件扩展名是否为 .db
-            if file_extension.lower() == ".db":
+            if file_extension.lower() in (".db", ".scpt"):
                 self.content_edit.clear() # 清空内容区域
                 # 设置占位符文本，提示用户这是一个.db文件，内容未加载
+                # 设置占位符文本，提示用户这是一个二进制文件，内容未加载
                 self.content_edit.setPlaceholderText(
-                    "这是一个 .db 文件，内容未加载。\n"
+                    f"这是一个 {file_extension} 二进制文件，内容未加载。\n"
                     "您可以在此手动输入或编辑与该数据库文件相关的信息或说明。"
                 )
-                self.original_content_on_load = "" # 对于.db文件，我们视其加载内容为空
+                self.original_content_on_load = "" # 对于.db或.scpt文件，我们视其加载内容为空
             else:
                 # 对于非.db文件，按原逻辑处理
                 try:

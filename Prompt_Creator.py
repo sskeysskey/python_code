@@ -623,18 +623,7 @@ class MainWindow(QWidget):
             return
         dialog = HistoryDialog(history_data, self)
         dialog.record_selected.connect(self.load_record_into_ui)
-        # dialog.history_updated.connect(self.handle_history_update) # 如果让主窗口保存
         dialog.exec_()
-
-    # def handle_history_update(self, updated_history_data):
-    #     """如果 HistoryDialog 发出信号，主窗口来保存"""
-    #     try:
-    #         with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-    #             json.dump(updated_history_data, f, ensure_ascii=False, indent=4)
-    #         # QMessageBox.information(self, "历史已更新", "历史记录已成功更新。")
-    #     except Exception as e:
-    #         QMessageBox.warning(self, "保存失败", f"无法更新历史记录文件: {e}")
-
 
     def load_record_into_ui(self, record_data):
         self.project_name_input.setText(record_data.get("project_name", ""))

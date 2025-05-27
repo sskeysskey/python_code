@@ -13,6 +13,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
 
 HISTORY_FILE = "/Users/yanzhang/Documents/python_code/Modules/Prompt_history.json" # 请确保这个路径对您的系统是正确的
+DEFAULT_FILE_SELECTION_PATH = "/Users/yanzhang/Documents" # 定义默认文件选择路径
 
 # --- 自定义查找/替换对话框 ---
 class SearchReplaceDialog(QDialog):
@@ -164,6 +165,8 @@ class FileContentTextEdit(QTextEdit):
 
 # --- 单个文件块控件 ---
 class FileBlockWidget(QWidget):
+    delete_requested = pyqtSignal(QWidget) # 信号，参数为自身
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.file_path = None
@@ -177,9 +180,17 @@ class FileBlockWidget(QWidget):
         self.path_label.setWordWrap(True)
         self.path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.path_label.setToolTip("文件路径")
+
+        self.delete_button = QPushButton("X")
+        self.delete_button.setFixedSize(22, 22) # 调整大小以适应
+        self.delete_button.setToolTip("删除此文件块")
+        self.delete_button.clicked.connect(self._request_delete_self)
+
         path_layout.addWidget(self.path_button)
         path_layout.addWidget(self.path_label, 1)
+        path_layout.addWidget(self.delete_button) # 添加删除按钮到布局
         layout.addLayout(path_layout)
+
         self.content_edit = FileContentTextEdit()
         self.content_edit.setPlaceholderText("文件内容将在此显示和编辑...")
         self.content_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -187,20 +198,55 @@ class FileBlockWidget(QWidget):
         self.setMinimumWidth(200)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
+    def _request_delete_self(self):
+        self.delete_requested.emit(self) # 发出删除请求信号
+
     def select_file(self):
-        formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv"
-        f_path, _ = QFileDialog.getOpenFileName(self, "选择文件", "", f"支持的文件 ({formats});;所有文件 (*)")
+        # 添加 .db 到支持的文件格式列表
+        formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv *.db"
+        # 使用全局定义的 DEFAULT_FILE_SELECTION_PATH 作为打开文件对话框的初始路径
+        # 如果该路径不存在，QFileDialog 通常会回退到上次使用的路径或系统默认路径
+        start_path = DEFAULT_FILE_SELECTION_PATH
+        if self.file_path and os.path.exists(os.path.dirname(self.file_path)): # 如果当前已有文件路径，则优先使用该文件所在的目录
+            start_path = os.path.dirname(self.file_path)
+        elif not os.path.exists(start_path): # 如果定义的默认路径不存在，则退回到用户主目录或空字符串
+            start_path = os.path.expanduser("~") # 用户主目录
+            if not os.path.exists(start_path): # 极端情况下主目录也不存在
+                start_path = ""
+
+
+        f_path, _ = QFileDialog.getOpenFileName(self,
+                                                "选择文件",
+                                                start_path, # 设置默认打开路径
+                                                f"支持的文件 ({formats});;所有文件 (*)")
         if f_path:
             self.file_path = f_path
             display_path = f"...{os.sep}{os.path.basename(f_path)}" if len(f_path) >= 50 else f_path
             self.path_label.setText(display_path)
             self.path_label.setToolTip(f_path)
-            try:
-                with open(f_path, 'r', encoding='utf-8') as f:
-                    self.content_edit.setPlainText(f.read())
-            except Exception as e:
-                QMessageBox.warning(self, "读取文件错误", f"无法读取文件 {f_path}:\n{e}")
-                self.content_edit.clear()
+
+            _, file_extension = os.path.splitext(f_path) # 获取文件扩展名
+
+            # 检查文件扩展名是否为 .db
+            if file_extension.lower() == ".db":
+                self.content_edit.clear() # 清空内容区域
+                # 设置占位符文本，提示用户这是一个.db文件，内容未加载
+                self.content_edit.setPlaceholderText(
+                    "这是一个 .db 文件，内容未加载。\n"
+                    "您可以在此手动输入或编辑与该数据库文件相关的信息或说明。"
+                )
+                self.original_content_on_load = "" # 对于.db文件，我们视其加载内容为空
+            else:
+                # 对于非.db文件，按原逻辑处理
+                try:
+                    with open(f_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        self.content_edit.setPlainText(content)
+                        self.original_content_on_load = content
+                except Exception as e:
+                    QMessageBox.warning(self, "读取文件错误", f"无法读取文件 {f_path}:\n{e}")
+                    self.content_edit.clear()
+                    self.original_content_on_load = ""
 
     def get_file_info(self):
         filename = "未知文件"
@@ -489,7 +535,8 @@ class MainWindow(QWidget):
         project_desc_group = QVBoxLayout()
         project_desc_group.addWidget(QLabel("项目介绍:"))
         self.project_desc_input = QTextEdit()
-        self.project_desc_input.setPlaceholderText("例如：我有一个Xcode开发的iPhone手机应用程序...")
+        # 设置预设的文本内容，而不是占位符
+        self.project_desc_input.setPlainText("我有一个Xcode开发的iPhone手机应用程序.")
         self.project_desc_input.setFixedHeight(80) # 保持固定高度
         project_desc_group.addWidget(self.project_desc_input)
         top_section_layout.addLayout(project_desc_group, 2)
@@ -550,12 +597,22 @@ class MainWindow(QWidget):
                          在从历史记录加载时，我们会单独管理 self.file_blocks。
         """
         file_block = FileBlockWidget()
+        file_block.delete_requested.connect(self._handle_delete_file_block) # 连接信号
         if file_data:
             file_block.load_data(file_data.get("path"), file_data.get("content"))
         self.file_blocks_layout.addWidget(file_block)
         if add_to_list_ref: # 只有在明确需要时才添加到 self.file_blocks
             self.file_blocks.append(file_block)
         return file_block
+
+    def _handle_delete_file_block(self, block_to_delete):
+        """处理文件块删除请求的槽函数"""
+        if block_to_delete in self.file_blocks:
+            self.file_blocks.remove(block_to_delete)
+
+        self.file_blocks_layout.removeWidget(block_to_delete)
+        block_to_delete.deleteLater()
+        # print(f"Deleted block. Remaining in list: {len(self.file_blocks)}, Remaining in layout: {self.file_blocks_layout.count()}")
 
 
     def show_history_dialog(self):
@@ -580,7 +637,7 @@ class MainWindow(QWidget):
 
     def load_record_into_ui(self, record_data):
         self.project_name_input.setText(record_data.get("project_name", ""))
-        self.project_desc_input.setPlainText(record_data.get("project_desc", ""))
+        self.project_desc_input.setPlainText(record_data.get("project_desc", "我有一个Xcode开发的iPhone手机应用程序.")) # 加载时也确保有默认值或记录值
         self.prompt_input.setPlainText(record_data.get("final_prompt", ""))
 
         self._clear_all_file_blocks_ui() # 清除UI上的现有文件块
@@ -614,7 +671,7 @@ class MainWindow(QWidget):
         project_desc = self.project_desc_input.toPlainText().strip()
         final_prompt = self.prompt_input.toPlainText().strip()
 
-        if not project_desc or not project_name:
+        if not project_desc or not project_name: # 理论上 project_desc 不会为空了，因为有预设值
             QMessageBox.warning(self, "信息不完整", "请输入项目名称和项目介绍。")
             return
 
@@ -642,12 +699,13 @@ class MainWindow(QWidget):
                 current_record["files"].append({
                     "path": path,
                     "filename": filename,
-                    "content": content
+                    "content": content # 对于.db文件，这里会保存用户输入的内容
                 })
                 if path and path not in ["未选择文件", "路径未记录"]:
                     file_tree_lines.append(f"  ├── {filename}")
+                    # 对于.db文件，如果用户在content_edit中输入了内容，也会被加入
                     valid_file_infos_for_output.append({"path": path, "content": content})
-                elif content.strip() and filename != "未知文件":
+                elif content.strip() and filename != "未知文件": # 即使是.db文件，如果用户输入了内容，也应该算作有内容
                     file_tree_lines.append(f"  ├── {filename} (无路径, 仅内容)")
                     valid_file_infos_for_output.append({"path": f"{filename} (内容)", "content": content})
                 # 如果只有空的content和“未知文件”，则不加入输出文本
@@ -660,6 +718,22 @@ class MainWindow(QWidget):
 
         for info in valid_file_infos_for_output:
             # 确保路径和内容不都为空才添加到最终输出
+            # 对于.db文件，其文件路径是有的，内容是用户输入的（如果输入了）
+            # 如果用户没有为.db文件输入任何内容，info["content"]会是空字符串
+            # 这里的逻辑是，只要有路径或者有内容，就加入。
+            # 如果希望 .db 文件即使内容为空也显示其路径，可以调整这里的判断
+            # 当前逻辑：如果.db文件路径存在，且用户未输入任何内容，则输出类似 "路径/文件名.db\n“”; "
+            # 如果希望不输出空的 “”，可以修改为：
+            # if info["path"].strip():
+            #     final_builder.append(f'\n\n{info["path"]}')
+            #     if info["content"].strip():
+            #          final_builder.append(f'\n“{info["content"]}”；')
+            #     else:
+            #          final_builder.append('； # 内容未提供或为空') # 或者其他标记
+            # elif info["content"].strip(): # 无路径但有内容
+            #     final_builder.append(f'\n\n{info["path"]}\n“{info["content"]}”；')
+
+            # 保持原逻辑，如果.db文件内容为空，则输出 "路径/文件名.db\n“”; "
             if info["path"].strip() or info["content"].strip():
                  final_builder.append(f'\n\n{info["path"]}\n“{info["content"]}”；')
 

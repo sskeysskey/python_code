@@ -14,6 +14,8 @@ from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
 
 HISTORY_FILE = "/Users/yanzhang/Documents/python_code/Modules/Prompt_history.json" # 请确保这个路径对您的系统是正确的
 DEFAULT_FILE_SELECTION_PATH = "/Users/yanzhang/Documents" # 定义默认文件选择路径
+# 记录上次打开的目录，初始值为默认路径
+LAST_FILE_SELECTION_PATH = DEFAULT_FILE_SELECTION_PATH
 
 # --- 自定义查找/替换对话框 ---
 class SearchReplaceDialog(QDialog):
@@ -202,52 +204,54 @@ class FileBlockWidget(QWidget):
         self.delete_requested.emit(self) # 发出删除请求信号
 
     def select_file(self):
-        # 添加 .db 到支持的文件格式列表
+        global LAST_FILE_SELECTION_PATH
+
+        # 以上次打开的目录作为起始路径
+        start_path = LAST_FILE_SELECTION_PATH
+        if not os.path.exists(start_path):
+            start_path = os.path.expanduser("~")
+
         formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv *.db"
-        # 使用全局定义的 DEFAULT_FILE_SELECTION_PATH 作为打开文件对话框的初始路径
-        # 如果该路径不存在，QFileDialog 通常会回退到上次使用的路径或系统默认路径
-        start_path = DEFAULT_FILE_SELECTION_PATH
-        if self.file_path and os.path.exists(os.path.dirname(self.file_path)): # 如果当前已有文件路径，则优先使用该文件所在的目录
-            start_path = os.path.dirname(self.file_path)
-        elif not os.path.exists(start_path): # 如果定义的默认路径不存在，则退回到用户主目录或空字符串
-            start_path = os.path.expanduser("~") # 用户主目录
-            if not os.path.exists(start_path): # 极端情况下主目录也不存在
-                start_path = ""
+        f_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择文件",
+            start_path,
+            f"支持的文件 ({formats});;所有文件 (*)"
+        )
+        if not f_path:
+            return
 
+        # 选中文件后，更新全局的“上次打开目录”
+        LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
+        self.file_path = f_path
+        display_path = f"...{os.sep}{os.path.basename(f_path)}" \
+            if len(f_path) >= 50 else f_path
+        self.path_label.setText(display_path)
+        self.path_label.setToolTip(f_path)
 
-        f_path, _ = QFileDialog.getOpenFileName(self,
-                                                "选择文件",
-                                                start_path, # 设置默认打开路径
-                                                f"支持的文件 ({formats});;所有文件 (*)")
-        if f_path:
-            self.file_path = f_path
-            display_path = f"...{os.sep}{os.path.basename(f_path)}" if len(f_path) >= 50 else f_path
-            self.path_label.setText(display_path)
-            self.path_label.setToolTip(f_path)
+        _, file_extension = os.path.splitext(f_path) # 获取文件扩展名
 
-            _, file_extension = os.path.splitext(f_path) # 获取文件扩展名
-
-            # 检查文件扩展名是否为 .db
-            if file_extension.lower() in (".db", ".scpt"):
-                self.content_edit.clear() # 清空内容区域
-                # 设置占位符文本，提示用户这是一个.db文件，内容未加载
-                # 设置占位符文本，提示用户这是一个二进制文件，内容未加载
-                self.content_edit.setPlaceholderText(
-                    f"这是一个 {file_extension} 二进制文件，内容未加载。\n"
-                    "您可以在此手动输入或编辑与该数据库文件相关的信息或说明。"
-                )
-                self.original_content_on_load = "" # 对于.db或.scpt文件，我们视其加载内容为空
-            else:
-                # 对于非.db文件，按原逻辑处理
-                try:
-                    with open(f_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        self.content_edit.setPlainText(content)
-                        self.original_content_on_load = content
-                except Exception as e:
-                    QMessageBox.warning(self, "读取文件错误", f"无法读取文件 {f_path}:\n{e}")
-                    self.content_edit.clear()
-                    self.original_content_on_load = ""
+        # 检查文件扩展名是否为 .db
+        if file_extension.lower() in (".db", ".scpt"):
+            self.content_edit.clear() # 清空内容区域
+            # 设置占位符文本，提示用户这是一个.db文件，内容未加载
+            # 设置占位符文本，提示用户这是一个二进制文件，内容未加载
+            self.content_edit.setPlaceholderText(
+                f"这是一个 {file_extension} 二进制文件，内容未加载。\n"
+                "您可以在此手动输入或编辑与该数据库文件相关的信息或说明。"
+            )
+            self.original_content_on_load = "" # 对于.db或.scpt文件，我们视其加载内容为空
+        else:
+            # 对于非.db文件，按原逻辑处理
+            try:
+                with open(f_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    self.content_edit.setPlainText(content)
+                    self.original_content_on_load = content
+            except Exception as e:
+                QMessageBox.warning(self, "读取文件错误", f"无法读取文件 {f_path}:\n{e}")
+                self.content_edit.clear()
+                self.original_content_on_load = ""
 
     def get_file_info(self):
         filename = "未知文件"

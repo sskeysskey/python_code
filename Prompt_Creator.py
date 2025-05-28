@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem,
     QSplitter, QAbstractItemView
 )
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer 
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
 
 HISTORY_FILE = "/Users/yanzhang/Documents/python_code/Modules/Prompt_history.json" # 请确保这个路径对您的系统是正确的
@@ -276,23 +276,37 @@ class FileBlockWidget(QWidget):
 class OutputDialog(QDialog):
     def __init__(self, text_content, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("生成结果")
+        self.original_title = "生成结果"  # 保存原始标题
+        self.setWindowTitle(self.original_title)
         self.setMinimumSize(600, 400)
         layout = QVBoxLayout(self)
         self.text_edit = QTextEdit(text_content)
         self.text_edit.setReadOnly(True)
         layout.addWidget(self.text_edit)
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok)
-        self.button_box.button(QDialogButtonBox.Ok).setText("确定")
-        self.button_box.accepted.connect(self.accept)
-        copy_btn = QPushButton("复制到剪贴板")
-        copy_btn.clicked.connect(self.copy_to_clipboard)
-        self.button_box.addButton(copy_btn, QDialogButtonBox.ActionRole)
+
+        self.button_box = QDialogButtonBox() # 先创建一个空的 QDialogButtonBox
+
+        # 添加 "确定" 按钮
+        self.ok_button = self.button_box.addButton(QDialogButtonBox.Ok) # 添加标准 OK 按钮
+        self.ok_button.setText("确定") # 设置文本
+        self.button_box.accepted.connect(self.accept) # 连接 accepted 信号 (当OK按钮被点击时触发)
+
+        # 添加 "复制到剪贴板" 按钮
+        self.copy_btn = QPushButton("复制到剪贴板") # 创建自定义按钮
+        self.copy_btn.clicked.connect(self.copy_to_clipboard)
+        self.button_box.addButton(self.copy_btn, QDialogButtonBox.ActionRole) # 将自定义按钮添加到box中
+
         layout.addWidget(self.button_box)
 
     def copy_to_clipboard(self):
         QApplication.clipboard().setText(self.text_edit.toPlainText())
-        QMessageBox.information(self, "已复制", "内容已复制到剪贴板。")
+        self.setWindowTitle("已复制到剪贴板!")  # 更改标题栏文本
+        # 设置一个2秒的定时器，2秒后调用 restore_title 方法
+        QTimer.singleShot(2000, self.restore_title)
+
+    def restore_title(self):
+        """恢复对话框的原始标题"""
+        self.setWindowTitle(self.original_title)
 
 # --- 历史记录选择对话框 (修改后) ---
 class HistoryDialog(QDialog):
@@ -513,7 +527,8 @@ class MainWindow(QWidget):
         try:
             with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
                 json.dump(history, f, ensure_ascii=False, indent=4)
-            QMessageBox.information(self, "已保存", "当前记录已保存到历史。")
+            # QMessageBox.information(self, "已保存", "当前记录已保存到历史。") # <--- 将此行注释或删除
+            print("记录已自动保存到历史。") # 可以选择在控制台输出一条信息，或者完全静默
         except Exception as e:
             QMessageBox.warning(self, "保存失败", f"无法保存历史记录: {e}")
 
@@ -704,7 +719,7 @@ class MainWindow(QWidget):
                     valid_file_infos_for_output.append({"path": f"{filename} (内容)", "content": content})
                 # 如果只有空的content和“未知文件”，则不加入输出文本
 
-        self._save_record_to_file(current_record)
+        self._save_record_to_file(current_record) # 保存记录，现在不会弹窗了
 
         final_builder = [project_desc]
         tree_string = "\n".join(file_tree_lines) if file_tree_lines else ""

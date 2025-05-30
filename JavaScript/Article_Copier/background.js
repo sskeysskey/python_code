@@ -413,9 +413,11 @@ function extractAndCopy() {
       // 更通用的选择器，用于捕获可能的段落
       'p[class*="Paragraph"]',
       'p[class*="paragraph"]',
-      // 新增：针对新页面结构的段落选择器
-      'main.dvz-content p[class*="copy-width"]', // 匹配 <p class="copy-width svelte-...">
-      'main.dvz-content p.dropcap[class*="svelte-"]' // 匹配 <p class="dropcap copy-width svelte-...">
+      // Selectors for Svelte-like structure
+      'main.dvz-content p[class*="copy-width"]',
+      'main.dvz-content p.dropcap[class*="svelte-"]',
+      // 新增：针对新 "css--" 命名结构的段落选择器
+      'main#dvz__mount div[class*="css--paragraph-wrapper"] > p'
     ];
 
     // 需要排除的选择器
@@ -424,7 +426,10 @@ function extractAndCopy() {
       '[data-testid="story-card-small"]',
       '.story-card-small',
       '.styles_moreFromBloomberg_HrR5_',
-      '.recirc-box-small-list'
+      '.recirc-box-small-list',
+      // 新增：排除新结构中可能的非内容区域 (如果需要)
+      'div[data-testid="social-share-primary"]', // Example if social share is picked up
+      'aside' // General exclusion for asides
     ];
 
     let paragraphs = [];
@@ -449,6 +454,8 @@ function extractAndCopy() {
     // 提取和清理文本
     textContent = [...new Set(paragraphs)]
       .map(p => {
+        // Preserve links temporarily if needed for context, then strip.
+        // For now, direct textContent is fine as per original logic.
         let text = p.textContent.trim()
           .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
           .replace(/[•∞@]/g, '') // 移除特殊字符 (保留 == $0 用于后续移除)
@@ -478,7 +485,14 @@ function extractAndCopy() {
       // 查找所有类型的图片容器
       // 新增：同时查找新结构中的 figure 标签，通常带有 svelte-xxxx 类名，且在 main.dvz-content 内
       const figureElements = document.querySelectorAll(
-        'figure[data-component="article-image"], main.dvz-content figure[class*="svelte-"]'
+        // Old structure
+        'figure[data-component="article-image"], ' +
+        // Svelte-like structure
+        'main.dvz-content figure[class*="svelte-"], ' +
+        // New "css--" lede image structure
+        'main#dvz__mount figure[class*="css--lede-image-inner-wrapper"], ' +
+        // Fallback for other potential figures in new "css--" structure (more generic)
+        'main#dvz__mount section[class*="--root-container"] figure'
       );
 
       // 检查是否找到了符合条件的图片
@@ -489,99 +503,134 @@ function extractAndCopy() {
 
       if (figureElements && figureElements.length > 0) {
         figureElements.forEach(figure => {
-          // 尝试多种方式获取图片元素
-          let img = figure.querySelector('img.ui-image.high-res-img'); // 旧结构
-          let isNewStructureImg = false;
-          if (!img) {
-            // 新结构中，img 可能在 dvz-lede-image-container 内，或直接在 figure 内
-            img = figure.querySelector('dvz-lede-image-container img');
-            if (!img) {
-              img = figure.querySelector('img'); // 更通用的img查找
-            }
+          let img = null;
+          let caption = '';
+          let highestResUrl = '';
+          let figureType = 'unknown'; // To help debug or adapt logic
+
+          // Try to identify figure type and extract img/caption accordingly
+
+          // Type 1: Old structure (data-component="article-image")
+          if (figure.matches('figure[data-component="article-image"]')) {
+            figureType = 'old_structure';
+            img = figure.querySelector('img.ui-image.high-res-img');
             if (img) {
-              isNewStructureImg = true;
+              if (img.srcset) {
+                const srcsetEntries = img.srcset.split(',')
+                  .map(entry => {
+                    const parts = entry.trim().split(' ');
+                    const url = parts[0].trim();
+                    const width = parseInt(parts[parts.length - 1]) || 0;
+                    return { url, width };
+                  })
+                  .filter(entry => entry.url && entry.width > 0)
+                  .sort((a, b) => b.width - a.width);
+                if (srcsetEntries.length > 0) highestResUrl = srcsetEntries[0].url;
+              }
+              if (!highestResUrl && img.src) highestResUrl = img.src;
+
+              const figcaptionElement = figure.querySelector('figcaption');
+              if (figcaptionElement) {
+                const captionSpans = figcaptionElement.querySelectorAll('span');
+                if (captionSpans && captionSpans.length > 0) {
+                  caption = Array.from(captionSpans).map(span => span.textContent.trim()).filter(text => text).join(' ');
+                } else {
+                  caption = figcaptionElement.textContent.trim();
+                }
+              }
+            }
+          }
+          // Type 2: Svelte-like structure (main.dvz-content figure[class*="svelte-"])
+          else if (figure.matches('main.dvz-content figure[class*="svelte-"]')) {
+            figureType = 'svelte_structure';
+            img = figure.querySelector('dvz-lede-image-container img');
+            if (!img) img = figure.querySelector('img');
+
+            if (img && img.src) {
+              highestResUrl = img.src;
+              const figcaptionElement = figure.querySelector('figcaption');
+              if (figcaptionElement) {
+                const specificCaptionSpan = figcaptionElement.querySelector('span.caption');
+                if (specificCaptionSpan) {
+                  caption = specificCaptionSpan.textContent.trim();
+                } else {
+                  const captionSpans = figcaptionElement.querySelectorAll('span');
+                  if (captionSpans && captionSpans.length > 0) {
+                    // 合并所有span的文本内容
+                    caption = Array.from(captionSpans)
+                      .map(span => span.textContent.trim())
+                      .filter(text => text) // 过滤空文本
+                      .join(' ');
+                  } else {
+                    caption = figcaptionElement.textContent.trim();
+                  }
+                }
+              }
+            }
+          }
+          // Type 3: New "css--" structure (e.g., lede image)
+          else if (figure.matches('main#dvz__mount figure[class*="css--lede-image-inner-wrapper"], main#dvz__mount section[class*="--root-container"] figure')) {
+            figureType = 'css_structure';
+            img = figure.querySelector('img.css--lede-image'); // Specific to lede image
+            if (!img) img = figure.querySelector('img'); // More generic fallback within the figure
+
+            if (img) {
+              const srcsetAttr = img.srcset || img.dataset.srcset; // Prioritize srcset, then data-srcset
+              if (srcsetAttr) {
+                const srcsetEntries = srcsetAttr.split(',')
+                  .map(entry => {
+                    // 提取URL和宽度
+                    const parts = entry.trim().split(' ');
+                    const url = parts[0].trim();
+                    // 从类似 "1200w" 的字符串中提取数字
+                    const width = parseInt(parts[parts.length - 1]) || 0;
+                    return { url, width };
+                  })
+                  .filter(entry => entry.url && entry.width > 0)
+                  .sort((a, b) => b.width - a.width);
+                if (srcsetEntries.length > 0) highestResUrl = srcsetEntries[0].url;
+              }
+              if (!highestResUrl && img.src) highestResUrl = img.src;
+
+              // Caption for new "css--" structure
+              // The caption might be in div.css--caption-outer-wrapper > figcaption.css--caption-wrapper
+              const captionWrapper = figure.querySelector('div.css--caption-outer-wrapper');
+              let figcaptionElement = null;
+              if (captionWrapper) {
+                figcaptionElement = captionWrapper.querySelector('figcaption.css--caption-wrapper');
+              } else { // If outer wrapper not found, try directly
+                figcaptionElement = figure.querySelector('figcaption.css--caption-wrapper');
+              }
+
+              if (figcaptionElement) {
+                const creditSpan = figcaptionElement.querySelector('span.css--credit');
+                if (creditSpan) {
+                  caption = creditSpan.textContent.trim();
+                } else { // Fallback if specific span.css--credit is not found
+                  caption = figcaptionElement.textContent.trim();
+                }
+              }
             }
           }
 
-          if (img) {
-            let caption = '';
-            // 查找figcaption元素
-            const figcaption = figure.querySelector('figcaption');
-            if (figcaption) {
-              // 优先尝试获取 class="caption" 的 span (新结构)
-              const specificCaptionSpan = figcaption.querySelector('span.caption');
-              if (specificCaptionSpan) {
-                caption = specificCaptionSpan.textContent.trim();
-              } else {
-                // 回退到原有逻辑：获取所有span或figcaption的直接文本
-                const captionSpans = figcaption.querySelectorAll('span');
-                if (captionSpans && captionSpans.length > 0) {
-                  // 合并所有span的文本内容
-                  caption = Array.from(captionSpans)
-                    .map(span => span.textContent.trim())
-                    .filter(text => text) // 过滤空文本
-                    .join(' ');
-                } else {
-                  // 如果没有span，直接获取figcaption的文本
-                  caption = figcaption.textContent.trim();
-                }
+          // Common processing for img and caption if found
+          if (img && highestResUrl) {
+            // Clean URL and ensure it's absolute
+            highestResUrl = highestResUrl.replace(/\s+/g, '');
+            if (highestResUrl.startsWith('//')) { // Protocol-relative URL
+              highestResUrl = window.location.protocol + highestResUrl;
+            } else if (highestResUrl.startsWith('/')) { // Origin-relative URL
+              highestResUrl = new URL(highestResUrl, window.location.origin).href;
+            } else if (!highestResUrl.match(/^https?:\/\//i) && !highestResUrl.startsWith('blob:')) {
+              // Potentially a path-relative URL, resolve against document base URI
+              try {
+                highestResUrl = new URL(highestResUrl, window.location.href).href;
+              } catch (e) {
+                console.error('Error creating absolute URL from path-relative:', e, highestResUrl);
+                return; // Skip this image if URL is problematic
               }
             }
-
-            let highestResUrl = '';
-
-            // 处理旧结构 (有 srcset) 和新结构 (通常只有 src)
-            if (!isNewStructureImg && img.srcset) {
-              const srcsetEntries = img.srcset.split(',')
-                .map(entry => {
-                  // 提取URL和宽度
-                  const parts = entry.trim().split(' ');
-                  const url = parts[0].trim();
-                  // 从类似 "1200w" 的字符串中提取数字
-                  const width = parseInt(parts[parts.length - 1]) || 0;
-                  return { url, width };
-                })
-                .filter(entry => entry.width > 0) // 只保留有效的宽度值
-                .sort((a, b) => b.width - a.width); // 按宽度降序排序
-
-              // 使用最高分辨率的URL
-              if (srcsetEntries.length > 0) {
-                highestResUrl = srcsetEntries[0].url;
-              }
-            }
-
-            // 如果没有从srcset获取到URL (例如新结构或旧结构无srcset)，则使用src
-            if (!highestResUrl && img.src) {
-              highestResUrl = img.src;
-            }
-
-            // 清理URL并转换为绝对路径
-            if (highestResUrl) {
-              highestResUrl = highestResUrl.replace(/\s+/g, ''); // 移除URL中的空白
-              // 如果是相对路径，则转换为绝对路径
-              if (highestResUrl.startsWith('/')) {
-                try {
-                  highestResUrl = new URL(highestResUrl, window.location.origin).href;
-                } catch (e) {
-                  console.error('Error creating absolute URL:', e, highestResUrl);
-                  return; // 跳过此图片
-                }
-              } else if (!highestResUrl.startsWith('http') && !highestResUrl.startsWith('blob:')) {
-                // 处理其他可能的相对路径形式，或已经是完整的但不是http/https
-                // For safety, if it's not clearly absolute, try to resolve it.
-                // However, most modern relative URLs start with '/' or are full.
-                // This case might be rare. If img.src is like "img/illo.jpg"
-                try {
-                  highestResUrl = new URL(highestResUrl, window.location.href).href;
-                } catch (e) {
-                  console.error('Error creating absolute URL from potentially relative path:', e, highestResUrl);
-                  return; // Skip this image
-                }
-              }
-            } else {
-              return; // 没有有效的图片URL，跳过
-            }
-
+            // Absolute URLs (http, https) will pass through correctly with new URL() if base is provided.
 
             if (!processedUrls.has(highestResUrl)) {
               processedUrls.add(highestResUrl);
@@ -593,8 +642,7 @@ function extractAndCopy() {
                 const pathname = new URL(highestResUrl).pathname;
                 const lastDot = pathname.lastIndexOf('.');
                 if (lastDot !== -1 && lastDot < pathname.length - 1) {
-                  const extCandidate = pathname.substring(lastDot + 1).toLowerCase();
-                  // 简单校验常见图片扩展名
+                  const extCandidate = pathname.substring(lastDot + 1).toLowerCase().split('?')[0]; // Remove query params from ext
                   if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(extCandidate)) {
                     extension = extCandidate;
                   }
@@ -605,41 +653,42 @@ function extractAndCopy() {
 
 
               let filename;
-              if (caption) {
-                let cleanedCaption = caption
+              const cleanTextForFilename = (text) => {
+                if (!text) return '';
+                return text
                   .replace(/&nbsp;/g, ' ')
-                  // 移除 Photograph- 及其后的内容
-                  .replace(/Photograph[\s\S]*$/i, '')
-                  // 移除 Photographer- 及其后的内容
-                  .replace(/Photographer[\s\S]*$/i, '');
-
-                // 一次性移除 Source- / Source: / Source— 等及其后面的所有内容
-                cleanedCaption = cleanedCaption
+                  .replace(/Photograph(?:er)?[\s\S]*$/i, '')
                   .replace(/\s*(?:Source[-:–—]?)\s*.*$/i, '')
+                  .replace(/[/\\?%*:|"<>]/g, '-') // Remove invalid chars
                   .trim();
+              };
 
-                filename = `${cleanedCaption.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
-              } else if (img.alt) {
-                let cleanedAlt = img.alt.replace(/&nbsp;/g, ' ')
-                  .replace(/Photographer[\s\S]*$/i, '');
+              let cleanedCaption = cleanTextForFilename(caption);
+              let cleanedAlt = cleanTextForFilename(img.alt);
 
-                cleanedAlt = cleanedAlt
-                  .replace(/\s*(?:Source[-:–—]?)\s*.*$/i, '')
-                  .trim();
-
-                filename = `${cleanedAlt.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
+              if (cleanedCaption) {
+                filename = `${cleanedCaption}.${extension}`;
+              } else if (cleanedAlt) {
+                filename = `${cleanedAlt}.${extension}`;
               } else {
                 // 如果既没有alt也没有caption，使用时间戳
                 const timestamp = new Date().getTime();
                 filename = `bloomberg-image-${timestamp}.${extension}`;
               }
 
-              // 确保文件名不会太长
-              if (filename.length > 200) {
-                filename = filename.substring(0, 200 - extension.length - 1) + '.' + extension;
+              // Ensure filename is not excessively long
+              const maxLen = 200;
+              if (filename.length > maxLen) {
+                const namePart = filename.substring(0, filename.length - (extension.length + 1));
+                filename = namePart.substring(0, maxLen - (extension.length + 1)) + '.' + extension;
               }
 
-              // 发送下载消息到background script
+              // Ensure filename is not empty before extension
+              if (filename.startsWith('.' + extension)) {
+                filename = `bloomberg-image-${new Date().getTime()}.${extension}`;
+              }
+
+
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
                 url: highestResUrl,
@@ -650,12 +699,10 @@ function extractAndCopy() {
         });
       }
 
-      // 在处理完所有图片后，如果没有找到有效图片，则发送noImages消息
       if (!foundValidImages) {
         chrome.runtime.sendMessage({ action: 'noImages' });
       }
     } else {
-      // 如果没有提取到有效文本，也应该发送noImages消息
       chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }

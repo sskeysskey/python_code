@@ -412,7 +412,10 @@ function extractAndCopy() {
       'p.paywall[data-component="paragraph"]',
       // 更通用的选择器，用于捕获可能的段落
       'p[class*="Paragraph"]',
-      'p[class*="paragraph"]'
+      'p[class*="paragraph"]',
+      // 新增：针对新页面结构的段落选择器
+      'main.dvz-content p[class*="copy-width"]', // 匹配 <p class="copy-width svelte-...">
+      'main.dvz-content p.dropcap[class*="svelte-"]' // 匹配 <p class="dropcap copy-width svelte-...">
     ];
 
     // 需要排除的选择器
@@ -448,10 +451,10 @@ function extractAndCopy() {
       .map(p => {
         let text = p.textContent.trim()
           .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
-          .replace(/[•∞@]/g, '') // 移除特殊字符
+          .replace(/[•∞@]/g, '') // 移除特殊字符 (保留 == $0 用于后续移除)
           .replace(/\s+/g, ' ') // 规范化空白
           .replace(/&nbsp;/g, ' ') // 处理HTML空格
-          .replace(/==\s*\$\d+/g, '') // 移除调试标记
+          .replace(/==\s*\$\d+/g, '') // 移除调试标记，如 "== $0"
           .replace(/<![---]{2,}>/g, '') // 移除HTML注释标记
           .replace(/<\/?[^>]+(>|$)/g, '') // 移除HTML标签
           .trim();
@@ -473,7 +476,10 @@ function extractAndCopy() {
     // 如果提取到了有效文本，则进行图片下载
     if (textContent) {
       // 查找所有类型的图片容器
-      const articleImages = document.querySelectorAll('figure[data-component="article-image"]');
+      // 新增：同时查找新结构中的 figure 标签，通常带有 svelte-xxxx 类名，且在 main.dvz-content 内
+      const figureElements = document.querySelectorAll(
+        'figure[data-component="article-image"], main.dvz-content figure[class*="svelte-"]'
+      );
 
       // 检查是否找到了符合条件的图片
       let foundValidImages = false;
@@ -481,35 +487,51 @@ function extractAndCopy() {
       // 用于存储已处理的图片URL
       const processedUrls = new Set();
 
-      if (articleImages && articleImages.length > 0) {
-        articleImages.forEach(figure => {
-          const img = figure.querySelector('img.ui-image.high-res-img');
+      if (figureElements && figureElements.length > 0) {
+        figureElements.forEach(figure => {
+          // 尝试多种方式获取图片元素
+          let img = figure.querySelector('img.ui-image.high-res-img'); // 旧结构
+          let isNewStructureImg = false;
+          if (!img) {
+            // 新结构中，img 可能在 dvz-lede-image-container 内，或直接在 figure 内
+            img = figure.querySelector('dvz-lede-image-container img');
+            if (!img) {
+              img = figure.querySelector('img'); // 更通用的img查找
+            }
+            if (img) {
+              isNewStructureImg = true;
+            }
+          }
+
           if (img) {
-            foundValidImages = true;
-            // 获取图片描述文本 - 新增部分
             let caption = '';
             // 查找figcaption元素
             const figcaption = figure.querySelector('figcaption');
             if (figcaption) {
-              // 尝试获取所有可能包含描述的元素
-              const captionSpans = figcaption.querySelectorAll('span');
-              if (captionSpans && captionSpans.length > 0) {
-                // 合并所有span的文本内容
-                caption = Array.from(captionSpans)
-                  .map(span => span.textContent.trim())
-                  .filter(text => text) // 过滤空文本
-                  .join(' ');
+              // 优先尝试获取 class="caption" 的 span (新结构)
+              const specificCaptionSpan = figcaption.querySelector('span.caption');
+              if (specificCaptionSpan) {
+                caption = specificCaptionSpan.textContent.trim();
               } else {
-                // 如果没有span，直接获取figcaption的文本
-                caption = figcaption.textContent.trim();
+                // 回退到原有逻辑：获取所有span或figcaption的直接文本
+                const captionSpans = figcaption.querySelectorAll('span');
+                if (captionSpans && captionSpans.length > 0) {
+                  // 合并所有span的文本内容
+                  caption = Array.from(captionSpans)
+                    .map(span => span.textContent.trim())
+                    .filter(text => text) // 过滤空文本
+                    .join(' ');
+                } else {
+                  // 如果没有span，直接获取figcaption的文本
+                  caption = figcaption.textContent.trim();
+                }
               }
             }
 
-            // 图片处理代码
-            let highestResUrl = img.src; // 默认使用src
+            let highestResUrl = '';
 
-            // 如果有srcset，解析并找出最高分辨率的图片
-            if (img.srcset) {
+            // 处理旧结构 (有 srcset) 和新结构 (通常只有 src)
+            if (!isNewStructureImg && img.srcset) {
               const srcsetEntries = img.srcset.split(',')
                 .map(entry => {
                   // 提取URL和宽度
@@ -528,18 +550,60 @@ function extractAndCopy() {
               }
             }
 
-            // 清理URL（移除多余的空格和换行）
-            highestResUrl = highestResUrl.replace(/\s+/g, '');
+            // 如果没有从srcset获取到URL (例如新结构或旧结构无srcset)，则使用src
+            if (!highestResUrl && img.src) {
+              highestResUrl = img.src;
+            }
 
-            // 检查URL是否已经处理过
+            // 清理URL并转换为绝对路径
+            if (highestResUrl) {
+              highestResUrl = highestResUrl.replace(/\s+/g, ''); // 移除URL中的空白
+              // 如果是相对路径，则转换为绝对路径
+              if (highestResUrl.startsWith('/')) {
+                try {
+                  highestResUrl = new URL(highestResUrl, window.location.origin).href;
+                } catch (e) {
+                  console.error('Error creating absolute URL:', e, highestResUrl);
+                  return; // 跳过此图片
+                }
+              } else if (!highestResUrl.startsWith('http') && !highestResUrl.startsWith('blob:')) {
+                // 处理其他可能的相对路径形式，或已经是完整的但不是http/https
+                // For safety, if it's not clearly absolute, try to resolve it.
+                // However, most modern relative URLs start with '/' or are full.
+                // This case might be rare. If img.src is like "img/illo.jpg"
+                try {
+                  highestResUrl = new URL(highestResUrl, window.location.href).href;
+                } catch (e) {
+                  console.error('Error creating absolute URL from potentially relative path:', e, highestResUrl);
+                  return; // Skip this image
+                }
+              }
+            } else {
+              return; // 没有有效的图片URL，跳过
+            }
+
+
             if (!processedUrls.has(highestResUrl)) {
               processedUrls.add(highestResUrl);
               foundValidImages = true;
 
-              // 获取文件扩展名
-              const extension = highestResUrl.toLowerCase().includes('.png') ? 'png' : 'webp';
+              // 改进文件扩展名提取
+              let extension = 'jpg'; // 默认扩展名
+              try {
+                const pathname = new URL(highestResUrl).pathname;
+                const lastDot = pathname.lastIndexOf('.');
+                if (lastDot !== -1 && lastDot < pathname.length - 1) {
+                  const extCandidate = pathname.substring(lastDot + 1).toLowerCase();
+                  // 简单校验常见图片扩展名
+                  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(extCandidate)) {
+                    extension = extCandidate;
+                  }
+                }
+              } catch (e) {
+                console.warn('Could not parse URL for extension, defaulting to jpg:', highestResUrl);
+              }
 
-              // 生成文件名
+
               let filename;
               if (caption) {
                 let cleanedCaption = caption
@@ -555,8 +619,7 @@ function extractAndCopy() {
                   .trim();
 
                 filename = `${cleanedCaption.replace(/[/\\?%*:|"<>]/g, '-')}.${extension}`;
-              }
-              else if (img.alt) {
+              } else if (img.alt) {
                 let cleanedAlt = img.alt.replace(/&nbsp;/g, ' ')
                   .replace(/Photographer[\s\S]*$/i, '');
 
@@ -573,7 +636,7 @@ function extractAndCopy() {
 
               // 确保文件名不会太长
               if (filename.length > 200) {
-                filename = filename.substring(0, 196) + '.' + extension;
+                filename = filename.substring(0, 200 - extension.length - 1) + '.' + extension;
               }
 
               // 发送下载消息到background script

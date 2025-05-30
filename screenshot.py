@@ -6,15 +6,21 @@ import pyautogui
 import numpy as np
 from time import sleep
 from PIL import ImageGrab
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union # Union 添加进来
 
 class ScreenDetector:
-    def __init__(self, template_names: str | List[str], clickValue: bool = False, 
-                 Opposite: bool = False, x_offset: Optional[int] = None, 
-                 y_offset: Optional[int] = None, nth_match: int = 1):
+    def __init__(self, template_names: Union[str, List[str]],
+                 clickValue: Optional[str] = None,
+                 Opposite: bool = False,
+                 scroll_on_not_found_run1: bool = False,
+                 x_offset: Optional[int] = None,
+                 y_offset: Optional[int] = None,
+                 nth_match: int = 1):
         self.templates = []
+        # clickValue 现在可以是 'left', 'right', 或 None
         self.clickValue = clickValue
         self.Opposite = Opposite # 注意：Opposite 参数在 run1 和 run2 中似乎没有直接使用其布尔值来反转逻辑，而是用来选择 run1 还是 run2
+        self.scroll_on_not_found_run1 = scroll_on_not_found_run1
         self.x_offset = x_offset
         self.y_offset = y_offset
         self.nth_match = max(1, nth_match) # 确保 nth_match 至少为 1
@@ -40,10 +46,7 @@ class ScreenDetector:
                     print(f"警告: 模板图片未能正确读取于路径 {template_path}")
                     continue
                 self.templates.append((template_name, template_img))
-            except FileNotFoundError as e: # cv2.imread 不会抛 FileNotFoundError, 而是返回 None
-                print(f"Error during template loading (should not happen if imread fails): {e}")
-                continue
-            except Exception as e: # 捕获其他可能的cv2错误
+            except Exception as e:
                 print(f"An unexpected error occurred while loading template {template_name}: {e}")
                 continue
 
@@ -100,7 +103,16 @@ class ScreenDetector:
         return None, None, None
 
     def _perform_click(self, location: Tuple[int, int], shape: Tuple[int, int, int]) -> None:
-        """优化的点击操作"""
+        """优化的点击操作，支持左键和右键"""
+        # 注意：pyautogui 的坐标通常是屏幕的绝对坐标。
+        # matchTemplate 返回的 (x,y) 是模板左上角在屏幕截图中的位置。
+        # ImageGrab.grab() 捕获的是主屏幕。如果有多显示器，可能需要调整。
+        # 中心点计算应该是相对于模板的，然后加上模板的左上角坐标。
+        # location[0] is x, location[1] is y
+        # shape[1] is width, shape[0] is height
+
+        # pyautogui 使用的是屏幕的1:1像素坐标，而不是像某些高DPI环境下的缩放坐标
+        # 因此，这里计算的 center_x, center_y 应该是准确的屏幕像素坐标
         center_x = (location[0] + shape[1] // 2) // 2
         center_y = (location[1] + shape[0] // 2) // 2
         
@@ -108,8 +120,15 @@ class ScreenDetector:
             center_x += self.x_offset
         if self.y_offset is not None:
             center_y += self.y_offset
-        
-        pyautogui.click(center_x, center_y)
+
+        if self.clickValue == "left":
+            pyautogui.click(center_x, center_y, button='left')
+            print(f"执行左键点击于: ({center_x}, {center_y})")
+        elif self.clickValue == "right":
+            pyautogui.click(center_x, center_y, button='right')
+            print(f"执行右键点击于: ({center_x}, {center_y})")
+        # 如果 self.clickValue 为 None，则此方法不应被调用（由 run1 中的 if self.clickValue 控制）
+
 
     def run1(self) -> str:
         """优化的运行方法1，返回找到的图片名"""
@@ -127,6 +146,11 @@ class ScreenDetector:
                 if len(self.template_name_list) > 1 : # 或者 self.templates
                     print(f"FOUND_IMAGE:{template_name}")
                 return template_name # 返回找到的第一个符合 nth_match 条件的模板名         
+            else:
+                if self.scroll_on_not_found_run1:
+                    print("在 run1 中未找到图片，执行滚动操作 pyautogui.scroll(-80)")
+                    pyautogui.scroll(-120)
+                    sleep(0.5)
             
             # print("未找到任何目标图片，继续监控...") # 频繁打印可能过多，可以考虑减少频率
             sleep(1) # 等待1秒再试
@@ -150,52 +174,81 @@ class ScreenDetector:
             print(f"找到图片 {template_name} 位置: {location}，已滚动。")
             sleep(1) # 操作后稍作等待
 
-def parse_args() -> Tuple[str | List[str], bool, bool, Optional[int], Optional[int], int]:
+def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Optional[int], Optional[int], int]:
     """参数解析函数"""
-    if len(sys.argv) < 4:
-        print("用法: python a.py <image_name1[,image_name2,...]> <clickValue:true|false> <Opposite:true|false> [x_offset] [y_offset] [nth_match]")
+    # 参数顺序: image_names, click_type, Opposite, [scroll_in_run1], [x_offset], [y_offset], [nth_match]
+    # 至少需要3个固定参数
+    if len(sys.argv) < 4: # image_names, click_type, Opposite 是必需的
+        print("用法: python a.py <image_name1[,image_name2,...]> <click_type:true|false|right> <Opposite:true|false> [scroll_in_run1:true|false] [x_offset] [y_offset] [nth_match]")
+        print("  click_type:")
+        print("    true: 左键点击")
+        print("    false: 不点击")
+        print("    right: 右键点击")
+        print("  Opposite:")
+        print("    true: 执行 run2 (持续查找并滚动)")
+        print("    false: 执行 run1 (查找，可选超时前滚动)")
+        print("  scroll_in_run1 (可选, 默认为 false):")
+        print("    true: 在 run1 中若找不到图片则向下滚动80像素后重试")
+        print("    false: 在 run1 中若找不到图片则不滚动，仅在当前屏幕重试")
         sys.exit(1)
 
     image_names_str = sys.argv[1]
     # 支持单个或多个逗号分隔的图片名
     # image_names = [name.strip() for name in image_names_str.split(',')] if ',' in image_names_str else image_names_str
 
-    clickValue = sys.argv[2].lower() == 'true'
-    Opposite = sys.argv[3].lower() == 'true' # 这个参数决定调用 run1 还是 run2
+    click_arg = sys.argv[2].lower()
+    clickValue: Optional[str] = None # 默认为不点击
+    if click_arg == 'true':
+        clickValue = 'left'
+    elif click_arg == 'right':
+        clickValue = 'right'
+    elif click_arg == 'false':
+        clickValue = None # 明确设置为 None
+    else:
+        print(f"错误: 无效的 click_type '{sys.argv[2]}'. 请使用 'true', 'false', 或 'right'.")
+        sys.exit(1)
 
+    Opposite = sys.argv[3].lower() == 'true'
+    
+    # --- 修改开始: 使 scroll_in_run1 可选 ---
+    scroll_in_run1: bool = False # 默认值为 false
+    current_arg_index = 4 # 指向 scroll_in_run1 或 x_offset 的潜在位置
+
+    if len(sys.argv) > current_arg_index: # 检查是否有足够的参数作为 scroll_in_run1 或后续参数
+        potential_scroll_arg = sys.argv[current_arg_index].lower()
+        if potential_scroll_arg in ['true', 'false']:
+            scroll_in_run1 = potential_scroll_arg == 'true'
+            current_arg_index += 1 # scroll_in_run1 已被处理，下一个可选参数索引增加
+        # else: potential_scroll_arg 不是 true/false，则它可能是 x_offset 等，
+        # scroll_in_run1 保持默认的 false，current_arg_index 不变
+    
+    # --- 处理 x_offset, y_offset, nth_match ---
     x_offset: Optional[int] = None
     y_offset: Optional[int] = None
-    nth_match: int = 1 # 默认 nth_match 为 1
+    nth_match: int = 1 # 默认值
 
-    remaining_args = sys.argv[4:]
-    
+    # final_optional_args 包含 scroll_in_run1 之后的所有参数
+    final_optional_args = sys.argv[current_arg_index:]
+
     try:
-        if len(remaining_args) >= 1 and remaining_args[0]:
-            # 尝试将第一个可选参数作为 nth_match (如果它是唯一的数字参数)
-            # 或作为 x_offset (如果后面还有 y_offset)
-            # 为了明确，最好要求 nth_match 是最后一个参数或有固定位置
-            # 当前逻辑：如果只有一个额外参数，它是 nth_match
-            # 如果有两个，是 x_offset, y_offset
-            # 如果有三个，是 x_offset, y_offset, nth_match
-            if len(remaining_args) == 1: # nth_match
-                nth_match = int(remaining_args[0])
-            elif len(remaining_args) == 2: # x_offset, y_offset
-                x_offset = int(remaining_args[0]) if remaining_args[0] else None
-                y_offset = int(remaining_args[1]) if remaining_args[1] else None
-            elif len(remaining_args) >= 3: # x_offset, y_offset, nth_match
-                x_offset = int(remaining_args[0]) if remaining_args[0] else None
-                y_offset = int(remaining_args[1]) if remaining_args[1] else None
-                nth_match = int(remaining_args[2]) if remaining_args[2] else 1
-    
+        if len(final_optional_args) == 1: # 如果只有一个剩余参数，认为是 nth_match
+            if final_optional_args[0]: nth_match = int(final_optional_args[0])
+        elif len(final_optional_args) == 2: # 如果有两个剩余参数，认为是 x_offset, y_offset
+            if final_optional_args[0]: x_offset = int(final_optional_args[0])
+            if final_optional_args[1]: y_offset = int(final_optional_args[1])
+        elif len(final_optional_args) >= 3: # 如果有三个或更多，认为是 x_offset, y_offset, nth_match
+            if final_optional_args[0]: x_offset = int(final_optional_args[0])
+            if final_optional_args[1]: y_offset = int(final_optional_args[1])
+            if final_optional_args[2]: nth_match = int(final_optional_args[2])
     except ValueError as e:
-        print(f"参数值无效: {e}. 请确保偏移量和 nth_match 是整数。")
+        print(f"偏移量或 nth_match 参数值无效: {e}. 请确保它们是整数。")
         sys.exit(1)
     except IndexError:
-        # 正常情况，意味着没有提供所有可选参数
-        pass
-        
-    # image_names 可以直接传递字符串，构造函数会处理
-    return image_names_str, clickValue, Opposite, x_offset, y_offset, nth_match
+        # 这个异常理论上不应该在这里触发，因为我们已经检查了 len(final_optional_args)
+        # 但保留它以防万一
+        pass 
+
+    return image_names_str, clickValue, Opposite, scroll_in_run1, x_offset, y_offset, nth_match
 
 if __name__ == '__main__':
     args_tuple = parse_args() # (image_names_str, clickValue, Opposite, x_offset, y_offset, nth_match)
@@ -205,18 +258,21 @@ if __name__ == '__main__':
     # 创建 ScreenDetector 实例
     detector = ScreenDetector(
         template_names=args_tuple[0],
-        clickValue=args_tuple[1],
+        clickValue=args_tuple[1], # 现在是 'left', 'right', 或 None
         Opposite=args_tuple[2], # 这个参数主要用于选择 run1 还是 run2
-        x_offset=args_tuple[3],
-        y_offset=args_tuple[4],
-        nth_match=args_tuple[5]
+        scroll_on_not_found_run1=args_tuple[3],
+        x_offset=args_tuple[4],
+        y_offset=args_tuple[5],
+        nth_match=args_tuple[6]
     )
     
     try:
         if args_tuple[2]:  # Opposite is True, run run2
             detector.run2()
         else: # Opposite is False, run run1
-            detector.run1()
+            result = detector.run1()
+            # 如果需要基于 run1 的结果做进一步操作，可以在这里添加
+            # print(f"run1 返回: {result}")
     finally:
         # 清理模板列表中的图像数据（如果需要手动管理，但cv2图像通常由GC处理）
         # self.templates.clear() 实际上不需要，因为 detector 实例会被销毁

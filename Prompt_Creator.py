@@ -165,7 +165,7 @@ class FileBlockWidget(QWidget):
         self.path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.path_label.setToolTip("文件路径")
         self.delete_button = QPushButton("X")
-        self.delete_button.setFixedSize(22, 22)
+        self.delete_button.setFixedSize(32, 22)
         self.delete_button.setToolTip("删除此文件块")
         self.delete_button.clicked.connect(self._request_delete_self)
         path_layout.addWidget(self.path_button)
@@ -237,16 +237,24 @@ class OutputDialog(QDialog):
         self.setWindowTitle(self.original_title)
         self.setMinimumSize(600, 400)
         layout = QVBoxLayout(self)
-        self.text_edit = QTextEdit(text_content)
+
+        # 修改部分开始
+        self.text_edit = QTextEdit()  # 先创建一个空的 QTextEdit
+        self.text_edit.setPlainText(text_content) # 然后显式地将内容设置为纯文本
+        # 修改部分结束
+
         self.text_edit.setReadOnly(True)
         layout.addWidget(self.text_edit)
+
         self.button_box = QDialogButtonBox()
         self.ok_button = self.button_box.addButton(QDialogButtonBox.Ok)
         self.ok_button.setText("确定")
         self.button_box.accepted.connect(self.accept)
+
         self.copy_btn = QPushButton("复制到剪贴板")
         self.copy_btn.clicked.connect(self.copy_to_clipboard)
         self.button_box.addButton(self.copy_btn, QDialogButtonBox.ActionRole)
+
         layout.addWidget(self.button_box)
 
     def copy_to_clipboard(self):
@@ -351,14 +359,21 @@ class HistoryDialog(QDialog):
     def delete_selected_records(self):
         selected_items = self.list_widget.selectedItems()
         if not selected_items: return
-        reply = QMessageBox.question(self, "确认删除", f"确定要删除选中的 {len(selected_items)} 条历史记录吗？此操作不可恢复。", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+        reply = QMessageBox.question(self, "确认删除",
+                                     f"确定要删除选中的 {len(selected_items)} 条历史记录吗？此操作不可恢复。",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
         if reply == QMessageBox.No: return
         original_indices_to_delete = sorted([item.data(Qt.UserRole) for item in selected_items], reverse=True)
         for index in original_indices_to_delete:
             if 0 <= index < len(self.history_data):
                 del self.history_data[index]
         if self._save_history_to_file_internal():
-            QMessageBox.information(self, "删除成功", f"已成功删除 {len(selected_items)} 条记录。")
+            # QMessageBox.information(self, "删除成功", f"已成功删除 {len(selected_items)} 条记录。") # <--- 修改：注释掉这一行
+            print(f"已成功删除 {len(selected_items)} 条记录。") # 或者，如果您仍想在控制台看到这个信息，可以保留一个print语句
+            pass # 如果不想有任何提示，可以直接pass或者删除上面注释掉的行
+
         current_row_before_delete = self.list_widget.currentRow()
         self._populate_list_widget()
         if self.list_widget.count() > 0:

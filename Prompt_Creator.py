@@ -669,7 +669,6 @@ class MainWindow(QWidget):
         num_to_add = 3 - len(self.file_blocks)
         if num_to_add > 0:
             for _ in range(num_to_add): self._add_file_block_widget(add_to_list_ref=True)
-        QMessageBox.information(self, "加载完成", f"记录 '{record_data.get('id')}' 已加载。")
 
     def generate_and_save_output(self):
         project_name = self.project_name_input.text().strip()

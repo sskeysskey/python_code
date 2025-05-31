@@ -370,9 +370,8 @@ class HistoryDialog(QDialog):
             if 0 <= index < len(self.history_data):
                 del self.history_data[index]
         if self._save_history_to_file_internal():
-            # QMessageBox.information(self, "删除成功", f"已成功删除 {len(selected_items)} 条记录。") # <--- 修改：注释掉这一行
-            print(f"已成功删除 {len(selected_items)} 条记录。") # 或者，如果您仍想在控制台看到这个信息，可以保留一个print语句
-            pass # 如果不想有任何提示，可以直接pass或者删除上面注释掉的行
+            print(f"已成功删除 {len(selected_items)} 条记录。")
+            pass
 
         current_row_before_delete = self.list_widget.currentRow()
         self._populate_list_widget()
@@ -459,21 +458,28 @@ class MainWindow(QWidget):
                 self.custom_desc_input.setText(preset_text)
 
     def init_ui(self):
+        # self.setWindowTitle("代码与Prompt整合工具")
+        # self.setGeometry(100, 100, 1200, 800)
+        # main_layout = QVBoxLayout(self)
         self.setWindowTitle("代码与Prompt整合工具")
         self.setGeometry(100, 100, 1200, 800)
+        # 1. 创建主垂直布局，并减小默认边距和控件间距
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.setSpacing(5) 
 
-        top_buttons_layout = QHBoxLayout()
+        # --- MODIFICATION START ---
+        # “加载历史记录”按钮的创建移到这里，但暂时不添加到任何布局
         self.load_history_button = QPushButton("加载历史记录")
         self.load_history_button.clicked.connect(self.show_history_dialog)
-        top_buttons_layout.addWidget(self.load_history_button)
-        top_buttons_layout.addStretch()
-        main_layout.addLayout(top_buttons_layout)
+        # 原 top_buttons_layout 已被移除
+        # --- MODIFICATION END ---
 
         top_section_layout = QHBoxLayout()
         project_name_group_layout = QVBoxLayout()
         project_name_group_layout.addWidget(QLabel("项目名称:"))
         self.project_name_input = QLineEdit()
+        self.project_name_input.setStyleSheet("font-size:20pt;")
         self.project_name_input.setPlaceholderText("例如：Finance")
         project_name_group_layout.addWidget(self.project_name_input)
         top_section_layout.addLayout(project_name_group_layout, 1)
@@ -548,23 +554,36 @@ class MainWindow(QWidget):
         bottom_section_layout = QVBoxLayout()
         bottom_section_layout.addWidget(QLabel("最终Prompt指令:"))
         self.prompt_input = QTextEdit()
+        self.prompt_input.setStyleSheet("font-size:18pt;")
         self.prompt_input.setPlaceholderText("例如：我现在需要制作底部tab里的“资产”页面...")
         self.prompt_input.setMinimumHeight(100)
         self.prompt_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         bottom_section_layout.addWidget(self.prompt_input)
+        
+        # --- MODIFICATION START ---
+        # “生成最终文本并保存记录”按钮的创建
         self.generate_button = QPushButton("生成最终文本并保存记录")
         self.generate_button.setFixedHeight(40)
         self.generate_button.clicked.connect(self.generate_and_save_output)
-        generate_button_wrapper = QHBoxLayout()
-        generate_button_wrapper.addStretch()
-        generate_button_wrapper.addWidget(self.generate_button)
-        bottom_section_layout.addLayout(generate_button_wrapper)
+
+        # 创建一个新的 QHBoxLayout 用于底部的两个按钮
+        bottom_buttons_layout = QHBoxLayout()
+        bottom_buttons_layout.addWidget(self.load_history_button) # 添加“加载历史记录”按钮
+        bottom_buttons_layout.addStretch() # 添加伸缩项
+        bottom_buttons_layout.addWidget(self.generate_button) # 添加“生成”按钮
+        
+        bottom_section_layout.addLayout(bottom_buttons_layout) # 将此新布局添加到 bottom_section_layout
+        # --- MODIFICATION END ---
+        
         main_layout.addLayout(bottom_section_layout)
 
-        main_layout.setStretchFactor(top_buttons_layout, 0)
+        # --- MODIFICATION START ---
+        # 更新 StretchFactor 设置
+        # main_layout.setStretchFactor(top_buttons_layout, 0) # 此行移除，因为 top_buttons_layout 不再存在
         main_layout.setStretchFactor(top_section_layout, 0)
-        main_layout.setStretchFactor(second_section_wrapper_layout, 1)
+        main_layout.setStretchFactor(second_section_wrapper_layout, 1) # 文件块区域将扩展
         main_layout.setStretchFactor(bottom_section_layout, 0)
+        # --- MODIFICATION END ---
 
         # 初始化项目介绍部分的状态
         if self.project_desc_options: # 如果有预设选项，默认选中第一个

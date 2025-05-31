@@ -10,7 +10,29 @@ from PyQt5.QtWidgets import (
     QSplitter, QAbstractItemView, QRadioButton, QButtonGroup, QGroupBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
+from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence, QPainter
+
+class ElidedLabel(QLabel):
+    """
+    一个 QLabel 子类，它会在绘制时根据当前宽度自动用左侧省略号展示过长的文字。
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._full_text = ""
+        # 不自动换行
+        self.setWordWrap(False)
+
+    def setText(self, text: str):
+        # 保存完整文字，实际显示用省略号
+        self._full_text = text
+        self.update()  # 触发重绘
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        fm = painter.fontMetrics()
+        elided = fm.elidedText(self._full_text, Qt.ElideLeft, self.width())
+        # 调用父类画文字
+        painter.drawText(self.rect(), self.alignment(), elided)
 
 HISTORY_FILE = "/Users/yanzhang/Documents/python_code/Modules/Prompt_history.json" # 请确保这个路径对您的系统是正确的
 DEFAULT_FILE_SELECTION_PATH = "/Users/yanzhang/Documents" # 定义默认文件选择路径
@@ -160,7 +182,7 @@ class FileBlockWidget(QWidget):
         path_layout = QHBoxLayout()
         self.path_button = QPushButton("选择文件")
         self.path_button.clicked.connect(self.select_file)
-        self.path_label = QLabel("未选择文件")
+        self.path_label = ElidedLabel("未选择文件")
         self.path_label.setWordWrap(True)
         self.path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.path_label.setToolTip("文件路径")
@@ -193,7 +215,7 @@ class FileBlockWidget(QWidget):
         LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
         self.file_path = f_path
         display_path = f"...{os.sep}{os.path.basename(f_path)}" if len(f_path) >= 50 else f_path
-        self.path_label.setText(display_path)
+        self.path_label.setText(f_path)
         self.path_label.setToolTip(f_path)
         _, file_extension = os.path.splitext(f_path)
         if file_extension.lower() in (".db", ".scpt"):
@@ -458,11 +480,8 @@ class MainWindow(QWidget):
                 self.custom_desc_input.setText(preset_text)
 
     def init_ui(self):
-        # self.setWindowTitle("代码与Prompt整合工具")
-        # self.setGeometry(100, 100, 1200, 800)
-        # main_layout = QVBoxLayout(self)
         self.setWindowTitle("代码与Prompt整合工具")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1600, 900)
         # 1. 创建主垂直布局，并减小默认边距和控件间距
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)

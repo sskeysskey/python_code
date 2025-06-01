@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import shutil
 import subprocess
 
@@ -49,8 +50,8 @@ bob_lines = count_valid_lines(os.path.join(base_path, bob_file), True)
 srt_lines = count_valid_lines(os.path.join(base_path, srt_file), False)
 
 if bob_lines != srt_lines:
-    display_dialog(f"文件行数不匹配：Bob文件有 {bob_lines} 行，SRT文件有 {srt_lines} 行有效内容。")
-    exit()
+    display_dialog(f"文件行数不匹配x：Bob文件有 {bob_lines} 行，SRT文件有 {srt_lines} 行有效内容。")
+    sys.exit(1) # 以错误码 1 退出
 
 # 读取文件内容
 with open(os.path.join(base_path, bob_file), 'r', encoding='utf-8') as f:

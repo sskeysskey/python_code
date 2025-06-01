@@ -18,7 +18,8 @@
     "*://*.technologyreview.com/*",
     "*://*.reuters.com/*",
     "*://*.nytimes.com/*",
-    "*://*.washingtonpost.com/*"
+    "*://*.washingtonpost.com/*",
+    "*://*.asia.nikkei.com/*"
   ],
   "action": {
     "default_title": "Copy Article"

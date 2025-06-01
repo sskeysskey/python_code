@@ -18,9 +18,8 @@ searchFolders = [
     "/Users/yanzhang/Downloads/backup/TXT",
     "/Users/yanzhang/Documents/Books",
     "/Users/yanzhang/Documents/News/done",
-    "/Users/yanzhang/Documents/Xcode/Indices/Finance",  # 添加Swift文件目录
-    "/Users/yanzhang/Documents"
-    # "/Users/yanzhang/Downloads/backup/FT金融时报/ft-kanmagazine"
+    "/Users/yanzhang/Documents/Xcode/Indices/Finance",
+    "/Users/yanzhang/Documents/sh"
 ]
 
 class CustomTextBrowser(QTextBrowser):

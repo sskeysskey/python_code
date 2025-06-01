@@ -1991,9 +1991,11 @@ function extractAndCopy() {
 
     // 2. 提取图片及描述
     if (textContent) {
-      // 先找所有标记了 data-trackable="image-main" 的容器
+      // 同时选 image-main 和 image-inline
       const imageBlocks = Array.from(
-        document.querySelectorAll('div[data-trackable="image-main"]')
+        document.querySelectorAll(
+          'div[data-trackable="image-main"], div[data-trackable="image-inline"]'
+        )
       );
       if (imageBlocks.length === 0) {
         chrome.runtime.sendMessage({ action: 'noImages' });
@@ -2001,20 +2003,25 @@ function extractAndCopy() {
         const seenUrls = new Set();
         imageBlocks.forEach((block, idx) => {
           const img = block.querySelector('img');
-          if (!img || !img.src) return;
+          if (!img) return;
 
-          // 解析并标准化 URL
-          let url = img.src.trim();
+          // 优先取 full 属性，否则再用 src
+          let url = img.getAttribute('full') || img.src || '';
+          url = url.trim();
+          if (!url) return;
+
+          // 规范化 URL
           if (url.startsWith('//')) url = location.protocol + url;
           else if (url.startsWith('/')) url = new URL(url, location.origin).href;
 
           if (seenUrls.has(url)) return;
           seenUrls.add(url);
 
-          // 找到同一个父容器下的 caption 段落
+          // 找 caption：兼容 data-trackable="caption" 和 .article_caption
           let captionText = '';
-          const cap = block.parentElement
-            .querySelector('p[data-trackable="caption"]');
+          const cap =
+            block.querySelector('[data-trackable="caption"], .article_caption') ||
+            block.parentElement.querySelector('[data-trackable="caption"], .article_caption');
           if (cap) {
             captionText = cap.textContent
               .replace(/[\r\n]+/g, ' ')
@@ -2022,21 +2029,13 @@ function extractAndCopy() {
               .trim();
           }
 
-          // 构造文件名：优先用 caption，其次用 alt，最后用时间戳
-          let baseName = '';
-          if (captionText) {
-            baseName = captionText;
-          } else if (img.alt) {
-            baseName = img.alt.trim();
-          } else {
-            baseName = `nikkeiasia-${Date.now()}-${idx}`;
-          }
-          // 清洗非法字符
+          // 构造文件名
+          let baseName = captionText || img.alt.trim() || `img-${Date.now()}-${idx}`;
           baseName = baseName
             .replace(/[/\\?%*:|"<>]/g, '-')
             .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 180);
+            .substring(0, 180)
+            .trim();
           const filename = baseName + '.jpg';
 
           chrome.runtime.sendMessage({

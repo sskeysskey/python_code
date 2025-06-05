@@ -849,12 +849,11 @@ function extractAndCopy() {
 
       textContent = allParagraphs
         .map(p => {
-          // 过滤掉带有特定class的段落
           if (
             p.querySelector('strong[data-type="emphasis"]') ||
-            p.className.includes('g-pstyle') ||  // 添加这个条件
-            p.closest('.ai2html_export') ||      // 添加这个条件
-            p.closest('[data-block="dynamic-inset"]') // 添加这个条件
+            p.className.includes('g-pstyle') ||
+            p.closest('.ai2html_export') ||
+            p.closest('[data-block="dynamic-inset"]')
           ) {
             return '';
           }
@@ -865,7 +864,7 @@ function extractAndCopy() {
             .replace(/\s+/g, ' ')
             .replace(/&nbsp;/g, ' ')
             .replace(/≤\/p>/g, '')
-            .replace(/\[.*?\]/g, '')
+            .replace(/[.*?]/g, '')
             .trim();
 
           return text;
@@ -898,13 +897,27 @@ function extractAndCopy() {
           ...Array.from(article.querySelectorAll('figure img')) // 新增：figure中的图片
         ];
 
+        // --- 新增过滤逻辑 ---
+        // 过滤掉 "What to Read Next" 等推荐区域的图片
+        // 这个步骤应该在其他过滤（如评论区过滤、尺寸过滤）之前进行，以提高效率
+        allImages = allImages.filter(img => {
+          // 检查图片的祖先元素中是否包含特定排除区域的标志
+          // data-testid 属性以 "wtrn-block" 开头，例如 "wtrn-block-0"
+          // aria-label 属性为 "What to Read Next"
+          if (
+            img.closest('[data-testid^="wtrn-block"]') ||
+            img.closest('[aria-label="What to Read Next"]')
+          ) {
+            return false; // 如果图片在这些区域内，则排除该图片
+          }
+          return true; // 否则，保留该图片
+        });
+        // --- 新增过滤逻辑结束 ---
+
         // 如果找到"Show Conversation"元素，则过滤掉其后的图片
         if (showConversationElement) {
           allImages = allImages.filter(img => {
-            // 判断图片是否在"Show Conversation"元素之前
-            // 使用compareDocumentPosition进行DOM位置比较
             const position = showConversationElement.compareDocumentPosition(img);
-            // 如果图片在showConversationElement之后，返回false
             return !(position & Node.DOCUMENT_POSITION_FOLLOWING);
           });
         }
@@ -913,7 +926,6 @@ function extractAndCopy() {
         allImages = allImages.filter(img => {
           const imgSrc = img.src || '';
 
-          // 排除SVG和小图标
           if (imgSrc.toLowerCase().endsWith('.svg') ||
             imgSrc.includes('/icons/') ||
             imgSrc.includes('/social') ||
@@ -922,7 +934,6 @@ function extractAndCopy() {
             return false;
           }
 
-          // 使用尺寸信息（如果可用）
           const imgWidth = img.width || img.naturalWidth || 0;
           const imgHeight = img.height || img.naturalHeight || 0;
           if (imgWidth > 0 && imgHeight > 0 && (imgWidth < 150 || imgHeight < 150)) {
@@ -935,22 +946,16 @@ function extractAndCopy() {
         if (allImages.length === 0) {
           chrome.runtime.sendMessage({ action: 'noImages' });
         } else {
-          // 用于跟踪已处理的图片URL
           const processedUrls = new Set();
 
           allImages.forEach(img => {
             if (img) {
-              // 清理和标准化srcset字符串
-              let highestResUrl = img.src; // 默认使用src
+              let highestResUrl = img.src;
 
               if (img.srcset) {
-                // 清理srcset字符串，移除多余的空格和换行符
                 const cleanSrcset = img.srcset.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-
-                // 解析srcset
                 const srcsetEntries = cleanSrcset.split(',').map(entry => {
                   const [url, width] = entry.trim().split(/\s+/);
-                  // 从width字符串中提取数字
                   const widthNum = parseInt(width?.replace(/[^\d]/g, '') || '0');
                   return {
                     url: url.trim(),
@@ -958,7 +963,6 @@ function extractAndCopy() {
                   };
                 });
 
-                // 找出最大宽度的图片URL
                 const highestResSrc = srcsetEntries.reduce((prev, current) => {
                   return (current.width > prev.width) ? current : prev;
                 }, srcsetEntries[0]);
@@ -968,39 +972,27 @@ function extractAndCopy() {
                 }
               }
 
-              // 获取基础URL（移除查询参数）
               const baseUrl = highestResUrl.split('?')[0];
               const finalUrl = `${baseUrl}?width=700&size=1.2610340479192939&pixel_ratio=2`;
 
-              // 检查是否已处理过该图片
               if (!processedUrls.has(baseUrl)) {
-                // 将基础URL添加到已处理集合中
                 processedUrls.add(baseUrl);
 
-                // 获取图片描述
                 let altText = '';
-
-                // 尝试多种方式获取图片描述
                 const origamiCaption = img.closest('.origami-wrapper')?.querySelector('.origami-caption');
-
-                // 新增：如果图片在 <figure> 内，提取其邻近的 <figcaption> 内指定的 caption
                 const figureEl = img.closest('figure');
                 let captionSpan;
                 if (figureEl) {
                   const figcaptionEl = figureEl.nextElementSibling;
                   if (figcaptionEl && figcaptionEl.tagName.toLowerCase() === 'figcaption') {
-                    // 获取包含正确描述的 <span>
                     captionSpan = figcaptionEl.querySelector('.css-426zcb-CaptionSpan');
                   }
                 }
-
-                // 原代码中查找 credit 作为备用
                 const creditSpan = img.closest('[data-type="image"]')?.querySelector('.css-7jz429-Credit');
 
                 if (origamiCaption) {
                   altText = origamiCaption.textContent;
                 } else if (captionSpan) {
-                  // 优先采用 <figcaption> 里的 caption 内容
                   altText = captionSpan.textContent;
                 } else if (creditSpan) {
                   altText = creditSpan.textContent;
@@ -1008,22 +1000,16 @@ function extractAndCopy() {
                   altText = img.alt || 'wsj_image';
                 }
 
-                // 文件名处理函数
                 const processFileName = (text) => {
-                  // 移除或替换特殊字符
                   text = text.replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
-
-                  // 如果文本超过250个字符，在最接近的单词边界处截断
                   if (text.length > 200) {
                     text = text.substr(0, 196).split(' ').slice(0, -1).join(' ');
                   }
-
                   return `${text}.jpg`;
                 };
 
-                // 只有未处理过的图片才发送下载请求
                 chrome.runtime.sendMessage({
                   action: 'downloadImage',
                   url: finalUrl,

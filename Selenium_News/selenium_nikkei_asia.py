@@ -90,63 +90,63 @@ for _ in range(4):
     pyautogui.scroll(-80)
     time.sleep(0.2)
 
+# 1. 需要特殊处理的版块
+SECTIONS = ["Spotlight", "Business"]
+
+css_selector = ", ".join(
+    f"a[href*='/{section}/']:not(.label-link)" for section in SECTIONS
+)
+
 try:
-    css_selector = "a[href*='/Spotlight/']:not(.label-link)"
     titles_elements = driver.find_elements(By.CSS_SELECTOR, css_selector)
 
     for title_element in titles_elements:
         href = title_element.get_attribute('href')
         title_text = title_element.text.strip()
 
-        if href and title_text:
-            # 首先，检查是否包含一般性的排除关键词
-            general_keywords_to_exclude = [
-                'Podcast', 'sports', '/music/', 'weather', '/books/', 'food',
-                'The-Future-of-Asia', 'Your-Week-in-Asia'
-            ]
-            skip_due_to_general_keyword = False
-            for keyword in general_keywords_to_exclude:
-                if keyword in href:
-                    skip_due_to_general_keyword = True
-                    break
-            
-            if not skip_due_to_general_keyword:
-                # 如果没有命中一般性排除关键词，则进行 Spotlight 链接结构的特定判断
-                skip_due_to_spotlight_structure = False
-                try:
-                    parsed_url = urlparse(href) # 解析URL
-                    
-                    # 检查是否是目标域名 (asia.nikkei.com) 并且路径以 /Spotlight/ 开头
-                    if parsed_url.netloc == "asia.nikkei.com" and parsed_url.path.startswith("/Spotlight/"):
-                        # 获取路径部分，并移除首尾的斜杠，然后按斜杠分割
-                        # 例如: "/Spotlight/CategoryName" -> 路径段为 ["Spotlight", "CategoryName"]
-                        # 例如: "/Spotlight/CategoryName/ArticleName" -> 路径段为 ["Spotlight", "CategoryName", "ArticleName"]
-                        path_segments = [segment for segment in parsed_url.path.strip('/').split('/') if segment]
-                        
-                        # 如果路径段的第一个是 "Spotlight" 并且总共有2个路径段，
-                        # 这符合您想要排除的 Spotlight 分类页的模式 (例如 /Spotlight/Your-Week-in-Asia)
-                        if path_segments and path_segments[0] == "Spotlight" and len(path_segments) == 2:
-                            skip_due_to_spotlight_structure = True
-                            # print(f"DEBUG: 跳过Spotlight分类链接: {href}") # 可选的调试输出
-                    # else:
-                        # 如果链接不属于 asia.nikkei.com 或者路径不以 /Spotlight/ 开头
-                        # （考虑到您的CSS选择器 a[href*='/Spotlight/']，这种情况可能较少，
-                        # 但保留这个判断可以增加代码的稳健性）
-                        # 默认情况下，非此类链接会通过此结构检查（即 skip_due_to_spotlight_structure 仍为 False）
-                        pass
+        if not (href and title_text):
+            continue
 
-                except ValueError: # 处理urlparse可能遇到的错误（例如URL格式异常）
-                    # print(f"DEBUG: URL格式错误，跳过: {href}") # 可选的调试输出
-                    skip_due_to_spotlight_structure = True # 如果URL格式错误，也将其排除
+        # 一般性的排除关键字
+        general_keywords_to_exclude = [
+            'Podcast', 'sports', '/music/', 'weather', '/books/', 'food',
+            'The-Future-of-Asia', 'Your-Week-in-Asia'
+        ]
+        if any(keyword in href for keyword in general_keywords_to_exclude):
+            continue
 
-                if not skip_due_to_spotlight_structure:
-                    # 如果链接既没有命中一般性排除，也没有命中Spotlight结构排除，
-                    # 则执行您原有的相似度检查和添加逻辑
-                    if not any(is_similar(href, old_link) for _, _, old_link in old_content):
-                        if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
-                            new_rows.append([formatted_datetime, title_text, href])
-                            new_rows1.append(["NikkeiAsia", title_text, href])
-                            all_links.append(href)  # 添加到所有链接的列表中
+        # Spotlight/Business 结构判断
+        skip_due_to_structure = False
+        try:
+            parsed_url = urlparse(href)
+            # 仅对 asia.nikkei.com 生效
+            if parsed_url.netloc == "asia.nikkei.com":
+                # 提取所有非空的 path segment
+                path_segments = [
+                    seg for seg in parsed_url.path.strip("/").split("/") if seg
+                ]
+                # 如果第一个 segment 在 SECTIONS 里，并且恰好只有两个 segment
+                # （即 /Spotlight/分类 or /Business/分类），就跳过
+                if (
+                    path_segments
+                    and path_segments[0] in SECTIONS
+                    and len(path_segments) == 2
+                ):
+                    skip_due_to_structure = True
+
+        except ValueError:
+            # URL 格式异常也跳过
+            skip_due_to_structure = True
+
+        if skip_due_to_structure:
+            continue
+
+        # 滤重逻辑：和 old_content、new_rows 里已有的链接比较相似度
+        if not any(is_similar(href, old_link) for _, _, old_link in old_content):
+            if not any(is_similar(href, new_link) for _, _, new_link in new_rows):
+                new_rows.append([formatted_datetime, title_text, href])
+                new_rows1.append(["NikkeiAsia", title_text, href])
+                all_links.append(href)
 
 except Exception as e:
     print("抓取过程中出现错误:", e)

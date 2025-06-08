@@ -1806,10 +1806,16 @@ function extractAndCopy() {
       // 1. 提取正文
       // 选择 article 内的所有 p 标签，但排除 figure (及其子元素) 内的 p 标签
       const paras = Array.from(shorthandArticle.querySelectorAll('p'))
-        .filter(p => !p.closest('figure'))
+        .filter(p => !p.closest('figure')) // 排除图片容器内的 p 标签
         .map(p => p.textContent.trim())
-        .filter(t => t.length > 0);
+        .filter(t =>
+          t.length > 0 && // 规则1：保留非空段落
+          !t.includes("Reporters and videographers:") && // 规则2：排除记者名单
+          !t.includes("Editors:") && // 规则3：排除编辑名单
+          !t.startsWith("Note: Occupations and ages") // 规则4：排除结尾注释
+        );
       textContent = paras.join('\n\n');
+
 
       // 2. 提取图片及描述
       if (textContent) {

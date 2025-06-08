@@ -1793,79 +1793,164 @@ function extractAndCopy() {
     }
   }
 
-  // 新增：Nikkei Asia 处理
+  // ★★★★★ START: MODIFIED NIKKEI ASIA LOGIC ★★★★★
+  // 新增：Nikkei Asia 处理 (支持两种页面结构)
   else if (window.location.hostname.includes("asia.nikkei.com")) {
-    // 1. 提取正文
-    // 页面正文在 data-trackable="bodytext" 的容器里
-    const bodyContainer = document.querySelector('[data-trackable="bodytext"]');
-    if (bodyContainer) {
-      const paras = Array.from(bodyContainer.querySelectorAll('p'))
+    // 检查是否存在新的 "Shorthand" 页面结构
+    const shorthandArticle = document.querySelector('article.Theme-Story');
+
+    if (shorthandArticle) {
+      // --- 新页面结构 (Shorthand) 的处理逻辑 ---
+      console.log("Nikkei Asia: Shorthand page structure detected.");
+
+      // 1. 提取正文
+      // 选择 article 内的所有 p 标签，但排除 figure (及其子元素) 内的 p 标签
+      const paras = Array.from(shorthandArticle.querySelectorAll('p'))
+        .filter(p => !p.closest('figure'))
         .map(p => p.textContent.trim())
         .filter(t => t.length > 0);
       textContent = paras.join('\n\n');
-    }
 
-    // 2. 提取图片及描述
-    if (textContent) {
-      // 同时选 image-main 和 image-inline
-      const imageBlocks = Array.from(
-        document.querySelectorAll(
-          'div[data-trackable="image-main"], div[data-trackable="image-inline"]'
-        )
-      );
-      if (imageBlocks.length === 0) {
-        chrome.runtime.sendMessage({ action: 'noImages' });
-      } else {
-        const seenUrls = new Set();
-        imageBlocks.forEach((block, idx) => {
-          const img = block.querySelector('img');
-          if (!img) return;
+      // 2. 提取图片及描述
+      if (textContent) {
+        imagesFoundForDownload = true;
+        // 选择所有图片所在的 figure 容器
+        const imageFigures = Array.from(shorthandArticle.querySelectorAll('figure.InlineMedia--image'));
+        if (imageFigures.length === 0) {
+          chrome.runtime.sendMessage({ action: 'noImages' });
+        } else {
+          const seenUrls = new Set();
+          imageFigures.forEach((figure, idx) => {
+            const img = figure.querySelector('img');
+            const sources = figure.querySelectorAll('source');
+            if (!img) return;
 
-          // 优先取 full 属性，否则再用 src
-          let url = img.getAttribute('full') || img.src || '';
-          url = url.trim();
-          if (!url) return;
+            let bestUrl = '';
+            let maxWidth = 0;
 
-          // 规范化 URL
-          if (url.startsWith('//')) url = location.protocol + url;
-          else if (url.startsWith('/')) url = new URL(url, location.origin).href;
+            // 从 source 的 srcset 中解析最高分辨率的图片
+            sources.forEach(source => {
+              const srcset = source.srcset;
+              if (srcset) {
+                const candidates = srcset.split(',').map(entry => {
+                  const parts = entry.trim().split(/\s+/);
+                  return {
+                    url: parts[0],
+                    width: parseInt(parts[1]?.replace('w', ''), 10) || 0
+                  };
+                });
+                const bestCandidate = candidates.sort((a, b) => b.width - a.width)[0];
+                if (bestCandidate && bestCandidate.width > maxWidth) {
+                  maxWidth = bestCandidate.width;
+                  bestUrl = bestCandidate.url;
+                }
+              }
+            });
 
-          if (seenUrls.has(url)) return;
-          seenUrls.add(url);
+            // 如果 srcset 中没找到，回退到 img 的 src
+            if (!bestUrl) {
+              bestUrl = img.src;
+            }
 
-          // 找 caption：兼容 data-trackable="caption" 和 .article_caption
-          let captionText = '';
-          const cap =
-            block.querySelector('[data-trackable="caption"], .article_caption') ||
-            block.parentElement.querySelector('[data-trackable="caption"], .article_caption');
-          if (cap) {
-            captionText = cap.textContent
-              .replace(/[\r\n]+/g, ' ')
-              .replace(/["“”]/g, '')
+            bestUrl = bestUrl.trim();
+            if (!bestUrl || seenUrls.has(bestUrl) || !bestUrl.startsWith('http')) return;
+            seenUrls.add(bestUrl);
+
+            // 提取图片描述
+            let captionText = '';
+            const figcaption = figure.querySelector('figcaption.Theme-Caption');
+            if (figcaption) {
+              captionText = figcaption.textContent.trim();
+            }
+
+            // 构造文件名
+            let baseName = captionText || img.alt.trim() || `nikkei-shorthand-${Date.now()}-${idx}`;
+            baseName = baseName
+              .replace(/\(Photo by [^)]+\)/ig, '') // 移除 "(Photo by...)"
+              .replace(/[/\\?%*:|"<>]/g, '-')
+              .replace(/\s+/g, ' ')
+              .substring(0, 180)
               .trim();
-          }
+            const filename = (baseName || `image-${Date.now()}-${idx}`) + '.jpg';
 
-          // 构造文件名
-          let baseName = captionText || img.alt.trim() || `img-${Date.now()}-${idx}`;
-          baseName = baseName
-            .replace(/[/\\?%*:|"<>]/g, '-')
-            .replace(/\s+/g, ' ')
-            .substring(0, 180)
-            .trim();
-          const filename = baseName + '.jpg';
-
-          chrome.runtime.sendMessage({
-            action: 'downloadImage',
-            url,
-            filename
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url: bestUrl,
+              filename
+            });
           });
-        });
+        }
+      } else {
+        chrome.runtime.sendMessage({ action: 'noImages' });
       }
     } else {
-      // 如果连正文都没提取到，则认为无图片
-      chrome.runtime.sendMessage({ action: 'noImages' });
+      // --- 原有页面结构的处理逻辑 (作为后备) ---
+      console.log("Nikkei Asia: Default page structure detected.");
+      const bodyContainer = document.querySelector('[data-trackable="bodytext"]');
+      if (bodyContainer) {
+        const paras = Array.from(bodyContainer.querySelectorAll('p'))
+          .map(p => p.textContent.trim())
+          .filter(t => t.length > 0);
+        textContent = paras.join('\n\n');
+      }
+
+      if (textContent) {
+        imagesFoundForDownload = true;
+        const imageBlocks = Array.from(
+          document.querySelectorAll(
+            'div[data-trackable="image-main"], div[data-trackable="image-inline"]'
+          )
+        );
+        if (imageBlocks.length === 0) {
+          chrome.runtime.sendMessage({ action: 'noImages' });
+        } else {
+          const seenUrls = new Set();
+          imageBlocks.forEach((block, idx) => {
+            const img = block.querySelector('img');
+            if (!img) return;
+
+            let url = img.getAttribute('full') || img.src || '';
+            url = url.trim();
+            if (!url) return;
+
+            if (url.startsWith('//')) url = location.protocol + url;
+            else if (url.startsWith('/')) url = new URL(url, location.origin).href;
+
+            if (seenUrls.has(url)) return;
+            seenUrls.add(url);
+
+            let captionText = '';
+            const cap =
+              block.querySelector('[data-trackable="caption"], .article_caption') ||
+              block.parentElement.querySelector('[data-trackable="caption"], .article_caption');
+            if (cap) {
+              captionText = cap.textContent
+                .replace(/[\r\n]+/g, ' ')
+                .replace(/["“”]/g, '')
+                .trim();
+            }
+
+            let baseName = captionText || img.alt.trim() || `img-${Date.now()}-${idx}`;
+            baseName = baseName
+              .replace(/[/\\?%*:|"<>]/g, '-')
+              .replace(/\s+/g, ' ')
+              .substring(0, 180)
+              .trim();
+            const filename = (baseName || `image-${Date.now()}-${idx}`) + '.jpg';
+
+            chrome.runtime.sendMessage({
+              action: 'downloadImage',
+              url,
+              filename
+            });
+          });
+        }
+      } else {
+        chrome.runtime.sendMessage({ action: 'noImages' });
+      }
     }
   }
+  // ★★★★★ END: MODIFIED NIKKEI ASIA LOGIC ★★★★★
 
 
   if (textContent) {

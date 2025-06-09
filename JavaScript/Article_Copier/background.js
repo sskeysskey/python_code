@@ -1958,7 +1958,6 @@ function extractAndCopy() {
   }
   // ★★★★★ END: MODIFIED NIKKEI ASIA LOGIC ★★★★★
 
-
   if (textContent) {
     // 创建一个隐藏的 textarea 元素以复制文本
     const textarea = document.createElement('textarea');

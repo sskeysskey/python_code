@@ -90,7 +90,7 @@ for _ in range(4):
     time.sleep(0.2)
 
 # 1. 需要特殊处理的版块
-SECTIONS = ["Spotlight", "Business"]
+SECTIONS = ["Spotlight", "Business", "Economy"]
 
 css_selector = ", ".join(
     f"a[href*='/{section}/']:not(.label-link)" for section in SECTIONS

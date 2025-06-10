@@ -1655,21 +1655,35 @@ function extractAndCopy() {
     // ① 先取最可能的文章容器，fallback 到 body
     const container = document.querySelector('article') || document.body;
 
-    // 1. 提取正文：尝试新选择器，如果失败则回退到旧选择器
-    let paras = Array.from(container.querySelectorAll('p[data-component="Text"]')); // 尝试新选择器
+    // --- 修改开始 ---
+    // 1. 提取正文：按优先级尝试多个选择器，以适应不同页面版本
+    let paras = [];
 
-    // 如果使用新选择器没有找到段落，则尝试旧选择器
-    if (paras.length === 0) {
-      console.log("[WP Parser] New selector 'p[data-component=\"Text\"]' found no paragraphs. Trying old selector 'p[data-apitype=\"text\"]'.");
-      paras = Array.from(container.querySelectorAll('p[data-apitype="text"]')); // 尝试旧选择器
+    // 尝试选择器 1 (适用于2024年及之后的新版页面)
+    paras = Array.from(container.querySelectorAll('p[data-contentid]'));
+    if (paras.length > 0) {
+      console.log("[WP Parser] Found paragraphs using the newest selector: 'p[data-contentid]'.");
     }
+
+    // 如果没找到，尝试选择器 2 (旧版页面)
+    if (paras.length === 0) {
+      console.log("[WP Parser] Selector 'p[data-contentid]' failed. Trying 'p[data-component=\"Text\"]'.");
+      paras = Array.from(container.querySelectorAll('p[data-component="Text"]'));
+    }
+
+    // 如果还没找到，尝试选择器 3 (更旧版页面)
+    if (paras.length === 0) {
+      console.log("[WP Parser] Selector 'p[data-component=\"Text\"]' failed. Trying 'p[data-apitype=\"text\"]'.");
+      paras = Array.from(container.querySelectorAll('p[data-apitype="text"]'));
+    }
+    // --- 修改结束 ---
 
     textContent = paras
       .map(p => p.textContent.trim())
       .filter(t => t && t.length > 1 && !/^[•@∞]/.test(t))
       .join('\n\n');
 
-    // 2. 提取并下载图片 (后续逻辑保持不变)
+    // 2. 提取并下载图片 (后续逻辑保持不变, 因为现在 textContent 能被正确获取)
     if (textContent) {
       // 找到所有 figure
       const figures = Array.from(container.querySelectorAll('figure'));
@@ -1792,7 +1806,7 @@ function extractAndCopy() {
         });
       }
     } else {
-      chrome.runtime.sendMessage({ action: 'noImages', reason: 'Text content could not be extracted with either new or old selectors.' });
+      chrome.runtime.sendMessage({ action: 'noImages', reason: 'Text content could not be extracted with any of the available selectors.' });
     }
   }
 

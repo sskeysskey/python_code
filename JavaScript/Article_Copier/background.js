@@ -528,11 +528,14 @@ function extractAndCopy() {
       // 更通用的选择器，用于捕获可能的段落
       'p[class*="Paragraph"]',
       'p[class*="paragraph"]',
-      // Selectors for Svelte-like structure
+      // Svelte-like 结构
       'main.dvz-content p[class*="copy-width"]',
       'main.dvz-content p.dropcap[class*="svelte-"]',
-      // 新增：针对新 "css--" 命名结构的段落选择器
-      'main#dvz__mount div[class*="css--paragraph-wrapper"] > p'
+      // 针对新 "css--" 命名结构
+      'main#dvz__mount div[class*="css--paragraph-wrapper"] > p',
+      // —— 新增：捕获列表项 —— //
+      'li[data-component="unordered-list-item"]',
+      'li[class*="media-ui-UnorderedList_item"]'
     ];
 
     // 需要排除的选择器
@@ -542,56 +545,56 @@ function extractAndCopy() {
       '.story-card-small',
       '.styles_moreFromBloomberg_HrR5_',
       '.recirc-box-small-list',
-      // 新增：排除新结构中可能的非内容区域 (如果需要)
-      'div[data-testid="social-share-primary"]', // Example if social share is picked up
-      'aside' // General exclusion for asides
+      'div[data-testid="social-share-primary"]',
+      'aside'
     ];
 
     let paragraphs = [];
 
     // 获取主要内容
     mainSelectors.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      if (elements && elements.length > 0) {
-        elements.forEach(element => {
-          // 检查是否在被排除的区域内
-          const isInExcludedArea = excludeSelectors.some(excludeSelector =>
-            element.closest(excludeSelector) !== null
-          );
+      document.querySelectorAll(selector).forEach(element => {
+        // 检查是否在被排除的区域内
+        const isInExcludedArea = excludeSelectors.some(exSel =>
+          element.closest(exSel) !== null
+        );
 
-          if (!isInExcludedArea) {
-            paragraphs.push(element);
-          }
-        });
-      }
+        if (!isInExcludedArea) {
+          paragraphs.push(element);
+        }
+      });
     });
 
     // 提取和清理文本
     textContent = [...new Set(paragraphs)]
-      .map(p => {
-        // Preserve links temporarily if needed for context, then strip.
-        // For now, direct textContent is fine as per original logic.
-        let text = p.textContent.trim()
-          .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
-          .replace(/[•∞@]/g, '') // 移除特殊字符 (保留 == $0 用于后续移除)
-          .replace(/\s+/g, ' ') // 规范化空白
-          .replace(/&nbsp;/g, ' ') // 处理HTML空格
-          .replace(/==\s*\$\d+/g, '') // 移除调试标记，如 "== $0"
-          .replace(/<![---]{2,}>/g, '') // 移除HTML注释标记
-          .replace(/<\/?[^>]+(>|$)/g, '') // 移除HTML标签
+      .map(el => {
+        let text = el.textContent || '';
+        return text
+          .trim()
+          // 移除 HTML 注释
+          .replace(/<!--[\s\S]*?-->/g, '')
+          // 移除特殊符号
+          .replace(/[•∞@]/g, '')
+          // 去掉伪元素标记
+          .replace(/:marker/g, '')
+          // 规范化空白
+          .replace(/\s+/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          // 移除调试标记，如 "== $0"
+          .replace(/==\s*\$\d+/g, '')
+          // 移除剩余标签
+          .replace(/<\/?[^>]+(>|$)/g, '')
           .trim();
-
-        return text;
       })
       .filter(text => {
-        return text &&
-          text.length > 10 && // 最小长度要求
-          !/^[@•∞]/.test(text) && // 不以特殊字符开头
-          !/^\s*$/.test(text) && // 不是纯空白
-          !['flex', 'Advertisement'].includes(text) && // 排除特定词语
-          !/^[.\s]*$/.test(text) && // 不是纯点号或空格
-          !/^Up Next:/.test(text) && // 排除"Up Next"开头的文本
-          !/^You are using an/.test(text); // 排除浏览器升级提示
+        return text
+          && text.length > 10                // 最小长度
+          && !/^[@•∞]/.test(text)            // 不以特殊字符开头
+          && !/^\s*$/.test(text)             // 不全是空白
+          && !['flex', 'Advertisement'].includes(text)
+          && !/^[.\s]*$/.test(text)
+          && !/^Up Next:/.test(text)
+          && !/^You are using an/.test(text);
       })
       .join('\n\n');
 

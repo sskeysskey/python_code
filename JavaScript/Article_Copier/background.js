@@ -281,240 +281,142 @@ function extractAndCopy() {
   let textContent = '';
   let imagesFoundForDownload = false; // 用于跟踪是否至少尝试下载了一张图片
 
-  // 处理 FT.com
   if (window.location.hostname.includes("ft.com")) {
-    // FT.com 的内容提取逻辑
-    const articleBody = document.getElementById('article-body');
+    const siteContent = document.getElementById('site-content');
+    // 先尝试最常见的新版结构，再 fallback 到旧版
+    const articleBody =
+      document.getElementById('article-body') ||
+      siteContent?.querySelector('#article-body');
 
     if (articleBody) {
-      // 改进的文本提取逻辑
-      const paragraphs = articleBody.getElementsByTagName('p');
-      textContent = Array.from(paragraphs)
-        .filter(p => {
-          // 获取段落的纯文本内容
-          const text = p.textContent.trim();
+      // 1. 文本提取：兼容 <p> 和最外层 <div> 两种容器
+      let paras = Array.from(articleBody.querySelectorAll('p'));
+      // 加回新版里文字被 <div> 包裹的情况
+      const divParas = Array.from(articleBody.children)
+        .filter(el => el.tagName === 'DIV');
+      paras = [...new Set([...paras, ...divParas])];
 
-          // 排除条件：
-          // 1. 空段落或只包含特殊字符
-          if (!text || text === '@' || text === '•' || text === '».' || text.length <= 1) {
-            return false;
-          }
-
-          // 2. 包含作者信息的段落
-          if (text.includes('is the author of') || text.toLowerCase().includes('follow ft weekend')) {
-            return false;
-          }
-
-          // 4. 包含编辑说明的段落
-          if (text.toLowerCase().includes('change has been made') ||
-            text.toLowerCase().includes('story was originally published')) {
-            return false;
-          }
-
-          // 5. 包含社交媒体链接的段落
-          if (text.toLowerCase().includes('follow') &&
-            (text.includes('instagram') || text.includes('twitter'))) {
-            return false;
-          }
-
-          // 6. 排除包含订阅信息的段落
-          if (text.toLowerCase().includes('subscribe') || text.toLowerCase().includes('newsletter')) {
-            return false;
-          }
-
-          // 7. 检查段落是否主要由em标签组成
-          const emTags = p.getElementsByTagName('em');
-          if (emTags.length > 0 && emTags[0].textContent.length > text.length / 2) {
-            return false;
-          }
-
-          // 8. 检查是否包含大量链接
-          const links = p.getElementsByTagName('a');
-          if (links.length > 2) {
-            return false;
-          }
-
-          // 通过所有检查，保留这个段落
-          return true;
-        })
+      // 原有的 FT.com 段落过滤逻辑
+      const kept = paras.filter(p => {
+        const text = p.textContent.trim();
+        if (!text || text.length <= 1) return false;
+        if (text === '@' || text === '•' || text === '».') return false;
+        if (text.includes('is the author of') ||
+          text.toLowerCase().includes('follow ft weekend')) return false;
+        if (text.toLowerCase().includes('change has been made') ||
+          text.toLowerCase().includes('story was originally published'))
+          return false;
+        if (text.toLowerCase().includes('subscribe') ||
+          text.toLowerCase().includes('newsletter'))
+          return false;
+        if (text.toLowerCase().includes('follow') &&
+          (text.includes('instagram') || text.includes('twitter')))
+          return false;
+        // 排除主要由 <em> 组成的段落
+        const emTags = p.getElementsByTagName('em');
+        if (emTags.length > 0 && emTags[0].textContent.length > text.length / 2)
+          return false;
+        // 排除大量链接
+        const links = p.getElementsByTagName('a');
+        if (links.length > 2) return false;
+        return true;
+      });
+      const textContent = kept
         .map(p => p.textContent.trim())
         .join('\n\n');
 
-      if (textContent) {
-        // 收集所有需要处理的图片容器
-        const imageContainers = [
-          ...document.querySelectorAll('figure.n-content-image'),
-          ...document.querySelectorAll('figure.n-content-picture'),
-          ...document.querySelectorAll('figure.o-topper_visual'),
-          ...document.querySelectorAll('.main-image')
-        ];
+      // 2. 图片下载：先按老逻辑抓特定类名的 <figure>，再 fallback 到 siteContent 下所有 <figure>
+      let imageFigures = Array.from(
+        document.querySelectorAll(
+          'figure.n-content-image, figure.n-content-picture, ' +
+          'figure.o-topper_visual, .main-image'
+        )
+      );
+      if (imageFigures.length === 0 && siteContent) {
+        imageFigures = Array.from(siteContent.querySelectorAll('figure'));
+      }
+      // 同一元素去重
+      imageFigures = [...new Set(imageFigures)];
 
-        // 创建Set来存储已处理的URL和文件名
-        const processedUrls = new Set();
-        const processedFilenames = new Set();
-
-        if (imageContainers.length === 0) {
-          chrome.runtime.sendMessage({ action: 'noImages' });
-        } else {
-          imagesFoundForDownload = true;
-          imageContainers.forEach((container, index) => {
-            // 首先尝试获取图片描述
-            let imageDescription = '';
-
-            // 尝试获取可能包含描述的元素
-            const possibleDescriptionElements = [
-              container.querySelector('figcaption'), // 尝试figcaption
-              container.querySelector('.n-content-picture__caption'), // 特定的caption类
-              container.querySelector('.article__image-caption'), // 另一个可能的caption类
-              container.closest('figure')?.querySelector('.o-topper__visual-caption'), // 顶部图片的caption
-              // 如果有其他可能包含描述的元素，可以继续添加
-            ];
-
-            // 遍历所有可能的描述元素
-            for (const element of possibleDescriptionElements) {
-              if (element && element.textContent.trim()) {
-                imageDescription = element.textContent
-                  .replace(/©[^]*/g, '') // 移除版权信息
-                  .trim();
-                break;
-              }
-            }
-
-            // 处理picture元素
-            const picture = container.querySelector('picture');
-            if (picture) {
-              // 尝试获取所有可能的图片源
-              const sources = picture.querySelectorAll('source');
-              const img = picture.querySelector('img');
-
-              let highResUrl = '';
-
-              // 获取最高分辨率的图片URL
-              if (sources.length > 0) {
-                // 遍历所有source标签找到最高分辨率的图片
-                sources.forEach(source => {
-                  const srcset = source.srcset;
-                  if (srcset) {
-                    const urls = srcset.split(',')
-                      .map(src => src.trim().split(' ')[0])
-                      .filter(url => url);
-
-                    if (urls.length > 0) {
-                      // 使用最后一个URL（通常是最高分辨率的）
-                      const possibleUrl = urls[urls.length - 1];
-                      if (possibleUrl.length > highResUrl.length) {
-                        highResUrl = possibleUrl;
-                      }
-                    }
-                  }
-                });
-              }
-
-              // 如果source中没找到，使用img标签的src
-              if (!highResUrl && img && img.src) {
-                highResUrl = img.src;
-              }
-
-              // 检查URL是否已经处理过
-              if (highResUrl && !processedUrls.has(highResUrl)) {
-                processedUrls.add(highResUrl);
-
-                let filename;
-                if (imageDescription) {
-                  // 使用找到的描述作为文件名
-                  const cleanedDescription = imageDescription
-                    .replace(/[/\\?%*:|"<>]/g, '-')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                  filename = `${cleanedDescription}.jpg`;
-
-                  if (filename.length > 200) {
-                    filename = filename.substring(0, 196) + '.jpg';
-                  }
-                } else if (img && img.alt) {
-                  // 如果没有找到描述，退回到使用alt文本
-                  const cleanedAlt = img.alt
-                    .replace(/[/\\?%*:|"<>]/g, '-')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                  filename = `${cleanedAlt}.jpg`;
-
-                  // 如果文件名超过200个字符，截取前196个字符
-                  if (filename.length > 200) {
-                    // 保留前196个字符，然后加上.jpg
-                    filename = filename.substring(0, 196) + '.jpg';
-                  }
-                } else {
-                  // 如果既没有描述也没有alt文本，使用时间戳
-                  const timestamp = new Date().getTime();
-                  filename = `ft-image-${timestamp}-${index}.jpg`;
-                }
-
-                // 检查文件名是否已经使用过
-                if (!processedFilenames.has(filename)) {
-                  processedFilenames.add(filename);
-                  chrome.runtime.sendMessage({
-                    action: 'downloadImage',
-                    url: highResUrl,
-                    filename: filename
-                  });
-                }
-              }
-            } else {
-              // 处理单独的img标签
-              const img = container.querySelector('img');
-              if (img && img.src && !processedUrls.has(img.src)) {
-                processedUrls.add(img.src);
-
-                let filename;
-                if (imageDescription) {
-                  const cleanedDescription = imageDescription
-                    .replace(/[/\\?%*:|"<>]/g, '-')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                  filename = `${cleanedDescription}.jpg`;
-
-                  if (filename.length > 200) {
-                    filename = filename.substring(0, 196) + '.jpg';
-                  }
-                } else if (img.alt) {
-                  // 对单独img标签的alt文本进行同样的处理
-                  const cleanedAlt = img.alt
-                    .replace(/[/\\?%*:|"<>]/g, '-')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                  filename = `${cleanedAlt}.jpg`;
-
-                  if (filename.length > 200) {
-                    filename = filename.substring(0, 196) + '.jpg';
-                  }
-                } else {
-                  filename = `ft-image-${new Date().getTime()}-${index}.jpg`;
-                }
-
-                // 检查文件名是否已经使用过
-                if (!processedFilenames.has(filename)) {
-                  processedFilenames.add(filename);
-                  chrome.runtime.sendMessage({
-                    action: 'downloadImage',
-                    url: img.src,
-                    filename: filename
-                  });
-                }
-              }
-            }
-          });
-        }
-      } else {
+      if (imageFigures.length === 0) {
         chrome.runtime.sendMessage({ action: 'noImages' });
+      } else {
+        let seenUrls = new Set();
+        let seenNames = new Set();
+        imageFigures.forEach((fig, idx) => {
+          // 取 <picture><img> 或 fig.querySelector('img')
+          const pic = fig.querySelector('picture');
+          const img = pic ? pic.querySelector('img') : fig.querySelector('img');
+          if (!img) return;
+
+          // 最高分辨率
+          let url = img.src;
+          if (img.srcset) {
+            const candidates = img.srcset
+              .split(',')
+              .map(entry => {
+                const [u, w] = entry.trim().split(/\s+/);
+                return { url: u, width: parseInt(w) || 0 };
+              })
+              .filter(c => c.width > 0)
+              .sort((a, b) => b.width - a.width);
+            if (candidates[0]) url = candidates[0].url;
+          }
+          url = url.trim();
+          if (!/^https?:\/\//.test(url) || seenUrls.has(url)) return;
+          seenUrls.add(url);
+
+          // 描述：合并所有 span 并去掉版权 ©…
+          let caption = '';
+          const fc = fig.querySelector('figcaption');
+          if (fc) {
+            caption = Array.from(fc.querySelectorAll('span'))
+              .map(sp => sp.textContent.trim())
+              .join(' ')
+              .replace(/©.*$/g, '')
+              .trim();
+          }
+          if (!caption) caption = img.alt.trim();
+          if (!caption) caption = `ft-image-${Date.now()}-${idx}`;
+
+          // 清洗成合法文件名，防重名
+          let base = caption
+            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/\s+/g, ' ')
+            .substring(0, 200)
+            .trim();
+          let filename = `${base}.jpg`;
+          let counter = 1;
+          while (seenNames.has(filename)) {
+            filename = `${base}(${counter++}).jpg`;
+          }
+          seenNames.add(filename);
+
+          chrome.runtime.sendMessage({
+            action: 'downloadImage',
+            url,
+            filename
+          });
+        });
+      }
+
+      // 3. 复制并返回 true
+      if (textContent) {
+        const ta = document.createElement('textarea');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.value = textContent;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return true;
       }
     } else {
+      // 没找到 #article-body
       chrome.runtime.sendMessage({ action: 'noImages' });
     }
+    return false;
   }
 
   // 处理 bloomberg.com

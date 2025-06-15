@@ -47,13 +47,14 @@ def count_words_and_create_file():
     # 计算英文单词数量
     num_english_words = len(re.findall(r'\b[A-Za-z]+\b', processed_content))
     
-    # 判断条件并创建相应文件
-    if num_english_words > 2200:
+    if num_english_words > 500:
+        print(f"单词数量为 {num_english_words}，属于长文章，正在创建 longarticle.txt...")
         save_content_to_file(processed_content, '/tmp/longarticle.txt')
-    elif num_english_words < 250:
+    elif num_english_words >= 1:  # 此条件覆盖了 1 到 500 的范围
+        print(f"单词数量为 {num_english_words}，属于短文章，正在创建 shortarticle.txt...")
         save_content_to_file(processed_content, '/tmp/shortarticle.txt')
-    else:
-        print(f"单词数量（{num_english_words}）在250-2200之间，不创建文件。")
+    else:  # 此条件处理单词数小于 1 (即为 0) 的情况
+        print(f"单词数量为 {num_english_words}，不创建文件。")
 
 if __name__ == '__main__':
     count_words_and_create_file()

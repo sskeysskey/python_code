@@ -30,6 +30,30 @@ def add_css_to_soup(soup, css_string):
     style_tag.string = css_string
     head_tag.append(style_tag)
 
+# <--- 新增的函数 START --->
+def get_unique_filepath(directory, basename, extension):
+    """
+    生成一个唯一的文件路径。如果基础路径已存在，则在文件名后附加 (1), (2), ...
+
+    :param directory: 文件所在的目录
+    :param basename: 不带扩展名的文件名 (例如 "TodayCNH_240617")
+    :param extension: 文件扩展名 (例如 ".html")
+    :return: 一个唯一的完整文件路径
+    """
+    # 初始文件路径
+    filepath = os.path.join(directory, f"{basename}{extension}")
+    counter = 1
+
+    # 循环检查文件是否存在，如果存在则附加计数器
+    while os.path.exists(filepath):
+        # 创建新的文件名，例如 "TodayCNH_240617(1).html"
+        new_basename = f"{basename}({counter})"
+        filepath = os.path.join(directory, f"{new_basename}{extension}")
+        counter += 1
+    
+    return filepath
+# <--- 新增的函数 END --->
+
 # ==============================================================================
 # 请将您的CSS字符串定义移到这里或脚本的其他全局位置
 # 例如:
@@ -224,16 +248,24 @@ try:
         except IOError as e:
             print(f"文件操作失败: {e}")
 
-        # 设置TXT文件的保存路径
+        # <--- 修改的部分 START --->
+        # 设置文件的保存路径和名称
         now = datetime.now()
         time_str = now.strftime("%y%m%d")
-        txt_file_name = f"TodayCNH_{time_str}.html"
+        # 基础文件名，不含扩展名
+        base_filename = f"TodayCNH_{time_str}"
+        # 文件扩展名
+        file_extension = ".html"
+        # 目标目录
         txt_directory = '/Users/yanzhang/Documents/News'
-        txt_file_path = os.path.join(txt_directory, txt_file_name)
+
+        # 调用新函数来获取一个唯一的文件路径
+        txt_file_path = get_unique_filepath(txt_directory, base_filename, file_extension)
 
         # 重命名文件
         os.rename(original_file_path, txt_file_path)
         print(f"文件已重命名为：{txt_file_path}")
+        # <--- 修改的部分 END --->
 
         # 调用函数，传入路径
         delete_done_txt_files("/tmp/")

@@ -146,7 +146,6 @@ chrome.downloads.onChanged.addListener((delta) => {
                 chrome.tabs.get(tabId, (tab) => { // 检查tab是否存在
                   if (chrome.runtime.lastError || !tab) {
                     // Tab不存在或已关闭，清理并退出
-                    console.log(`Tab ${tabId} not found, cleaning up pending downloads.`);
                     delete DownloadsPending[tabIdStr];
                     return;
                   }
@@ -485,7 +484,7 @@ function extractAndCopy() {
           // 移除调试标记，如 "== $0"
           .replace(/==\s*\$\d+/g, '')
           // 移除剩余标签
-          .replace(/<\/?[^>]+(>|$)/g, '')
+          // .replace(/<\/?[^>]+(>|$)/g, '')
           .trim();
       })
       .filter(text => {
@@ -768,8 +767,9 @@ function extractAndCopy() {
             .replace(/[•∞@]/g, '')
             .replace(/\s+/g, ' ')
             .replace(/&nbsp;/g, ' ')
-            .replace(/≤\/p>/g, '')
-            .replace(/[.*?]/g, '')
+            // .replace(/≤\/p>/g, '')
+            .replace(/<\/?[^>]+>/g, '')
+            // .replace(/[.*?]/g, '')
             .trim();
 
           return text;
@@ -1107,7 +1107,6 @@ function extractAndCopy() {
         const elements = contentBody.querySelectorAll(selector);
         if (elements && elements.length > 0) {
           paragraphs = elements;
-          console.log(`Debug: Found ${elements.length} paragraphs using selector: ${selector}`);
           break;
         }
       }
@@ -1115,7 +1114,6 @@ function extractAndCopy() {
       // 如果还是没找到，使用最基础的选择器
       if (!paragraphs.length) {
         paragraphs = contentBody.getElementsByTagName('p');
-        console.log('Debug: Using basic p tag selector, found:', paragraphs.length);
       }
 
       textContent = Array.from(paragraphs)
@@ -1128,7 +1126,7 @@ function extractAndCopy() {
             .replace(/[\u200B-\u200D\uFEFF]/g, '') // 移除零宽字符
             .replace(/&nbsp;/g, ' ') // 处理HTML空格
             .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
-            .replace(/\[.*?\]/g, '') // 移除方括号内容
+            // .replace(/\[.*?\]/g, '') // 移除方括号内容
             .trim();
 
           return text;
@@ -1185,7 +1183,6 @@ function extractAndCopy() {
                 filename += '.jpg';
               }
 
-              console.log('Debug: Downloading image:', imgUrl);
               chrome.runtime.sendMessage({
                 action: 'downloadImage',
                 url: imgUrl,
@@ -1220,14 +1217,11 @@ function extractAndCopy() {
         const images = Array.from(
           articleBody.querySelectorAll('img:not([sizes="110px"])')
         );
-        console.log('Found images count:', images.length);
 
         if (images.length === 0) {
-          chrome.runtime.sendMessage({ action: 'noImagesFoundInArticleBody' }); // 更明确的消息
+          chrome.runtime.sendMessage({ action: 'noImages' }); // 更明确的消息
         } else {
           images.forEach((img, idx) => {
-            console.log(`Processing image ${idx}:`, img.outerHTML.substring(0, 300));
-
             let url = '';
             // 优先直接的 src (如果它不是一个小的内联数据URI)
             if (img.src && !img.src.startsWith('data:image/') && img.src !== window.location.href) {
@@ -1270,12 +1264,10 @@ function extractAndCopy() {
             url = url.replace(/\s+/g, ''); // 清理URL中的任何空格 (理论上不应存在)
 
             if (!url || url.startsWith('data:image/') || url === window.location.href) { // 最终检查
-              console.log(`Image ${idx} skipped: no valid/usable URL found. Final URL attempt: '${url}'`);
               return; // 跳过这个图片
             }
 
             if (processedUrls.has(url)) {
-              console.log(`Image ${idx} skipped: URL already processed: ${url}`);
               return;
             }
             processedUrls.add(url);
@@ -1332,7 +1324,6 @@ function extractAndCopy() {
               : `reuters-image-${Date.now()}-${idx}`;
             filename = filename + '.' + ext;
 
-            console.log(`Image ${idx} attempting download. URL: ${url}, Filename: ${filename}, Caption: '${caption}'`);
             chrome.runtime.sendMessage({
               action: 'downloadImage',
               url: url,
@@ -1362,7 +1353,6 @@ function extractAndCopy() {
           'div[data-testid="EventGalleryImageImage"] img'
         )
       );
-      console.log('Pictures page: found images count:', images.length);
 
       images.forEach((img, idx) => {
         // —— 复用你原来的 URL 提取逻辑 —————————————————————
@@ -1390,11 +1380,9 @@ function extractAndCopy() {
         url = url.replace(/\s+/g, '');
 
         if (!url || url.startsWith('data:image/') || url === location.href) {
-          console.log(`skip img ${idx}, bad url`, url);
           return;
         }
         if (processedUrls.has(url)) {
-          console.log(`skip img ${idx}, dup url`, url);
           return;
         }
         processedUrls.add(url);
@@ -1423,7 +1411,6 @@ function extractAndCopy() {
           : `reuters-pic-${Date.now()}-${idx}`;
         filename += '.' + ext;
 
-        console.log(`download img ${idx}:`, url, filename, caption);
         chrome.runtime.sendMessage({
           action: 'downloadImage',
           url,
@@ -1433,7 +1420,7 @@ function extractAndCopy() {
     }
     else {
       // 如果未找到 articleBody 或 article
-      chrome.runtime.sendMessage({ action: 'articleStructureNotFound' });
+      chrome.runtime.sendMessage({ action: 'noImages' });
     }
   }
 
@@ -1446,7 +1433,6 @@ function extractAndCopy() {
     // 找到文章主节点
     const article = document.querySelector('main#site-content article, article#story');
     if (!article) {
-      console.log('NYTimes: Article element not found.');
       chrome.runtime.sendMessage({ action: 'noImages' });
       return;
     }
@@ -1468,7 +1454,6 @@ function extractAndCopy() {
     // —— 提取正文 ——  
     const bodySection = article.querySelector('section[name="articleBody"]');
     if (!bodySection) {
-      console.log('NYTimes: articleBody section not found.');
       chrome.runtime.sendMessage({ action: 'noImages' });
       return;
     }
@@ -1564,18 +1549,15 @@ function extractAndCopy() {
     // 尝试选择器 1 (适用于2024年及之后的新版页面)
     paras = Array.from(container.querySelectorAll('p[data-contentid]'));
     if (paras.length > 0) {
-      console.log("[WP Parser] Found paragraphs using the newest selector: 'p[data-contentid]'.");
     }
 
     // 如果没找到，尝试选择器 2 (旧版页面)
     if (paras.length === 0) {
-      console.log("[WP Parser] Selector 'p[data-contentid]' failed. Trying 'p[data-component=\"Text\"]'.");
       paras = Array.from(container.querySelectorAll('p[data-component="Text"]'));
     }
 
     // 如果还没找到，尝试选择器 3 (更旧版页面)
     if (paras.length === 0) {
-      console.log("[WP Parser] Selector 'p[data-component=\"Text\"]' failed. Trying 'p[data-apitype=\"text\"]'.");
       paras = Array.from(container.querySelectorAll('p[data-apitype="text"]'));
     }
     // --- 修改结束 ---
@@ -1719,9 +1701,6 @@ function extractAndCopy() {
     const shorthandArticle = document.querySelector('article.Theme-Story');
 
     if (shorthandArticle) {
-      // --- 新页面结构 (Shorthand) 的处理逻辑 ---
-      console.log("Nikkei Asia: Shorthand page structure detected.");
-
       // 1. 提取正文
       // 选择 article 内的所有 p 标签，但排除 figure (及其子元素) 内的 p 标签
       const paras = Array.from(shorthandArticle.querySelectorAll('p'))
@@ -1810,7 +1789,6 @@ function extractAndCopy() {
       }
     } else {
       // --- 原有页面结构的处理逻辑 (作为后备) ---
-      console.log("Nikkei Asia: Default page structure detected.");
       const bodyContainer = document.querySelector('[data-trackable="bodytext"]');
       if (bodyContainer) {
         const paras = Array.from(bodyContainer.querySelectorAll('p'))

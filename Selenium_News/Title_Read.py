@@ -1,6 +1,9 @@
 import shutil
 from html.parser import HTMLParser
 from math import ceil
+import subprocess
+import sys
+import os
 
 # 创建一个子类并重写HTMLParser的方法
 class MyHTMLParser(HTMLParser):
@@ -8,6 +11,7 @@ class MyHTMLParser(HTMLParser):
         super().__init__()
         self.titles = []
         self.capture = False
+        self.current_data = []
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
@@ -19,7 +23,8 @@ class MyHTMLParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "a" and self.capture:
             cleaned_data = ''.join(self.current_data).strip().strip('"').strip("'")
-            self.titles.append(cleaned_data)
+            if cleaned_data: # 确保不添加空标题
+                self.titles.append(cleaned_data)
             self.capture = False
 
     def handle_data(self, data):
@@ -31,16 +36,41 @@ def add_line_numbers(text):
     lines = text.split('\n')
     return '\n'.join(f"{i+1}、{line}" for i, line in enumerate(lines) if line.strip())
 
+def show_alert(message):
+    # AppleScript代码模板
+    applescript_code = f'display dialog "{message}" buttons {{"OK"}} default button "OK"'
+    
+    # 使用subprocess调用osascript
+    subprocess.run(['osascript', '-e', applescript_code], check=True)
+
+# --- 主要逻辑开始 ---
+
 # 文件路径定义
 file_path_eng = '/Users/yanzhang/Documents/News/today_eng.html'
+file_path_wsjcn = '/Users/yanzhang/Documents/News/today_wsjcn.html' # 新增的后备文件路径
 backup_path_eng = '/Users/yanzhang/Documents/News/backup/site/today_eng.html'
 file_path_jpn = '/Users/yanzhang/Documents/News/today_jpn.html'
 backup_path_jpn = '/Users/yanzhang/Documents/News/backup/site/today_jpn.html'
 
-# 处理英文文件
-# 读取HTML文件内容
-with open(file_path_eng, 'r', encoding='utf-8') as file:
-    html_content_eng = file.read()
+# 检查英文主文件是否存在
+try:
+    with open(file_path_eng, 'r', encoding='utf-8') as file:
+        html_content_eng = file.read()
+# 如果主文件不存在，则执行新的检查逻辑
+except FileNotFoundError:
+    # 检查后备文件是否存在
+    if os.path.exists(file_path_wsjcn):
+        # 如果后备文件存在，打印信号字符串并退出Python脚本
+        # AppleScript将会捕获这个字符串并据此行动
+        print("USE_FALLBACK_AND_TERMINATE")
+        show_alert("没有today_eng，但有wsjcn，直接打开即可。")
+        sys.exit(0) # 正常退出
+    else:
+        # 如果主文件和后备文件都不存在，则抛出原始错误
+        # 这样如果AppleScript没有处理这个错误，它仍然会显示出来
+        raise FileNotFoundError(f"[Errno 2] No such file or directory: '{file_path_eng}' and backup '{file_path_wsjcn}' not found either.")
+
+# --- 如果主文件存在，则继续执行以下代码 ---
 
 # 创建解析器实例
 parser_eng = MyHTMLParser()
@@ -81,6 +111,7 @@ for i in range(num_parts_eng):
 # 备份HTML源文件到指定目录，如果文件已存在则覆盖
 shutil.copyfile(file_path_eng, backup_path_eng)
 
+# 处理日文文件
 try:
     # 处理日文文件
     # 读取HTML文件内容
@@ -126,4 +157,4 @@ try:
     shutil.copyfile(file_path_jpn, backup_path_jpn)
 
 except FileNotFoundError:
-    print(f"Warning: {file_path_jpn} 文件不存在，已跳过日文文件的处理。")
+    print(f"Warning: {file_path_jpn} 文件不存在，已跳过日文文件的处理。", file=sys.stderr)

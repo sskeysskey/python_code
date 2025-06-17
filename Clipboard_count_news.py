@@ -1,6 +1,5 @@
 import re
 import pyperclip
-import os
 
 def process_clipboard_content():
     # 获取剪贴板内容

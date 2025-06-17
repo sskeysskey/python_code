@@ -4,7 +4,7 @@ import pyperclip
 import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextBrowser, QMainWindow, QAction
 from PyQt5.QtGui import QFont, QKeySequence
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 # 保持原有的搜索目录列表
 searchFolders = [

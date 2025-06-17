@@ -3,7 +3,6 @@ import cv2
 import time
 import pyperclip
 import pyautogui
-import subprocess
 import numpy as np
 from time import sleep
 from PIL import ImageGrab

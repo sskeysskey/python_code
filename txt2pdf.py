@@ -535,6 +535,9 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         print(f"转换过程中出现错误: {str(e)}")
         return False
 
+# =====================================================================
+# ==================== 这是修改后的函数 ===============================
+# =====================================================================
 def process_all_files(directory, article_copier_path, image_dir):
     txt_files = find_all_news_files(directory)
     
@@ -543,6 +546,7 @@ def process_all_files(directory, article_copier_path, image_dir):
         return
     
     done_dir = os.path.join(directory, "done")
+    os.makedirs(done_dir, exist_ok=True) # 确保done目录存在
     
     converted = 0
     skipped = 0
@@ -552,14 +556,38 @@ def process_all_files(directory, article_copier_path, image_dir):
         pdf_file = get_pdf_path(txt_file)
         
         try:
+            # --- 新的移动逻辑 ---
+            # 这个辅助函数将处理文件移动和重命名
+            def move_txt_to_done(source_path):
+                # 如果源文件不存在（可能在处理中被移动了），则直接返回
+                if not os.path.exists(source_path):
+                    return
+                
+                original_basename = os.path.basename(source_path)
+                target_path = os.path.join(done_dir, original_basename)
+
+                # 检查目标文件是否存在，如果存在则重命名
+                if os.path.exists(target_path):
+                    print(f"警告: 文件 '{original_basename}' 已存在于 'done' 目录中。将重命名后移动。")
+                    base, ext = os.path.splitext(original_basename)
+                    counter = 1
+                    # 循环查找一个不重复的文件名
+                    while os.path.exists(target_path):
+                        new_basename = f"{base}_{counter}{ext}"
+                        target_path = os.path.join(done_dir, new_basename)
+                        counter += 1
+                
+                # 移动文件到最终确定的路径
+                shutil.move(source_path, target_path)
+                print(f"已移动txt文件到: {target_path}")
+            # --- 移动逻辑结束 ---
+
             if needs_conversion(txt_file, pdf_file):
                 print(f"正在处理: {os.path.basename(txt_file)}")
                 if txt_to_pdf_with_formatting(txt_file, pdf_file, article_copier_path, image_dir):
                     print(f"成功转换: {os.path.basename(txt_file)} -> {os.path.basename(pdf_file)}")
-                    # 移动txt文件到done目录
-                    done_file = os.path.join(done_dir, os.path.basename(txt_file))
-                    shutil.move(txt_file, done_file)
-                    print(f"已移动txt文件到: {done_file}")
+                    # 无论成功或失败，都移动源文件
+                    move_txt_to_done(txt_file)
                     converted += 1
                 else:
                     print(f"转换失败: {os.path.basename(txt_file)}")
@@ -567,18 +595,17 @@ def process_all_files(directory, article_copier_path, image_dir):
             else:
                 print(f"跳过已存在的文件: {os.path.basename(txt_file)}")
                 # 对于已存在的PDF文件，也移动对应的txt文件
-                done_file = os.path.join(done_dir, os.path.basename(txt_file))
-                shutil.move(txt_file, done_file)
-                print(f"已移动txt文件到: {done_file}")
+                move_txt_to_done(txt_file)
                 skipped += 1
                 
         except Exception as e:
             print(f"处理 {os.path.basename(txt_file)} 时出错: {str(e)}")
             failed += 1
     
-    print(f"成功转换: {converted} 个文件")
-    print(f"跳过处理: {skipped} 个文件")
-    print(f"转换失败: {failed} 个文件")
+    print(f"\n处理总结:")
+    print(f"  成功转换: {converted} 个文件")
+    print(f"  跳过处理: {skipped} 个文件")
+    print(f"  转换失败: {failed} 个文件")
 
 def extract_site_name(url):
     try:

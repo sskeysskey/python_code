@@ -837,8 +837,7 @@ def generate_news_json(news_directory, today):
             })
 
     # 4. 写 JSON
-    timestamp = datetime.now().strftime("%y%m%d")
-    out_path = os.path.join(news_directory, f"news_{timestamp}.json")
+    out_path = os.path.join(news_directory, f"onews.json")
     with open(out_path, 'w', encoding='utf-8') as fp:
         json.dump(data, fp, ensure_ascii=False, indent=4)
     print(f"\n已生成 JSON 文件: {out_path}")

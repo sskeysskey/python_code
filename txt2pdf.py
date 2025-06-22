@@ -541,14 +541,14 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
 # ==================== 这是修改后的函数 ===============================
 # =====================================================================
 def process_all_files(directory, article_copier_path, image_dir):
+    """
+    仅将 News_*.txt 文件转换为 PDF，不移动源文件。
+    """
     txt_files = find_all_news_files(directory)
     
     if not txt_files:
         print(f"在 {directory} 目录下没有找到以News_开头的txt文件")
         return
-    
-    done_dir = os.path.join(directory, "done")
-    os.makedirs(done_dir, exist_ok=True) # 确保done目录存在
     
     converted = 0
     skipped = 0
@@ -558,46 +558,16 @@ def process_all_files(directory, article_copier_path, image_dir):
         pdf_file = get_pdf_path(txt_file)
         
         try:
-            # --- 新的移动逻辑 ---
-            # 这个辅助函数将处理文件移动和重命名
-            def move_txt_to_done(source_path):
-                # 如果源文件不存在（可能在处理中被移动了），则直接返回
-                if not os.path.exists(source_path):
-                    return
-                
-                original_basename = os.path.basename(source_path)
-                target_path = os.path.join(done_dir, original_basename)
-
-                # 检查目标文件是否存在，如果存在则重命名
-                if os.path.exists(target_path):
-                    print(f"警告: 文件 '{original_basename}' 已存在于 'done' 目录中。将重命名后移动。")
-                    base, ext = os.path.splitext(original_basename)
-                    counter = 1
-                    # 循环查找一个不重复的文件名
-                    while os.path.exists(target_path):
-                        new_basename = f"{base}_{counter}{ext}"
-                        target_path = os.path.join(done_dir, new_basename)
-                        counter += 1
-                
-                # 移动文件到最终确定的路径
-                shutil.move(source_path, target_path)
-                print(f"已移动txt文件到: {target_path}")
-            # --- 移动逻辑结束 ---
-
             if needs_conversion(txt_file, pdf_file):
                 print(f"正在处理: {os.path.basename(txt_file)}")
                 if txt_to_pdf_with_formatting(txt_file, pdf_file, article_copier_path, image_dir):
                     print(f"成功转换: {os.path.basename(txt_file)} -> {os.path.basename(pdf_file)}")
-                    # 无论成功或失败，都移动源文件
-                    move_txt_to_done(txt_file)
                     converted += 1
                 else:
                     print(f"转换失败: {os.path.basename(txt_file)}")
                     failed += 1
             else:
                 print(f"跳过已存在的文件: {os.path.basename(txt_file)}")
-                # 对于已存在的PDF文件，也移动对应的txt文件
-                move_txt_to_done(txt_file)
                 skipped += 1
                 
         except Exception as e:
@@ -608,6 +578,55 @@ def process_all_files(directory, article_copier_path, image_dir):
     print(f"  成功转换: {converted} 个文件")
     print(f"  跳过处理: {skipped} 个文件")
     print(f"  转换失败: {failed} 个文件")
+
+# =====================================================================
+# ==================== 这是新增的函数 ==================================
+# =====================================================================
+def move_processed_txt_files(directory):
+    """
+    将所有 News_*.txt 文件移动到 'done' 子目录中。
+    如果目标文件已存在，则重命名以避免覆盖。
+    """
+    done_dir = os.path.join(directory, "done")
+    os.makedirs(done_dir, exist_ok=True)
+
+    txt_files_to_move = find_all_news_files(directory)
+
+    if not txt_files_to_move:
+        print(f"在 {directory} 目录中没有找到需要移动的 News_*.txt 文件。")
+        return
+    
+    print(f"准备移动 {len(txt_files_to_move)} 个 TXT 文件到 '{done_dir}' 目录...")
+    moved_count = 0
+    for source_path in txt_files_to_move:
+        # 再次确认文件存在，以防万一
+        if not os.path.exists(source_path):
+            continue
+        
+        original_basename = os.path.basename(source_path)
+        target_path = os.path.join(done_dir, original_basename)
+
+        # 检查目标文件是否存在，如果存在则重命名
+        if os.path.exists(target_path):
+            print(f"警告: 文件 '{original_basename}' 已存在于 'done' 目录中。将重命名后移动。")
+            base, ext = os.path.splitext(original_basename)
+            counter = 1
+            # 循环查找一个不重复的文件名
+            while os.path.exists(target_path):
+                new_basename = f"{base}_{counter}{ext}"
+                target_path = os.path.join(done_dir, new_basename)
+                counter += 1
+        
+        # 移动文件到最终确定的路径
+        try:
+            shutil.move(source_path, target_path)
+            print(f"已移动: {original_basename} -> {os.path.basename(target_path)}")
+            moved_count += 1
+        except Exception as e:
+            print(f"移动文件 {original_basename} 时出错: {e}")
+            
+    print(f"移动完成，共成功移动 {moved_count} 个文件。")
+
 
 def extract_site_name(url):
     try:
@@ -818,7 +837,7 @@ def generate_news_json(news_directory, today):
             })
 
     # 4. 写 JSON
-    timestamp = datetime.now().strftime("%Y%m%d")
+    timestamp = datetime.now().strftime("%y%m%d")
     out_path = os.path.join(news_directory, f"news_{timestamp}.json")
     with open(out_path, 'w', encoding='utf-8') as fp:
         json.dump(data, fp, ensure_ascii=False, indent=4)
@@ -832,22 +851,22 @@ if __name__ == "__main__":
     downloads_path = '/Users/yanzhang/Downloads'
 
     # 1. 主要处理流程：TXT 转 PDF
-    print("="*10 + " 开始 TXT 转 PDF 处理 " + "="*10)
+    print("="*10 + " 1. 开始 TXT 转 PDF 处理 " + "="*10)
     process_all_files(news_directory, article_copier_path, image_dir)
     print("="*10 + " 完成 TXT 转 PDF 处理 " + "="*10)
 
     # 2. 生成 JSON 汇总
-    print("\n" + "="*10 + " 开始生成 JSON 汇总 " + "="*10)
+    print("\n" + "="*10 + " 2. 开始生成 JSON 汇总 " + "="*10)
     generate_news_json(news_directory, today)
     print("="*10 + " 完成生成 JSON 汇总 " + "="*10)
 
     # 3. 移动 TodayCNH 文件 (如果需要)
-    print("\n" + "="*10 + " 开始移动 TodayCNH 文件 " + "="*10)
+    print("\n" + "="*10 + " 3. 开始移动 TodayCNH 文件 " + "="*10)
     move_cnh_file(news_directory)
     print("="*10 + " 完成移动 TodayCNH 文件 " + "="*10)
 
     # 4. 清理 Downloads 目录下的 .html 文件
-    print("\n" + "="*10 + " 开始清理 Downloads 中的 HTML 文件 " + "="*10)
+    print("\n" + "="*10 + " 4. 开始清理 Downloads 中的 HTML 文件 " + "="*10)
     html_files = [f for f in os.listdir(downloads_path) if f.endswith('.html')]
     if html_files:
         for file in html_files:
@@ -861,15 +880,19 @@ if __name__ == "__main__":
         print("Downloads 目录下没有找到 .html 文件。")
     print("="*10 + " 完成清理 Downloads 中的 HTML 文件 " + "="*10)
 
-    # 5. 新增：移动 article_copier 文件到 backup
-    print("\n" + "="*10 + " 开始移动 article_copier 文件 " + "="*10)
-    # 注意：第二个参数是 backup 目录的 *父* 目录
+    # 5. 移动 article_copier 文件到 backup
+    print("\n" + "="*10 + " 5. 开始移动 article_copier 文件 " + "="*10)
     move_article_copier_files(news_directory, news_directory)
     print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
 
-    # 6. 新增：移动 news_image 目录到废纸篓 (macOS only)
-    print("\n" + "="*10 + " 开始清理 news_image 目录 " + "="*10)
+    # 6. 移动 news_image 目录到废纸篓 (macOS only)
+    print("\n" + "="*10 + " 6. 开始清理 news_image 目录 " + "="*10)
     # move_news_image_dirs_to_trash(downloads_path)
     print("="*10 + " 完成清理 news_image 目录 " + "="*10)
+
+    # 7. 新增：将所有处理过的 TXT 文件移动到 done 目录
+    print("\n" + "="*10 + " 7. 开始移动已处理的 TXT 文件 " + "="*10)
+    move_processed_txt_files(news_directory)
+    print("="*10 + " 完成移动已处理的 TXT 文件 " + "="*10)
 
     print("\n所有任务执行完毕。")

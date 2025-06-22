@@ -12,10 +12,12 @@ import shutil
 import math
 import subprocess # 新增：用于调用外部命令 (osascript)
 import sys       # 新增：用于检查操作系统
+import json
+from urllib.parse import urlsplit, urlunsplit
 
 MAJOR_SITES = {s.upper() for s in (
     'FT','WSJ','BLOOMBERG','REUTERS','NYTIMES',
-    'WASHINGTONPOST','ECONOMIST','TECHNOLOGYREVIEW','OTHER'
+    'WASHINGTONPOST','ECONOMIST','TECHNOLOGYREVIEW', 'WSJCN', 'OTHER'
 )}
 
 # --- 你原来的函数保持不变 ---
@@ -448,7 +450,7 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
                 # 处理文本段落
                 text = paragraph.strip()
                 # 去掉 BOM、常见中英文标点
-                text = text.lstrip('\ufeff').strip("：:。.，,")
+                text = text.lstrip('\ufeff').lstrip("：:。.，,")
                 upper = text.upper()
 
                 # 检查是否是主要新闻网站名称
@@ -743,6 +745,84 @@ def move_news_image_dirs_to_trash(downloads_dir):
 
     print(f"--- 完成移动 news_image 目录，共移动 {trashed_count} 个目录到废纸篓 ---")
 
+def normalize_url(u):
+    """
+    去掉 query 和 fragment，末尾去掉 '/'
+    """
+    parts = urlsplit(u)
+    new = urlunsplit((parts.scheme, parts.netloc, parts.path.rstrip('/'), '', ''))
+    return new
+
+def generate_news_json(news_directory, today):
+    """
+    扫描 News_*.txt、TodayCNH_*.html、article_copier_{today}.txt，
+    生成分组的 JSON 并写入 news_<timestamp>.json。
+    """
+    # 1. 解析 TodayCNH_*.html -> { norm_url: (site, topic) }
+    cnh_map = {}
+    for html_path in glob.glob(os.path.join(news_directory, f"TodayCNH_*.html")):
+        text = open(html_path, 'r', encoding='utf-8').read()
+        # 匹配 <tr>…<td>SITE</td>…<a href="URL">TITLE</a>
+        for site, url, title in re.findall(
+            r"<tr>.*?<td>\s*([^<]+)\s*</td>.*?<a\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>",
+            text, re.S):
+            nu = normalize_url(url.strip())
+            cnh_map[nu] = (site.strip(), title.strip())
+
+    # 2. 解析 article_copier_{today}.txt -> { norm_url: [img1, img2, ...] }
+    copier_path = os.path.join(news_directory, f"article_copier_{today}.txt")
+    url_images_raw = {}
+    if os.path.exists(copier_path):
+        url_images_raw = parse_article_copier(copier_path)
+    # 归一化键
+    url_images = {
+        normalize_url(u): imgs
+        for u, imgs in url_images_raw.items()
+    }
+
+    # 3. 组装 data
+    data = {}
+    for txt_path in glob.glob(os.path.join(news_directory, "News_*.txt")):
+        content = open(txt_path, 'r', encoding='utf-8').read()
+        entries = []
+        current_url = None
+        buf = []
+
+        for line in content.splitlines():
+            raw = line.strip().lstrip('\ufeff')
+            if raw.startswith("http"):
+                # 碰到新 URL，先把上一个 append
+                if current_url is not None:
+                    entries.append((current_url, "\n".join(buf).strip()))
+                current_url = raw
+                buf = []
+            else:
+                if current_url and raw:
+                    buf.append(raw)
+        # 最后一条
+        if current_url is not None:
+            entries.append((current_url, "\n".join(buf).strip()))
+
+        # 每条 entry 去匹配 site/topic/images
+        for url, article_text in entries:
+            nu = normalize_url(url)
+            if nu not in cnh_map:
+                continue
+            site, topic = cnh_map[nu]
+            imgs = url_images.get(nu, [])
+
+            data.setdefault(site, []).append({
+                "topic": topic,
+                "article": article_text,
+                "images": imgs
+            })
+
+    # 4. 写 JSON
+    timestamp = datetime.now().strftime("%Y%m%d")
+    out_path = os.path.join(news_directory, f"news_{timestamp}.json")
+    with open(out_path, 'w', encoding='utf-8') as fp:
+        json.dump(data, fp, ensure_ascii=False, indent=4)
+    print(f"\n已生成 JSON 文件: {out_path}")
 
 if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")
@@ -756,12 +836,17 @@ if __name__ == "__main__":
     process_all_files(news_directory, article_copier_path, image_dir)
     print("="*10 + " 完成 TXT 转 PDF 处理 " + "="*10)
 
-    # 2. 移动 TodayCNH 文件 (如果需要)
+    # 2. 生成 JSON 汇总
+    print("\n" + "="*10 + " 开始生成 JSON 汇总 " + "="*10)
+    generate_news_json(news_directory, today)
+    print("="*10 + " 完成生成 JSON 汇总 " + "="*10)
+
+    # 3. 移动 TodayCNH 文件 (如果需要)
     print("\n" + "="*10 + " 开始移动 TodayCNH 文件 " + "="*10)
     move_cnh_file(news_directory)
     print("="*10 + " 完成移动 TodayCNH 文件 " + "="*10)
 
-    # 3. 清理 Downloads 目录下的 .html 文件
+    # 4. 清理 Downloads 目录下的 .html 文件
     print("\n" + "="*10 + " 开始清理 Downloads 中的 HTML 文件 " + "="*10)
     html_files = [f for f in os.listdir(downloads_path) if f.endswith('.html')]
     if html_files:
@@ -776,15 +861,15 @@ if __name__ == "__main__":
         print("Downloads 目录下没有找到 .html 文件。")
     print("="*10 + " 完成清理 Downloads 中的 HTML 文件 " + "="*10)
 
-    # 4. 新增：移动 article_copier 文件到 backup
+    # 5. 新增：移动 article_copier 文件到 backup
     print("\n" + "="*10 + " 开始移动 article_copier 文件 " + "="*10)
     # 注意：第二个参数是 backup 目录的 *父* 目录
     move_article_copier_files(news_directory, news_directory)
     print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
 
-    # 5. 新增：移动 news_image 目录到废纸篓 (macOS only)
+    # 6. 新增：移动 news_image 目录到废纸篓 (macOS only)
     print("\n" + "="*10 + " 开始清理 news_image 目录 " + "="*10)
-    move_news_image_dirs_to_trash(downloads_path)
+    # move_news_image_dirs_to_trash(downloads_path)
     print("="*10 + " 完成清理 news_image 目录 " + "="*10)
 
     print("\n所有任务执行完毕。")

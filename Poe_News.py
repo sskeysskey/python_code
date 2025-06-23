@@ -170,7 +170,7 @@ def main() -> None:
         """
         source_dir = "/Users/yanzhang/Downloads"
         today = datetime.now().strftime("%y%m%d")
-        target_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
+        target_dir = f"/Users/yanzhang/Downloads/news_images"
         record_file = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
         
         # 支持的图片格式

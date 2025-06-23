@@ -712,21 +712,21 @@ def move_article_copier_files(source_dir, backup_parent_dir):
 
 
 # --- 新增功能 2: 移动 news_image 目录到废纸篓 (macOS) ---
-def move_news_image_dirs_to_trash(downloads_dir):
+def move_news_images_dirs_to_trash(downloads_dir):
     """
-    查找 downloads_dir 下所有 news_image_* 目录，并将它们移动到 macOS 的废纸篓。
+    查找 downloads_dir 下所有 news_images 目录，并将它们移动到 macOS 的废纸篓。
     此功能仅在 macOS 上有效。
     """
     if sys.platform != 'darwin':
         print("\n警告: 移动到废纸篓功能仅支持 macOS。跳过此步骤。")
         return
 
-    pattern = os.path.join(downloads_dir, "news_image_*")
+    pattern = os.path.join(downloads_dir, "news_images")
     potential_items = glob.glob(pattern)
     dirs_to_trash = [item for item in potential_items if os.path.isdir(item)]
 
     if not dirs_to_trash:
-        print(f"\n在 {downloads_dir} 未找到 news_image_* 目录。")
+        print(f"\n在 {downloads_dir} 未找到 news_images 目录。")
         return
 
     print(f"\n--- 开始移动 news_image 目录到废纸篓 ---")
@@ -786,7 +786,10 @@ def generate_news_json(news_directory, today):
             r"<tr>.*?<td>\s*([^<]+)\s*</td>.*?<a\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>",
             text, re.S):
             nu = normalize_url(url.strip())
-            cnh_map[nu] = (site.strip(), title.strip())
+            site = site.strip()
+            # 这里把全/半角数字+逗号都去掉
+            topic = re.sub(r'^[0-9０-９]+[、,，]\s*', '', title.strip())
+            cnh_map[nu] = (site, topic)
 
     # 2. 解析 article_copier_{today}.txt -> { norm_url: [img1, img2, ...] }
     copier_path = os.path.join(news_directory, f"article_copier_{today}.txt")
@@ -846,7 +849,7 @@ if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")
     news_directory = "/Users/yanzhang/Documents/News/"
     article_copier_path = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
-    image_dir = f"/Users/yanzhang/Downloads/news_image_{today}"
+    image_dir = f"/Users/yanzhang/Downloads/news_images"
     downloads_path = '/Users/yanzhang/Downloads'
 
     # 1. 主要处理流程：TXT 转 PDF
@@ -884,10 +887,10 @@ if __name__ == "__main__":
     move_article_copier_files(news_directory, news_directory)
     print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
 
-    # 6. 移动 news_image 目录到废纸篓 (macOS only)
-    print("\n" + "="*10 + " 6. 开始清理 news_image 目录 " + "="*10)
-    # move_news_image_dirs_to_trash(downloads_path)
-    print("="*10 + " 完成清理 news_image 目录 " + "="*10)
+    # 6. 移动 news_images 目录到废纸篓 (macOS only)
+    print("\n" + "="*10 + " 6. 开始清理 news_images 目录 " + "="*10)
+    # move_news_images_dirs_to_trash(downloads_path)
+    print("="*10 + " 完成清理 news_images 目录 " + "="*10)
 
     # 7. 新增：将所有处理过的 TXT 文件移动到 done 目录
     print("\n" + "="*10 + " 7. 开始移动已处理的 TXT 文件 " + "="*10)

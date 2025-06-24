@@ -274,15 +274,20 @@ class OutputDialog(QDialog):
         self.button_box.accepted.connect(self.accept)
 
         self.copy_btn = QPushButton("复制到剪贴板")
+        # --- 修改点 1: 为“复制”按钮添加'C'快捷键 ---
+        self.copy_btn.setShortcut("C")
         self.copy_btn.clicked.connect(self.copy_to_clipboard)
         self.button_box.addButton(self.copy_btn, QDialogButtonBox.ActionRole)
 
         layout.addWidget(self.button_box)
 
+    # --- 修改点 2: 重写 copy_to_clipboard 方法 ---
     def copy_to_clipboard(self):
+        """复制内容到剪贴板，然后立即关闭对话框。"""
         QApplication.clipboard().setText(self.text_edit.toPlainText())
         self.setWindowTitle("已复制到剪贴板!")
         QTimer.singleShot(2000, self.restore_title)
+        self.accept() # 调用accept()来关闭对话框
 
     def restore_title(self):
         self.setWindowTitle(self.original_title)

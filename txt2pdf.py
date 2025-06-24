@@ -710,60 +710,6 @@ def move_article_copier_files(source_dir, backup_parent_dir):
 
     print(f"--- 完成移动 article_copier 文件，共移动 {moved_count} 个文件 ---")
 
-
-# --- 新增功能 2: 移动 news_image 目录到废纸篓 (macOS) ---
-def move_news_images_dirs_to_trash(downloads_dir):
-    """
-    查找 downloads_dir 下所有 news_images 目录，并将它们移动到 macOS 的废纸篓。
-    此功能仅在 macOS 上有效。
-    """
-    if sys.platform != 'darwin':
-        print("\n警告: 移动到废纸篓功能仅支持 macOS。跳过此步骤。")
-        return
-
-    pattern = os.path.join(downloads_dir, "news_images")
-    potential_items = glob.glob(pattern)
-    dirs_to_trash = [item for item in potential_items if os.path.isdir(item)]
-
-    if not dirs_to_trash:
-        print(f"\n在 {downloads_dir} 未找到 news_images 目录。")
-        return
-
-    print(f"\n--- 开始移动 news_image 目录到废纸篓 ---")
-    trashed_count = 0
-    for dir_path in dirs_to_trash:
-        dir_name = os.path.basename(dir_path)
-        # 使用 AppleScript 将目录移动到废纸篓
-        # 需要传递绝对路径给 AppleScript
-        absolute_dir_path = os.path.abspath(dir_path)
-        # 构建 AppleScript 命令
-        # 使用 POSIX file 来处理路径，更可靠
-        script = f'tell application "Finder" to move POSIX file "{absolute_dir_path}" to trash'
-        print(f"准备移动目录到废纸篓: {dir_name}")
-
-        try:
-            # 执行 osascript 命令
-            process = subprocess.run(['osascript', '-e', script],
-                                     capture_output=True, text=True, check=False) # check=False 允许我们检查 stderr
-
-            if process.returncode == 0:
-                print(f"成功移动目录到废纸篓: {dir_name}")
-                trashed_count += 1
-            else:
-                # 如果命令失败，打印错误信息
-                print(f"移动目录 {dir_name} 到废纸篓时出错:")
-                print(f"  返回码: {process.returncode}")
-                print(f"  错误输出: {process.stderr.strip()}")
-                print(f"  标准输出: {process.stdout.strip()}") # 有时错误信息在 stdout
-
-        except FileNotFoundError:
-            print("错误: 'osascript' 命令未找到。请确保你在 macOS 上运行，并且系统环境正常。")
-            break # 如果 osascript 找不到，后续也无法执行
-        except Exception as e:
-            print(f"执行 AppleScript 移动 {dir_name} 时发生未知错误: {str(e)}")
-
-    print(f"--- 完成移动 news_image 目录，共移动 {trashed_count} 个目录到废纸篓 ---")
-
 def normalize_url(u):
     """
     去掉 query 和 fragment，末尾去掉 '/'
@@ -845,6 +791,75 @@ def generate_news_json(news_directory, today):
         json.dump(data, fp, ensure_ascii=False, indent=4)
     print(f"\n已生成 JSON 文件: {out_path}")
 
+def backup_news_assets():
+    """
+    将指定的目录和文件移动到备份位置，并附加当天日期的时间戳。
+    - 移动目录: /Users/yanzhang/Downloads/news_images -> /Users/yanzhang/Downloads/backup/news_images_YYMMDD
+    - 移动文件: /Users/yanzhang/Documents/News/onews.json -> /Users/yanzhang/Documents/News/backup/onews_YYMMDD.json
+    """
+    print("开始执行备份任务...")
+
+    # 1. 获取当天的日期并格式化为 "YYMMDD"
+    # %y: 两位的年份, %m: 两位的月份, %d: 两位的日期
+    timestamp = datetime.now().strftime("%y%m%d")
+    print(f"今天的时间戳是: {timestamp}")
+
+    # --- 处理目录 ---
+    
+    # 2. 定义源目录和备份目录的路径
+    source_dir = '/Users/yanzhang/Downloads/news_images'
+    backup_dir_base = '/Users/yanzhang/Downloads/backup'
+    
+    # 3. 构造带有时间戳的目标目录名
+    dest_dir_name = f"news_images_{timestamp}"
+    dest_dir_full_path = os.path.join(backup_dir_base, dest_dir_name)
+
+    # --- 处理文件 ---
+
+    # 4. 定义源文件和备份目录的路径
+    source_file = '/Users/yanzhang/Documents/News/onews.json'
+    backup_file_dir_base = '/Users/yanzhang/Documents/News/backup'
+
+    # 5. 构造带有时间戳的目标文件名
+    # os.path.splitext() 可以优雅地将文件名和扩展名分开
+    file_name_part, file_extension = os.path.splitext(os.path.basename(source_file))
+    dest_file_name = f"{file_name_part}_{timestamp}{file_extension}"
+    dest_file_full_path = os.path.join(backup_file_dir_base, dest_file_name)
+
+    try:
+        # --- 开始移动目录 ---
+        print(f"\n处理目录: {source_dir}")
+        # 6. 检查源目录是否存在
+        if not os.path.isdir(source_dir):
+            print(f"错误：源目录 '{source_dir}' 不存在。")
+        else:
+            # 7. 创建备份的基础目录（如果它不存在的话）
+            # exist_ok=True 表示如果目录已存在，不会报错
+            os.makedirs(backup_dir_base, exist_ok=True)
+            print(f"准备将目录移动到: {dest_dir_full_path}")
+            # 8. 使用 shutil.move() 来移动并重命名目录
+            shutil.move(source_dir, dest_dir_full_path)
+            print("目录移动并重命名成功！")
+
+        # --- 开始移动文件 ---
+        print(f"\n处理文件: {source_file}")
+        # 9. 检查源文件是否存在
+        if not os.path.isfile(source_file):
+            print(f"错误：源文件 '{source_file}' 不存在。")
+        else:
+            # 10. 创建备份的基础目录（如果它不存在的话）
+            os.makedirs(backup_file_dir_base, exist_ok=True)
+            print(f"准备将文件移动到: {dest_file_full_path}")
+            # 11. 使用 shutil.move() 来移动并重命名文件
+            shutil.move(source_file, dest_file_full_path)
+            print("文件移动并重命名成功！")
+
+    except Exception as e:
+        print(f"\n在执行过程中发生了一个意外错误: {e}")
+        print("请检查文件权限或路径是否正确。")
+
+    print("\n备份任务执行完毕。")
+
 if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")
     news_directory = "/Users/yanzhang/Documents/News/"
@@ -887,14 +902,12 @@ if __name__ == "__main__":
     move_article_copier_files(news_directory, news_directory)
     print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
 
-    # 6. 移动 news_images 目录到废纸篓 (macOS only)
-    print("\n" + "="*10 + " 6. 开始清理 news_images 目录 " + "="*10)
-    # move_news_images_dirs_to_trash(downloads_path)
-    print("="*10 + " 完成清理 news_images 目录 " + "="*10)
-
-    # 7. 新增：将所有处理过的 TXT 文件移动到 done 目录
+    # 6. 新增：将所有处理过的 TXT 文件移动到 done 目录
     print("\n" + "="*10 + " 7. 开始移动已处理的 TXT 文件 " + "="*10)
     move_processed_txt_files(news_directory)
     print("="*10 + " 完成移动已处理的 TXT 文件 " + "="*10)
 
+    # 7. 新增：将news_images和onews.json备份到相应目录下
+    backup_news_assets()
+    
     print("\n所有任务执行完毕。")

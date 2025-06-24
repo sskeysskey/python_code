@@ -792,73 +792,66 @@ def generate_news_json(news_directory, today):
     print(f"\n已生成 JSON 文件: {out_path}")
 
 def backup_news_assets():
-    """
-    将指定的目录和文件移动到备份位置，并附加当天日期的时间戳。
-    - 移动目录: /Users/yanzhang/Downloads/news_images -> /Users/yanzhang/Downloads/backup/news_images_YYMMDD
-    - 移动文件: /Users/yanzhang/Documents/News/onews.json -> /Users/yanzhang/Documents/News/backup/onews_YYMMDD.json
-    """
-    print("开始执行备份任务...")
-
-    # 1. 获取当天的日期并格式化为 "YYMMDD"
-    # %y: 两位的年份, %m: 两位的月份, %d: 两位的日期
-    timestamp = datetime.now().strftime("%y%m%d")
-    print(f"今天的时间戳是: {timestamp}")
-
-    # --- 处理目录 ---
+    # 获取当前日期作为时间戳(格式:DDMMYY)
+    timestamp = datetime.now().strftime("%d%m%y")
     
-    # 2. 定义源目录和备份目录的路径
-    source_dir = '/Users/yanzhang/Downloads/news_images'
-    backup_dir_base = '/Users/yanzhang/Downloads/backup'
+    # 第一步:处理news_images目录
+    src_dir = "/Users/yanzhang/Downloads/news_images"
+    backup_dir = "/Users/yanzhang/Downloads/backup"
     
-    # 3. 构造带有时间戳的目标目录名
-    dest_dir_name = f"news_images_{timestamp}"
-    dest_dir_full_path = os.path.join(backup_dir_base, dest_dir_name)
-
-    # --- 处理文件 ---
-
-    # 4. 定义源文件和备份目录的路径
-    source_file = '/Users/yanzhang/Documents/News/onews.json'
-    backup_file_dir_base = '/Users/yanzhang/Documents/News/backup'
-
-    # 5. 构造带有时间戳的目标文件名
-    # os.path.splitext() 可以优雅地将文件名和扩展名分开
-    file_name_part, file_extension = os.path.splitext(os.path.basename(source_file))
-    dest_file_name = f"{file_name_part}_{timestamp}{file_extension}"
-    dest_file_full_path = os.path.join(backup_file_dir_base, dest_file_name)
-
-    try:
-        # --- 开始移动目录 ---
-        print(f"\n处理目录: {source_dir}")
-        # 6. 检查源目录是否存在
-        if not os.path.isdir(source_dir):
-            print(f"错误：源目录 '{source_dir}' 不存在。")
-        else:
-            # 7. 创建备份的基础目录（如果它不存在的话）
-            # exist_ok=True 表示如果目录已存在，不会报错
-            os.makedirs(backup_dir_base, exist_ok=True)
-            print(f"准备将目录移动到: {dest_dir_full_path}")
-            # 8. 使用 shutil.move() 来移动并重命名目录
-            shutil.move(source_dir, dest_dir_full_path)
-            print("目录移动并重命名成功！")
-
-        # --- 开始移动文件 ---
-        print(f"\n处理文件: {source_file}")
-        # 9. 检查源文件是否存在
-        if not os.path.isfile(source_file):
-            print(f"错误：源文件 '{source_file}' 不存在。")
-        else:
-            # 10. 创建备份的基础目录（如果它不存在的话）
-            os.makedirs(backup_file_dir_base, exist_ok=True)
-            print(f"准备将文件移动到: {dest_file_full_path}")
-            # 11. 使用 shutil.move() 来移动并重命名文件
-            shutil.move(source_file, dest_file_full_path)
-            print("文件移动并重命名成功！")
-
-    except Exception as e:
-        print(f"\n在执行过程中发生了一个意外错误: {e}")
-        print("请检查文件权限或路径是否正确。")
-
-    print("\n备份任务执行完毕。")
+    # 确保backup目录存在
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+    
+    if os.path.exists(src_dir):
+        # 复制第一份(保持原名)
+        first_copy = os.path.join(backup_dir, "news_images")
+        # 如果目标目录已存在，先删除
+        if os.path.exists(first_copy):
+            shutil.rmtree(first_copy)
+            print(f"Removed existing directory: {first_copy}")
+        shutil.copytree(src_dir, first_copy)
+        print(f"Directory backed up to: {first_copy}")
+        
+        # 复制第二份(带时间戳)
+        second_copy = os.path.join(backup_dir, f"news_images_{timestamp}")
+        # 如果目标目录已存在，先删除
+        if os.path.exists(second_copy):
+            shutil.rmtree(second_copy)
+            print(f"Removed existing directory: {second_copy}")
+        shutil.copytree(src_dir, second_copy)
+        print(f"Directory backed up to: {second_copy}")
+        
+        # 删除原目录
+        shutil.rmtree(src_dir)
+        print(f"Original directory removed: {src_dir}")
+    else:
+        print(f"Source directory not found: {src_dir}")
+    
+    # 第二步:处理onews.json文件
+    src_file = "/Users/yanzhang/Documents/News/onews.json"
+    backup_file_dir = "/Users/yanzhang/Documents/News/backup"
+    
+    # 确保backup目录存在
+    if not os.path.exists(backup_file_dir):
+        os.makedirs(backup_file_dir)
+    
+    if os.path.exists(src_file):
+        # 复制第一份(保持原名) - shutil.copy2会自动覆盖已存在的文件
+        first_copy = os.path.join(backup_file_dir, "onews.json")
+        shutil.copy2(src_file, first_copy)
+        print(f"File backed up to: {first_copy}")
+        
+        # 复制第二份(带时间戳) - shutil.copy2会自动覆盖已存在的文件
+        second_copy = os.path.join(backup_file_dir, f"onews_{timestamp}.json")
+        shutil.copy2(src_file, second_copy)
+        print(f"File backed up to: {second_copy}")
+        
+        # 删除原文件
+        os.remove(src_file)
+        print(f"Original file removed: {src_file}")
+    else:
+        print(f"Source file not found: {src_file}")
 
 if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")

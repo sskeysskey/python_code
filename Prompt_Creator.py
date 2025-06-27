@@ -172,6 +172,8 @@ class FileContentTextEdit(QTextEdit):
 # --- 单个文件块控件 ---
 class FileBlockWidget(QWidget):
     delete_requested = pyqtSignal(QWidget)
+    # --- 修改点 1: 新增信号，用于在选择文件后，将文件路径列表发送给主窗口 ---
+    files_selected = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -204,25 +206,49 @@ class FileBlockWidget(QWidget):
     def _request_delete_self(self):
         self.delete_requested.emit(self)
 
+    # --- 修改点 2: 重写 select_file 方法 ---
+    # 现在它只负责打开多文件选择对话框，并发出带有路径列表的信号
     def select_file(self):
+        """
+        打开一个文件对话框以允许多选，然后发出一个包含所有选定文件路径的信号。
+        """
         global LAST_FILE_SELECTION_PATH
         start_path = LAST_FILE_SELECTION_PATH
         if not os.path.exists(start_path):
             start_path = os.path.expanduser("~")
+        
         formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv *.db"
-        f_path, _ = QFileDialog.getOpenFileName(self, "选择文件", start_path, f"支持的文件 ({formats});;所有文件 (*)")
+        # 使用 getOpenFileNames 允许多文件选择
+        f_paths, _ = QFileDialog.getOpenFileNames(self, "选择一个或多个文件", start_path, f"支持的文件 ({formats});;所有文件 (*)")
+        
+        if f_paths:
+            # 发射信号，将选中的文件路径列表传递出去
+            self.files_selected.emit(f_paths)
+
+    # --- 修改点 3: 新增方法，用于根据单个文件路径填充本控件的内容 ---
+    def populate_with_file(self, f_path):
+        """
+        用给定的文件路径 f_path 来加载和显示文件信息。
+        """
+        global LAST_FILE_SELECTION_PATH
         if not f_path: return
+
         LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
         self.file_path = f_path
-        display_path = f"...{os.sep}{os.path.basename(f_path)}" if len(f_path) >= 50 else f_path
+        
+        # 使用我们自定义的 ElidedLabel 来显示路径
         self.path_label.setText(f_path)
         self.path_label.setToolTip(f_path)
+        
         _, file_extension = os.path.splitext(f_path)
+        
+        # 对于特定二进制文件，只显示占位符
         if file_extension.lower() in (".db", ".scpt"):
             self.content_edit.clear()
             self.content_edit.setPlaceholderText(f"这是一个 {file_extension} 二进制文件，内容未加载。\n您可以在此手动输入或编辑与该数据库文件相关的信息或说明。")
             self.original_content_on_load = ""
         else:
+            # 尝试读取和显示文本文件内容
             try:
                 with open(f_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -629,10 +655,37 @@ class MainWindow(QWidget):
     def _add_file_block_widget(self, add_to_list_ref=False, file_data=None):
         file_block = FileBlockWidget()
         file_block.delete_requested.connect(self._handle_delete_file_block)
+        # --- 修改点 4: 连接新信号到主窗口的新槽函数 ---
+        file_block.files_selected.connect(self.handle_multiple_files_selected)
+
         if file_data: file_block.load_data(file_data.get("path"), file_data.get("content"))
+        
         self.file_blocks_layout.addWidget(file_block)
         if add_to_list_ref: self.file_blocks.append(file_block)
         return file_block
+
+    # --- 修改点 5: 新增的槽函数，用于处理批量文件选择 ---
+    def handle_multiple_files_selected(self, file_paths):
+        """
+        接收一个文件路径列表，并为每个文件路径填充或创建一个新的文件块。
+        """
+        # 查找当前所有未加载文件的空文件块
+        empty_blocks = [
+            w for w in self.file_blocks if w.file_path is None
+        ]
+        
+        for i, f_path in enumerate(file_paths):
+            block_to_populate = None
+            if i < len(empty_blocks):
+                # 如果有可用的空文件块，则使用它
+                block_to_populate = empty_blocks[i]
+            else:
+                # 如果空文件块用完了，就创建一个新的
+                block_to_populate = self._add_file_block_widget(add_to_list_ref=True)
+            
+            # 使用文件路径填充该块
+            if block_to_populate:
+                block_to_populate.populate_with_file(f_path)
 
     def _handle_delete_file_block(self, block_to_delete):
         if block_to_delete in self.file_blocks: self.file_blocks.remove(block_to_delete)
@@ -730,7 +783,10 @@ class MainWindow(QWidget):
         }
         file_tree_lines = []
         valid_file_infos_for_output = []
+        
+        # 确保从UI布局中获取最新的控件列表
         current_ui_file_blocks = [self.file_blocks_layout.itemAt(i).widget() for i in range(self.file_blocks_layout.count()) if isinstance(self.file_blocks_layout.itemAt(i).widget(), FileBlockWidget)]
+        
         for block_widget in current_ui_file_blocks:
             path, filename, content = block_widget.get_file_info()
             if content.strip() or (path and path not in ["未选择文件", "路径未记录"]):

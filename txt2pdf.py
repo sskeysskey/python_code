@@ -830,7 +830,7 @@ def backup_news_assets():
     
     # 第二步:处理onews.json文件
     src_file = "/Users/yanzhang/Documents/News/onews.json"
-    backup_file_dir = "/Users/yanzhang/Documents/News/backup"
+    backup_file_dir = "/Users/yanzhang/Documents/News/done"
     
     # 确保backup目录存在
     if not os.path.exists(backup_file_dir):

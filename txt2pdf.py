@@ -793,7 +793,7 @@ def generate_news_json(news_directory, today):
 
 def backup_news_assets():
     # 获取当前日期作为时间戳(格式:DDMMYY)
-    timestamp = datetime.now().strftime("%d%m%y")
+    timestamp = datetime.now().strftime("%y%m%d")
     
     # 第一步:处理news_images目录
     src_dir = "/Users/yanzhang/Downloads/news_images"

@@ -246,6 +246,70 @@ function scrapeWSJ(shouldDownload = true) {
     return newRows.length;
 }
 
+// FT 抓取函数 (新增)
+function scrapeFT() {
+    const now = new Date();
+    const currentDatetime = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}`;
+    const newRows = [];
+
+    // 排除的标题文本，来自 selenium_FT.py 的逻辑
+    const excludedTitles = [
+        "opinion content.",
+        "FT Series.",
+        "Review.",
+        "HTSI."
+    ];
+
+    // CSS 选择器，来自 selenium_FT.py
+    const titleElements = document.querySelectorAll("a[href*='/content/']");
+
+    titleElements.forEach(titleElement => {
+        const href = titleElement.href;
+        const titleText = titleElement.textContent.trim();
+
+        // 检查 href 和 titleText 是否有效
+        if (!href || !titleText) {
+            return;
+        }
+
+        // 检查是否包含排除的关键词，来自 selenium_FT.py 的逻辑
+        if (titleText.toLowerCase().includes('podcasts') ||
+            titleText.toLowerCase().includes('film') ||
+            titleText.includes('FT News Briefing.')) {
+            return;
+        }
+
+        // 检查是否是完全匹配的排除标题
+        if (excludedTitles.includes(titleText)) {
+            return;
+        }
+
+        newRows.push([currentDatetime, titleText, href]);
+    });
+
+    if (newRows.length > 0) {
+        const html = generateHTML(newRows, 'FT');
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const timestamp = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(/[/: ]/g, '_');
+
+        chrome.runtime.sendMessage({
+            action: "downloadHTML",
+            url: url,
+            filename: `ft_${timestamp}.html`
+        });
+    }
+}
+
+
 // 根据网站使用不同的事件监听方式
 const hostname = window.location.hostname;
 
@@ -259,7 +323,7 @@ if (hostname.includes('bloomberg.com')) {
     // WSJ 使用 DOMContentLoaded 事件
     document.addEventListener('DOMContentLoaded', () => {
         console.log('WSJ Scraper loaded');
-        handleWSJScraping();
+
     });
 
     // 对于动态加载的内容，添加 MutationObserver 来监测DOM变化
@@ -301,5 +365,10 @@ if (hostname.includes('bloomberg.com')) {
     window.addEventListener('load', () => {
         console.log('Reuters Scraper loaded');
         scrapeReuters();
+    });
+} else if (hostname.includes('ft.com')) { // 新增 FT 的处理逻辑
+    window.addEventListener('load', () => {
+        console.log('FT Scraper loaded');
+        scrapeFT();
     });
 }

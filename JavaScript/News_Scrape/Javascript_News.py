@@ -86,7 +86,6 @@ def get_new_content_from_files(file_prefix):
                 link = cols[1].find('a')['href'] if cols[1].find('a') else ''
                 if title and link:
                     new_content.append([date_str, title, link])
-    
     return new_content
 
 def write_html(file_path, new_rows, old_content):
@@ -307,10 +306,37 @@ def open_webpage_and_monitor_reuters():
     
     print("\nreuters file detected!")
     print("reuters file downloaded. Processing...")
+    close_browser_tabs(1)
+
+# 新增 FT 的监控函数
+def open_webpage_and_monitor_ft():
+    """
+    打开FT页面并监控下载文件
+    """
+    # 清理已存在的ft文件
+    clean_files("ft")
+    
+    # 打开FT页面
+    print("Opening FT main page...")
+    pyautogui.moveTo(591, 574)
+    webbrowser.open("https://www.ft.com/")
+    # 稍微滚动一下页面，以确保所有内容都加载
+    for i in range(5):
+        pyautogui.scroll(-80)
+        time.sleep(0.5)
+    
+    # 等待文件下载
+    print("Waiting for FT file download...")
+    while count_files("ft") < 1:
+        time.sleep(2)
+        print(".", end="", flush=True)
+    
+    print("\nFT file detected!")
+    print("FT file downloaded. Processing...")
     
     # 关闭页面
     close_browser_tabs(1)
-    
+
 def close_browser_tabs(num_tabs):
     """
     关闭指定数量的浏览器标签页
@@ -360,9 +386,10 @@ def process_news_source(source_name, old_file_path, today_html_path):
                 break
         if not is_duplicate:
             new_rows.append([date_str, title, link])
-            existing_links.add(link)  # 将新链接添加到已存在列表中，防止新内容中有重复
-
-    # 转换为today_eng.html需要的格式
+            existing_links.add(link)
+    
+    # 根据source_name，将第一列的字符串替换为对应的名称
+    # 注意：today_eng.html 的格式是 [来源, 标题, 链接]
     new_rows1 = [[source_name, title, link] for date_str, title, link in new_rows]
 
     # 写入source.html并追加到today_eng.html
@@ -381,25 +408,37 @@ if __name__ == "__main__":
     # 处理WSJ
     print("\nStarting WSJ processing...")
     open_webpage_and_monitor_wsj()
-    wsj_new_rows = process_news_source(
+    process_news_source(
         "WSJ", 
         "/Users/yanzhang/Documents/News/backup/site/wsj.html",
         today_html_path
     )
 
     # 处理Bloomberg
-    print("Starting Bloomberg processing...")
+    print("\nStarting Bloomberg processing...")
     open_webpage_and_monitor_bloomberg()
-    bloomberg_new_rows = process_news_source(
+    process_news_source(
         "Bloomberg", 
         "/Users/yanzhang/Documents/News/backup/site/bloomberg.html",
         today_html_path
     )
 
-    # 处理reuters
+    # 处理Reuters
+    print("\nStarting Reuters processing...")
     open_webpage_and_monitor_reuters()
-    wsj_new_rows = process_news_source(
+    process_news_source(
         "Reuters", 
         "/Users/yanzhang/Documents/News/backup/site/reuters.html",
         today_html_path
     )
+    
+    # 新增：处理FT
+    print("\nStarting FT processing...")
+    open_webpage_and_monitor_ft()
+    process_news_source(
+        "FT", 
+        "/Users/yanzhang/Documents/News/backup/site/ft.html",
+        today_html_path
+    )
+
+    print("\nAll news sources processed.")

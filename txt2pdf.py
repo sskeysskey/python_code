@@ -862,7 +862,7 @@ if __name__ == "__main__":
 
     # 1. 主要处理流程：TXT 转 PDF
     print("="*10 + " 1. 开始 TXT 转 PDF 处理 " + "="*10)
-    # process_all_files(news_directory, article_copier_path, image_dir)
+    process_all_files(news_directory, article_copier_path, image_dir)
     print("="*10 + " 完成 TXT 转 PDF 处理 " + "="*10)
 
     # 2. 生成 JSON 汇总

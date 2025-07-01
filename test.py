@@ -1,707 +1,177 @@
-import sys
 import os
 import json
-from datetime import datetime
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QTextEdit, QPushButton, QLabel, QFileDialog,
-    QSizePolicy, QDialog, QMessageBox,
-    QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem,
-    QSplitter, QAbstractItemView, QRadioButton, QButtonGroup, QGroupBox
-)
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
-from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence
+import shutil
+import re
+from collections import defaultdict
 
-HISTORY_FILE = "/Users/yanzhang/Documents/python_code/Modules/Prompt_history.json" # 请确保这个路径对您的系统是正确的
-DEFAULT_FILE_SELECTION_PATH = "/Users/yanzhang/Documents" # 定义默认文件选择路径
-LAST_FILE_SELECTION_PATH = DEFAULT_FILE_SELECTION_PATH
+# --- 配置区 ---
+# 请根据您的实际情况修改下面的路径
+# 注意：Windows 系统下路径可能需要写成 'C:\\Users\\yanzhang\\Documents\\News\\done' 的形式
+JSON_DIR = '/Users/yanzhang/Documents/News/done'
+IMAGE_BACKUP_DIR = '/Users/yanzhang/Downloads/backup'
 
-# --- 自定义查找/替换对话框 ---
-class SearchReplaceDialog(QDialog):
-    def __init__(self, target_text_edit, parent=None):
-        super().__init__(parent)
-        self.target_text_edit = target_text_edit
-        self.setWindowTitle("查找/替换")
-        self.setMinimumWidth(300)
-        layout = QVBoxLayout(self)
-        find_layout = QHBoxLayout()
-        find_layout.addWidget(QLabel("查找:"))
-        self.find_input = QLineEdit()
-        find_layout.addWidget(self.find_input)
-        layout.addLayout(find_layout)
-        replace_layout = QHBoxLayout()
-        replace_layout.addWidget(QLabel("替换:"))
-        self.replace_input = QLineEdit()
-        replace_layout.addWidget(self.replace_input)
-        layout.addLayout(replace_layout)
-        options_layout = QHBoxLayout()
-        self.case_sensitive_cb = QCheckBox("区分大小写")
-        options_layout.addWidget(self.case_sensitive_cb)
-        self.whole_words_cb = QCheckBox("全字匹配")
-        options_layout.addWidget(self.whole_words_cb)
-        options_layout.addStretch()
-        layout.addLayout(options_layout)
-        self.find_next_button = QPushButton("查找下一个")
-        self.replace_button = QPushButton("替换")
-        self.replace_all_button = QPushButton("全部替换")
-        self.close_button = QPushButton("关闭")
-        button_layout = QHBoxLayout()
-        button_layout.addWidget(self.find_next_button)
-        button_layout.addWidget(self.replace_button)
-        button_layout.addWidget(self.replace_all_button)
-        button_layout.addStretch()
-        button_layout.addWidget(self.close_button)
-        layout.addLayout(button_layout)
-        self.find_next_button.clicked.connect(self.find_next)
-        self.replace_button.clicked.connect(self.replace_current)
-        self.replace_all_button.clicked.connect(self.replace_all)
-        self.close_button.clicked.connect(self.close)
-        self.find_input.textChanged.connect(self._update_button_states)
-        self._update_button_states()
+# --- 主功能函数 ---
 
-    def _update_button_states(self):
-        has_find_text = bool(self.find_input.text())
-        self.find_next_button.setEnabled(has_find_text)
-        self.replace_button.setEnabled(has_find_text and self.target_text_edit.textCursor().hasSelection())
-        self.replace_all_button.setEnabled(has_find_text)
+def find_latest_sources(directory, prefix, suffix, count):
+    """
+    在指定目录中查找最新的N个源文件或目录。
 
-    def set_search_focus(self):
-        self.find_input.setFocus()
-        self.find_input.selectAll()
+    Args:
+        directory (str): 要搜索的目录路径。
+        prefix (str): 文件或目录名的前缀 (例如 'onews_' 或 'news_images_')。
+        suffix (str): 文件或目录名的后缀 (例如 '.json' 或 '')。
+        count (int): 需要查找的数量。
 
-    def _get_find_flags(self):
-        flags = QTextDocument.FindFlags()
-        if self.case_sensitive_cb.isChecked():
-            flags |= QTextDocument.FindCaseSensitively
-        return flags
+    Returns:
+        list: 按日期从新到旧排序的源的完整路径列表。如果找不到足够数量的源，则返回的列表长度可能小于count。
+    """
+    # 正则表达式用于匹配 '前缀' + '6位日期' + '后缀' 格式
+    # 例如: onews_250630.json
+    pattern = re.compile(f"^{re.escape(prefix)}(\\d{{6}}){re.escape(suffix)}$")
+    
+    sources = []
+    try:
+        for name in os.listdir(directory):
+            match = pattern.match(name)
+            if match:
+                date_str = match.group(1) # 提取日期部分，例如 '250630'
+                full_path = os.path.join(directory, name)
+                sources.append((date_str, full_path))
+    except FileNotFoundError:
+        print(f"错误：找不到目录 '{directory}'。请检查路径是否正确。")
+        return []
 
-    def find_next(self, search_backward=False):
-        if not self.target_text_edit: return False
-        query = self.find_input.text()
-        if not query: return False
-        flags = self._get_find_flags()
-        if search_backward: flags |= QTextDocument.FindBackward
-        found = self.target_text_edit.find(query, flags)
-        if not found:
-            cursor = self.target_text_edit.textCursor()
-            cursor.movePosition(QTextCursor.Start if not search_backward else QTextCursor.End)
-            self.target_text_edit.setTextCursor(cursor)
-            found = self.target_text_edit.find(query, flags)
-        self._update_button_states()
-        return found
+    # 按日期字符串降序排序（'250630' > '250629'）
+    sources.sort(key=lambda x: x[0], reverse=True)
+    
+    # 返回前 count 个源的完整路径
+    return [path for date_str, path in sources[:count]]
 
-    def replace_current(self):
-        if not self.target_text_edit or not self.target_text_edit.textCursor().hasSelection(): return
-        self.target_text_edit.textCursor().insertText(self.replace_input.text())
-        self.find_next()
-        self._update_button_states()
+def merge_json_files(source_files, target_file):
+    """
+    合并多个JSON文件的内容并写入目标文件。
 
-    def replace_all(self):
-        if not self.target_text_edit: return
-        query, replace_text = self.find_input.text(), self.replace_input.text()
-        if not query: return
-        flags = self._get_find_flags()
-        count = 0
-        cursor = self.target_text_edit.textCursor()
-        cursor.movePosition(QTextCursor.Start)
-        self.target_text_edit.setTextCursor(cursor)
-        while self.target_text_edit.find(query, flags):
-            self.target_text_edit.textCursor().insertText(replace_text)
-            count += 1
-        QMessageBox.information(self, "全部替换", f"已替换 {count} 处。" if count > 0 else f"未找到 '{query}'。")
-        self._update_button_states()
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape: self.close()
-        else: super().keyPressEvent(event)
-
-# --- 自定义文本编辑器 ---
-class FileContentTextEdit(QTextEdit):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.search_dialog = None
-        self.setAcceptRichText(False)
-
-    def keyPressEvent(self, event):
-        if event.matches(QKeySequence.Find):
-            self.show_search_dialog()
-            event.accept()
-        else:
-            super().keyPressEvent(event)
-
-    def show_search_dialog(self):
-        if not self.search_dialog:
-            self.search_dialog = SearchReplaceDialog(self, self.window())
-        current_selection = self.textCursor().selectedText()
-        if current_selection:
-            self.search_dialog.find_input.setText(current_selection)
-        self.search_dialog.show()
-        self.search_dialog.activateWindow()
-        self.search_dialog.set_search_focus()
-
-    def focusInEvent(self, event):
-        if self.search_dialog: self.search_dialog._update_button_states()
-        super().focusInEvent(event)
-
-    def cursorPositionChanged(self):
-        if self.search_dialog: self.search_dialog._update_button_states()
-        super().cursorPositionChanged()
-
-# --- 单个文件块控件 ---
-class FileBlockWidget(QWidget):
-    delete_requested = pyqtSignal(QWidget)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.file_path = None
-        self.original_content_on_load = ""
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        path_layout = QHBoxLayout()
-        self.path_button = QPushButton("选择文件")
-        self.path_button.clicked.connect(self.select_file)
-        self.path_label = QLabel("未选择文件")
-        self.path_label.setWordWrap(True)
-        self.path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.path_label.setToolTip("文件路径")
-        self.delete_button = QPushButton("X")
-        self.delete_button.setFixedSize(22, 22)
-        self.delete_button.setToolTip("删除此文件块")
-        self.delete_button.clicked.connect(self._request_delete_self)
-        path_layout.addWidget(self.path_button)
-        path_layout.addWidget(self.path_label, 1)
-        path_layout.addWidget(self.delete_button)
-        layout.addLayout(path_layout)
-        self.content_edit = FileContentTextEdit()
-        self.content_edit.setPlaceholderText("文件内容将在此显示和编辑...")
-        self.content_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(self.content_edit)
-        self.setMinimumWidth(200)
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-
-    def _request_delete_self(self):
-        self.delete_requested.emit(self)
-
-    def select_file(self):
-        global LAST_FILE_SELECTION_PATH
-        start_path = LAST_FILE_SELECTION_PATH
-        if not os.path.exists(start_path):
-            start_path = os.path.expanduser("~")
-        formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv *.db"
-        f_path, _ = QFileDialog.getOpenFileName(self, "选择文件", start_path, f"支持的文件 ({formats});;所有文件 (*)")
-        if not f_path: return
-        LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
-        self.file_path = f_path
-        display_path = f"...{os.sep}{os.path.basename(f_path)}" if len(f_path) >= 50 else f_path
-        self.path_label.setText(display_path)
-        self.path_label.setToolTip(f_path)
-        _, file_extension = os.path.splitext(f_path)
-        if file_extension.lower() in (".db", ".scpt"):
-            self.content_edit.clear()
-            self.content_edit.setPlaceholderText(f"这是一个 {file_extension} 二进制文件，内容未加载。\n您可以在此手动输入或编辑与该数据库文件相关的信息或说明。")
-            self.original_content_on_load = ""
-        else:
-            try:
-                with open(f_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                self.content_edit.setPlainText(content)
-                self.original_content_on_load = content
-            except Exception as e:
-                QMessageBox.warning(self, "读取文件错误", f"无法读取文件 {f_path}:\n{e}")
-                self.content_edit.clear()
-                self.original_content_on_load = ""
-
-    def get_file_info(self):
-        filename = "未知文件"
-        current_path_text = self.path_label.text()
-        if self.file_path:
-            filename = os.path.basename(self.file_path)
-        elif current_path_text not in ["未选择文件", "路径未记录"]:
-            filename = os.path.basename(current_path_text)
-        content = self.content_edit.toPlainText()
-        actual_path = self.file_path if self.file_path else (current_path_text if current_path_text not in ["未选择文件", "路径未记录"] else "")
-        return actual_path, filename, content
-
-    def load_data(self, path_text, content_text):
-        self.file_path = path_text
-        self.path_label.setText(path_text if path_text else "路径未记录")
-        self.path_label.setToolTip(path_text if path_text else "")
-        self.content_edit.setPlainText(content_text)
-        self.original_content_on_load = content_text
-
-# --- 输出对话框 ---
-class OutputDialog(QDialog):
-    def __init__(self, text_content, parent=None):
-        super().__init__(parent)
-        self.original_title = "生成结果"
-        self.setWindowTitle(self.original_title)
-        self.setMinimumSize(600, 400)
-        layout = QVBoxLayout(self)
-        self.text_edit = QTextEdit(text_content)
-        self.text_edit.setReadOnly(True)
-        layout.addWidget(self.text_edit)
-        self.button_box = QDialogButtonBox()
-        self.ok_button = self.button_box.addButton(QDialogButtonBox.Ok)
-        self.ok_button.setText("确定")
-        self.button_box.accepted.connect(self.accept)
-        self.copy_btn = QPushButton("复制到剪贴板")
-        self.copy_btn.clicked.connect(self.copy_to_clipboard)
-        self.button_box.addButton(self.copy_btn, QDialogButtonBox.ActionRole)
-        layout.addWidget(self.button_box)
-
-    def copy_to_clipboard(self):
-        QApplication.clipboard().setText(self.text_edit.toPlainText())
-        self.setWindowTitle("已复制到剪贴板!")
-        QTimer.singleShot(2000, self.restore_title)
-
-    def restore_title(self):
-        self.setWindowTitle(self.original_title)
-
-# --- 历史记录选择对话框 ---
-class HistoryDialog(QDialog):
-    record_selected = pyqtSignal(dict)
-    def __init__(self, history_data, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("历史记录")
-        self.setMinimumSize(850, 550)
-        self.history_data = list(history_data)
-        main_layout = QVBoxLayout(self)
-        splitter = QSplitter(Qt.Horizontal)
-        self.list_widget = QListWidget()
-        self.list_widget.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._populate_list_widget()
-        self.list_widget.itemDoubleClicked.connect(self.load_selected_record)
-        self.list_widget.currentItemChanged.connect(self.update_preview)
-        self.list_widget.itemSelectionChanged.connect(self._update_button_states)
-        splitter.addWidget(self.list_widget)
-        preview_group = QWidget()
-        preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setContentsMargins(0,0,0,0)
-        self.prompt_preview_edit = QTextEdit()
-        self.prompt_preview_edit.setReadOnly(True)
-        self.prompt_preview_edit.setPlaceholderText("在此预览选定记录的文件列表和Prompt指令...")
-        preview_layout.addWidget(self.prompt_preview_edit)
-        splitter.addWidget(preview_group)
-        splitter.setSizes([300, 550])
-        main_layout.addWidget(splitter)
-        self.buttons_box = QDialogButtonBox()
-        self.load_button = self.buttons_box.addButton("加载选中记录", QDialogButtonBox.AcceptRole)
-        self.delete_button = self.buttons_box.addButton("删除选中记录", QDialogButtonBox.DestructiveRole)
-        self.cancel_button = self.buttons_box.addButton(QDialogButtonBox.Cancel)
-        self.cancel_button.setText("取消")
-        self.load_button.clicked.connect(self.load_selected_record)
-        self.delete_button.clicked.connect(self.delete_selected_records)
-        self.cancel_button.clicked.connect(self.reject)
-        main_layout.addWidget(self.buttons_box)
-        self._update_button_states()
-        if self.list_widget.count() > 0:
-            self.list_widget.setCurrentRow(0)
-            self.update_preview(self.list_widget.currentItem())
-
-    def _populate_list_widget(self):
-        self.list_widget.clear()
-        for i, record in enumerate(reversed(self.history_data)):
-            timestamp_str = record.get("id", f"记录 {len(self.history_data) - i}")
-            project_name = record.get("project_name", "未命名项目")
-            list_item_text = f"{timestamp_str} - {project_name}"
-            item = QListWidgetItem(list_item_text)
-            original_index = len(self.history_data) - 1 - i
-            item.setData(Qt.UserRole, original_index)
-            self.list_widget.addItem(item)
-
-    def _update_button_states(self):
-        has_selection = bool(self.list_widget.selectedItems())
-        self.load_button.setEnabled(len(self.list_widget.selectedItems()) == 1)
-        self.delete_button.setEnabled(has_selection)
-
-    def _save_history_to_file_internal(self):
+    Args:
+        source_files (list): 源JSON文件的路径列表。
+        target_file (str): 合并后要写入的目标JSON文件路径。
+    """
+    # 使用 defaultdict 可以简化代码，当一个键第一次被访问时，会自动创建一个空列表
+    merged_data = defaultdict(list)
+    
+    # 从最旧的文件开始合并，以保持一定的逻辑顺序（虽然对于列表追加来说顺序不影响最终结果）
+    for file_path in reversed(source_files):
         try:
-            with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.history_data, f, ensure_ascii=False, indent=4)
-            return True
-        except Exception as e:
-            QMessageBox.warning(self, "保存历史失败", f"无法将更改保存到历史记录文件: {e}")
-            return False
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for category, articles in data.items():
+                    # 将当前文件的文章列表追加到合并后数据的对应分类下
+                    merged_data[category].extend(articles)
+        except json.JSONDecodeError:
+            print(f"警告：文件 '{file_path}' 不是有效的JSON格式，已跳过。")
+        except FileNotFoundError:
+            print(f"警告：找不到文件 '{file_path}'，已跳过。")
 
-    def update_preview(self, current_item, previous_item=None):
-        if not current_item:
-            self.prompt_preview_edit.clear()
-            self.prompt_preview_edit.setPlaceholderText("请选择一条历史记录以预览。")
-            return
-        original_index = current_item.data(Qt.UserRole)
-        if not (0 <= original_index < len(self.history_data)):
-            self.prompt_preview_edit.setPlainText("错误：无法获取记录数据。")
-            return
-        selected_record_data = self.history_data[original_index]
-        preview_lines = []
-        files_in_record = selected_record_data.get("files", [])
-        if files_in_record:
-            preview_lines.append("--- 文件列表 ---")
-            for file_entry in files_in_record:
-                filename = file_entry.get("filename", "未知文件")
-                if filename != "未知文件" or file_entry.get("content","").strip():
-                    preview_lines.append(f"  • {filename}")
-            preview_lines.append("")
-        prompt_content = selected_record_data.get("final_prompt", "").strip()
-        preview_lines.append("--- 最终Prompt指令 ---")
-        if prompt_content: preview_lines.append(prompt_content)
-        else: preview_lines.append("(无)")
-        self.prompt_preview_edit.setPlainText("\n".join(preview_lines))
+    # 将合并后的数据写入目标文件，覆盖原有内容
+    try:
+        with open(target_file, 'w', encoding='utf-8') as f:
+            # ensure_ascii=False 保证中文字符能正确写入
+            # indent=4 使JSON文件格式化，易于阅读
+            json.dump(merged_data, f, ensure_ascii=False, indent=4)
+        print(f"JSON文件合并成功！结果已写入: {target_file}")
+    except IOError as e:
+        print(f"错误：无法写入目标文件 '{target_file}'。原因: {e}")
 
-    def delete_selected_records(self):
-        selected_items = self.list_widget.selectedItems()
-        if not selected_items: return
-        reply = QMessageBox.question(self, "确认删除", f"确定要删除选中的 {len(selected_items)} 条历史记录吗？此操作不可恢复。", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.No: return
-        original_indices_to_delete = sorted([item.data(Qt.UserRole) for item in selected_items], reverse=True)
-        for index in original_indices_to_delete:
-            if 0 <= index < len(self.history_data):
-                del self.history_data[index]
-        if self._save_history_to_file_internal():
-            QMessageBox.information(self, "删除成功", f"已成功删除 {len(selected_items)} 条记录。")
-        current_row_before_delete = self.list_widget.currentRow()
-        self._populate_list_widget()
-        if self.list_widget.count() > 0:
-            new_row = min(current_row_before_delete, self.list_widget.count() - 1)
-            self.list_widget.setCurrentRow(new_row if new_row >=0 else 0)
-            if not self.list_widget.currentItem() and self.list_widget.count() > 0 : self.list_widget.setCurrentRow(0)
-        else:
-            self.prompt_preview_edit.clear()
-            self.prompt_preview_edit.setPlaceholderText("没有历史记录可供预览。")
-        self._update_button_states()
 
-    def load_selected_record(self):
-        selected_items = self.list_widget.selectedItems()
-        if len(selected_items) == 1:
-            current_item = selected_items[0]
-            original_index = current_item.data(Qt.UserRole)
-            if 0 <= original_index < len(self.history_data):
-                selected_record_data = self.history_data[original_index]
-                self.record_selected.emit(selected_record_data)
-                self.accept()
-            else: QMessageBox.warning(self, "错误", "无法加载选中的记录，索引无效。")
-        elif len(selected_items) > 1:
-             QMessageBox.information(self, "提示", "请只选择一条记录进行加载。")
+def merge_image_dirs(source_dirs, target_dir):
+    """
+    合并多个图片目录的内容到目标目录。
 
-# --- 主窗口 ---
-class MainWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.file_blocks = []
-        self.project_desc_button_group = QButtonGroup(self)
-        # 预设的项目介绍选项
-        self.project_desc_options = [
-            "我有一个Xcode开发的iPhone手机应用程序.",
-            "我有一个JavaScript和html发的chrome插件程序",
-            "我有一个AppleScript开发的自动化脚本",
-            "我有一个Python开发的程序"
-        ]
-        # 用于映射预设 QRadioButton 对象到其对应的文本
-        self.project_desc_radio_buttons_map = {}
-        # “自定义”选项的 QRadioButton
-        self.custom_desc_radio_button = None
-        # 自定义项目介绍的输入框
-        self.custom_desc_input = None
-
-        self.init_ui()
-        self._ensure_history_file_exists()
-
-    def _ensure_history_file_exists(self):
-        if not os.path.exists(HISTORY_FILE):
-            try:
-                with open(HISTORY_FILE, 'w', encoding='utf-8') as f: json.dump([], f)
-            except IOError as e: QMessageBox.critical(self, "文件错误", f"无法创建历史文件: {HISTORY_FILE}\n{e}")
-
-    def _load_history_from_file(self):
-        if not os.path.exists(HISTORY_FILE): return []
+    Args:
+        source_dirs (list): 源图片目录的路径列表。
+        target_dir (str): 合并后要写入的目标目录路径。
+    """
+    # 1. 确保目标目录存在，如果不存在则创建
+    os.makedirs(target_dir, exist_ok=True)
+    
+    print(f"开始合并图片到目标目录: {target_dir}")
+    copied_count = 0
+    
+    # 2. 遍历所有源目录
+    for dir_path in reversed(source_dirs): # 从最旧的开始，让新的覆盖旧的
         try:
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f: history = json.load(f)
-            return history if isinstance(history, list) else []
-        except (json.JSONDecodeError, IOError) as e:
-            QMessageBox.warning(self, "加载历史失败", f"无法读取历史文件: {e}")
-            return []
+            # 3. 遍历源目录中的所有文件
+            for filename in os.listdir(dir_path):
+                source_file = os.path.join(dir_path, filename)
+                target_file = os.path.join(target_dir, filename)
+                
+                # 确保我们只复制文件，不复制子目录（如果有的话）
+                if os.path.isfile(source_file):
+                    # 4. 复制文件到目标目录，如果目标文件已存在，则会覆盖它
+                    shutil.copy2(source_file, target_file)
+                    copied_count += 1
+        except FileNotFoundError:
+            print(f"警告：找不到源目录 '{dir_path}'，已跳过。")
 
-    def _save_record_to_file(self, record_data):
-        history = self._load_history_from_file()
-        history.append(record_data)
-        try:
-            with open(HISTORY_FILE, 'w', encoding='utf-8') as f: json.dump(history, f, ensure_ascii=False, indent=4)
-            print("记录已自动保存到历史。")
-        except Exception as e: QMessageBox.warning(self, "保存失败", f"无法保存历史记录: {e}")
+    print(f"图片目录合并完成！共处理了 {len(source_dirs)} 个源目录。")
 
-    def _handle_project_desc_selection_changed(self, button_id):
-        selected_button = self.project_desc_button_group.button(button_id)
-        is_custom_selected = (selected_button == self.custom_desc_radio_button)
+
+def main():
+    """
+    主函数，处理用户交互和调用合并功能。
+    """
+    print("--- 新闻与图片合并工具 ---")
+    print("1: 退出程序")
+    print("2: 合并最新的 2 份新闻和图片")
+    print("3: 合并最新的 3 份新闻和图片")
+    
+    choice = input("请输入您的选择 (1, 2, or 3): ")
+    
+    if choice == '1':
+        print("已选择退出，程序结束。")
+        return
         
-        self.custom_desc_input.setEnabled(is_custom_selected)
-
-        if is_custom_selected:
-            self.custom_desc_input.setFocus()
+    elif choice in ['2', '3']:
+        num_to_merge = int(choice)
+        print(f"\n您已选择合并最新的 {num_to_merge} 份内容。")
+        
+        # --- 步骤 1: 处理 JSON 文件 ---
+        print("\n--- 正在处理JSON文件... ---")
+        json_sources = find_latest_sources(JSON_DIR, 'onews_', '.json', num_to_merge)
+        
+        if len(json_sources) < num_to_merge:
+            print(f"警告：只找到了 {len(json_sources)} 个带时间戳的JSON文件，少于您希望合并的 {num_to_merge} 个。")
+        
+        if not json_sources:
+            print("错误：在目录下未找到任何匹配的 'onews_YYMMDD.json' 文件。")
         else:
-            # 如果选择的是预设选项，将其文本复制到自定义输入框中，方便用户修改
-            if selected_button in self.project_desc_radio_buttons_map:
-                preset_text = self.project_desc_radio_buttons_map[selected_button]
-                self.custom_desc_input.setText(preset_text)
+            print(f"找到以下 {len(json_sources)} 个最新的JSON文件进行合并:")
+            for src in json_sources:
+                print(f"  - {os.path.basename(src)}")
+            target_json_file = os.path.join(JSON_DIR, 'onews.json')
+            merge_json_files(json_sources, target_json_file)
 
-    def init_ui(self):
-        self.setWindowTitle("代码与Prompt整合工具")
-        self.setGeometry(100, 100, 1200, 800)
-        main_layout = QVBoxLayout(self)
+        # --- 步骤 2: 处理图片目录 ---
+        print("\n--- 正在处理图片目录... ---")
+        # 图片目录没有后缀，所以 suffix 参数传空字符串 ''
+        image_sources = find_latest_sources(IMAGE_BACKUP_DIR, 'news_images_', '', num_to_merge)
 
-        top_buttons_layout = QHBoxLayout()
-        self.load_history_button = QPushButton("加载历史记录")
-        self.load_history_button.clicked.connect(self.show_history_dialog)
-        top_buttons_layout.addWidget(self.load_history_button)
-        top_buttons_layout.addStretch()
-        main_layout.addLayout(top_buttons_layout)
+        if len(image_sources) < num_to_merge:
+            print(f"警告：只找到了 {len(image_sources)} 个带时间戳的图片目录，少于您希望合并的 {num_to_merge} 个。")
 
-        top_section_layout = QHBoxLayout()
-        project_name_group_layout = QVBoxLayout()
-        project_name_group_layout.addWidget(QLabel("项目名称:"))
-        self.project_name_input = QLineEdit()
-        self.project_name_input.setPlaceholderText("例如：Finance")
-        project_name_group_layout.addWidget(self.project_name_input)
-        top_section_layout.addLayout(project_name_group_layout, 1)
-
-        # --- 项目介绍部分修改 ---
-        project_desc_groupbox = QGroupBox("项目介绍:")
-        project_desc_main_layout = QVBoxLayout() # GroupBox内部的主布局
-
-        # 添加预设选项 (RadioButton + 可复制的Label)
-        if self.project_desc_options:
-            for i, option_text in enumerate(self.project_desc_options):
-                option_item_layout = QHBoxLayout() # 用于放置单选按钮和标签
-                
-                radio_button = QRadioButton() # 单选按钮本身可以没有文本
-                
-                label = QLabel(option_text) # 标签显示文本，并允许选择复制
-                label.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-                label.setWordWrap(True) # 长文本自动换行
-
-                option_item_layout.addWidget(radio_button)
-                option_item_layout.addWidget(label, 1) # 标签占据更多空间
-                project_desc_main_layout.addLayout(option_item_layout)
-
-                self.project_desc_button_group.addButton(radio_button, i) # ID为索引
-                self.project_desc_radio_buttons_map[radio_button] = option_text # 映射按钮到文本
+        if not image_sources:
+            print("错误：在目录下未找到任何匹配的 'news_images_YYMMDD' 目录。")
+        else:
+            print(f"找到以下 {len(image_sources)} 个最新的图片目录进行合并:")
+            for src in image_sources:
+                print(f"  - {os.path.basename(src)}")
+            target_image_dir = os.path.join(IMAGE_BACKUP_DIR, 'news_images')
+            merge_image_dirs(image_sources, target_image_dir)
             
-        # 添加“自定义”选项
-        custom_option_layout = QHBoxLayout() # 用于自定义单选按钮和输入框
-        self.custom_desc_radio_button = QRadioButton("自定义:")
-        custom_option_layout.addWidget(self.custom_desc_radio_button)
+        print("\n所有操作已完成。")
 
-        self.custom_desc_input = QLineEdit() # 自定义输入框
-        self.custom_desc_input.setPlaceholderText("在此输入自定义项目介绍...")
-        custom_option_layout.addWidget(self.custom_desc_input, 1)
-        
-        project_desc_main_layout.addLayout(custom_option_layout)
-        
-        # 为自定义单选按钮分配一个唯一的ID
-        # ID = 预设选项的数量 (如果预设选项从0开始编号，这个ID就是下一个可用的)
-        custom_radio_id = len(self.project_desc_options)
-        self.project_desc_button_group.addButton(self.custom_desc_radio_button, custom_radio_id)
-        
-        project_desc_groupbox.setLayout(project_desc_main_layout)
-        top_section_layout.addWidget(project_desc_groupbox, 2)
-        
-        # 连接按钮组的信号，以处理自定义输入框的启用/禁用和文本填充
-        self.project_desc_button_group.buttonClicked[int].connect(self._handle_project_desc_selection_changed)
-        # --- 结束项目介绍部分修改 ---
-        
-        main_layout.addLayout(top_section_layout)
+    else:
+        print("无效输入。请输入 1, 2, 或 3。")
 
-        # 文件块区域
-        self.file_blocks_container_widget = QWidget()
-        self.file_blocks_layout = QHBoxLayout(self.file_blocks_container_widget)
-        self.file_blocks_layout.setContentsMargins(0,0,0,0)
-        self.file_blocks_layout.setSpacing(5)
-        second_section_wrapper_layout = QHBoxLayout()
-        second_section_wrapper_layout.addWidget(self.file_blocks_container_widget, 1)
-        self.add_file_block_button = QPushButton("+")
-        self.add_file_block_button.setToolTip("增加文件引入块")
-        self.add_file_block_button.setFixedSize(30, 30)
-        self.add_file_block_button.clicked.connect(lambda: self._add_file_block_widget(add_to_list_ref=True))
-        add_button_layout = QVBoxLayout()
-        add_button_layout.addWidget(self.add_file_block_button)
-        add_button_layout.addStretch()
-        second_section_wrapper_layout.addLayout(add_button_layout)
-        main_layout.addLayout(second_section_wrapper_layout)
-
-        for _ in range(3): self._add_file_block_widget(add_to_list_ref=True)
-
-        # Prompt指令区域
-        bottom_section_layout = QVBoxLayout()
-        bottom_section_layout.addWidget(QLabel("最终Prompt指令:"))
-        self.prompt_input = QTextEdit()
-        self.prompt_input.setPlaceholderText("例如：我现在需要制作底部tab里的“资产”页面...")
-        self.prompt_input.setMinimumHeight(100)
-        self.prompt_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        bottom_section_layout.addWidget(self.prompt_input)
-        self.generate_button = QPushButton("生成最终文本并保存记录")
-        self.generate_button.setFixedHeight(40)
-        self.generate_button.clicked.connect(self.generate_and_save_output)
-        generate_button_wrapper = QHBoxLayout()
-        generate_button_wrapper.addStretch()
-        generate_button_wrapper.addWidget(self.generate_button)
-        bottom_section_layout.addLayout(generate_button_wrapper)
-        main_layout.addLayout(bottom_section_layout)
-
-        main_layout.setStretchFactor(top_buttons_layout, 0)
-        main_layout.setStretchFactor(top_section_layout, 0)
-        main_layout.setStretchFactor(second_section_wrapper_layout, 1)
-        main_layout.setStretchFactor(bottom_section_layout, 0)
-
-        # 初始化项目介绍部分的状态
-        if self.project_desc_options: # 如果有预设选项，默认选中第一个
-            first_preset_button = self.project_desc_button_group.button(0)
-            if first_preset_button:
-                first_preset_button.setChecked(True)
-                # 触发一次处理函数，以设置自定义输入框的初始状态和文本
-                self._handle_project_desc_selection_changed(0) 
-        else: # 没有预设选项，默认选中自定义
-            self.custom_desc_radio_button.setChecked(True)
-            self._handle_project_desc_selection_changed(custom_radio_id)
-
-
-    def _clear_all_file_blocks_ui(self):
-        while self.file_blocks_layout.count():
-            child = self.file_blocks_layout.takeAt(0)
-            if child.widget(): child.widget().deleteLater()
-
-    def _add_file_block_widget(self, add_to_list_ref=False, file_data=None):
-        file_block = FileBlockWidget()
-        file_block.delete_requested.connect(self._handle_delete_file_block)
-        if file_data: file_block.load_data(file_data.get("path"), file_data.get("content"))
-        self.file_blocks_layout.addWidget(file_block)
-        if add_to_list_ref: self.file_blocks.append(file_block)
-        return file_block
-
-    def _handle_delete_file_block(self, block_to_delete):
-        if block_to_delete in self.file_blocks: self.file_blocks.remove(block_to_delete)
-        self.file_blocks_layout.removeWidget(block_to_delete)
-        block_to_delete.deleteLater()
-
-    def show_history_dialog(self):
-        history_data = self._load_history_from_file()
-        if not history_data:
-            QMessageBox.information(self, "无历史记录", "目前没有已保存的历史记录。")
-            return
-        dialog = HistoryDialog(history_data, self)
-        dialog.record_selected.connect(self.load_record_into_ui)
-        dialog.exec_()
-
-    def load_record_into_ui(self, record_data):
-        self.project_name_input.setText(record_data.get("project_name", ""))
-        
-        saved_desc = record_data.get("project_desc", "").strip()
-        found_preset = False
-        
-        # 尝试匹配预设选项
-        for radio_button, preset_text in self.project_desc_radio_buttons_map.items():
-            if preset_text == saved_desc:
-                radio_button.setChecked(True)
-                # self._handle_project_desc_selection_changed 将处理 custom_desc_input
-                found_preset = True
-                break
-        
-        if not found_preset:
-            # 如果描述不为空且不匹配任何预设，则认为是自定义的
-            if saved_desc:
-                self.custom_desc_radio_button.setChecked(True)
-                self.custom_desc_input.setText(saved_desc) 
-                # self._handle_project_desc_selection_changed 将处理 custom_desc_input.setEnabled
-            else: # 描述为空，默认选中第一个预设（如果存在）或自定义（如果无预设）
-                if self.project_desc_options:
-                    first_preset_button = self.project_desc_button_group.button(0)
-                    if first_preset_button: first_preset_button.setChecked(True)
-                else:
-                    self.custom_desc_radio_button.setChecked(True)
-                self.custom_desc_input.clear() # 清空自定义输入
-
-        # 触发一次处理函数以确保UI状态（如custom_input的enable/disable和文本）正确同步
-        current_checked_button = self.project_desc_button_group.checkedButton()
-        if current_checked_button:
-            button_id = self.project_desc_button_group.id(current_checked_button)
-            self._handle_project_desc_selection_changed(button_id)
-
-        self.prompt_input.setPlainText(record_data.get("final_prompt", ""))
-        self._clear_all_file_blocks_ui()
-        self.file_blocks.clear()
-        loaded_files_data = record_data.get("files", [])
-        if loaded_files_data:
-            for file_info in loaded_files_data:
-                new_block = self._add_file_block_widget(add_to_list_ref=False, file_data=file_info)
-                self.file_blocks.append(new_block)
-        num_to_add = 3 - len(self.file_blocks)
-        if num_to_add > 0:
-            for _ in range(num_to_add): self._add_file_block_widget(add_to_list_ref=True)
-        QMessageBox.information(self, "加载完成", f"记录 '{record_data.get('id')}' 已加载。")
-
-    def generate_and_save_output(self):
-        project_name = self.project_name_input.text().strip()
-        
-        # 获取项目介绍
-        project_desc = ""
-        checked_radio_button = self.project_desc_button_group.checkedButton()
-        if checked_radio_button == self.custom_desc_radio_button:
-            project_desc = self.custom_desc_input.text().strip()
-            if not project_desc: # 如果自定义选项被选中但内容为空
-                QMessageBox.warning(self, "信息不完整", "自定义项目介绍不能为空。")
-                return
-        elif checked_radio_button in self.project_desc_radio_buttons_map:
-            project_desc = self.project_desc_radio_buttons_map[checked_radio_button]
-        else: # Fallback, 理论上QButtonGroup保证有选中，但以防万一
-            if self.project_desc_options: # 尝试默认第一个预设
-                 project_desc = self.project_desc_options[0]
-            # 如果连预设都没有，project_desc会是空字符串，后续检查会捕获
-
-        final_prompt = self.prompt_input.toPlainText().strip()
-
-        if not project_name:
-            QMessageBox.warning(self, "信息不完整", "请输入项目名称。")
-            return
-        if not project_desc: # 确保项目介绍不为空
-            QMessageBox.warning(self, "信息不完整", "请选择或输入项目介绍。")
-            return
-
-        current_record = {
-            "id": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "project_name": project_name,
-            "project_desc": project_desc,
-            "files": [],
-            "final_prompt": final_prompt
-        }
-        file_tree_lines = []
-        valid_file_infos_for_output = []
-        current_ui_file_blocks = [self.file_blocks_layout.itemAt(i).widget() for i in range(self.file_blocks_layout.count()) if isinstance(self.file_blocks_layout.itemAt(i).widget(), FileBlockWidget)]
-        for block_widget in current_ui_file_blocks:
-            path, filename, content = block_widget.get_file_info()
-            if content.strip() or (path and path not in ["未选择文件", "路径未记录"]):
-                current_record["files"].append({"path": path, "filename": filename, "content": content})
-                if path and path not in ["未选择文件", "路径未记录"]:
-                    file_tree_lines.append(f"  ├── {filename}")
-                    valid_file_infos_for_output.append({"path": path, "content": content})
-                elif content.strip() and filename != "未知文件":
-                    file_tree_lines.append(f"  ├── {filename} (无路径, 仅内容)")
-                    valid_file_infos_for_output.append({"path": f"{filename} (内容)", "content": content})
-        self._save_record_to_file(current_record)
-        final_builder = [project_desc]
-        tree_string = "\n".join(file_tree_lines) if file_tree_lines else ""
-        final_builder.append(f'\n"{project_name}"' + (f'\n{tree_string}' if tree_string else ""))
-        for info in valid_file_infos_for_output:
-            if info["path"].strip() or info["content"].strip():
-                 final_builder.append(f'\n\n{info["path"]}\n“{info["content"]}”；')
-        if final_prompt: final_builder.append(f'\n\n{final_prompt}')
-        final_text = "".join(final_builder)
-        output_dialog = OutputDialog(final_text, self)
-        output_dialog.exec_()
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    history_dir = os.path.dirname(HISTORY_FILE)
-    if history_dir and not os.path.exists(history_dir):
-        try: os.makedirs(history_dir)
-        except OSError as e: print(f"警告: 无法创建历史记录目录 {history_dir}: {e}")
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
+# --- 程序入口 ---
+if __name__ == "__main__":
+    main()

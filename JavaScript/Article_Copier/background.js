@@ -905,6 +905,13 @@ function extractAndCopy() {
                   altText = img.alt || 'wsj_image';
                 }
 
+                // --- 新增逻辑：为默认文件名添加时间戳 ---
+                if (altText === 'wsj_image') {
+                  const seconds = new Date().getSeconds(); // 获取当前秒数 (0-59)
+                  altText = `wsj_image-${seconds}`; // 拼接成新名称，如 "wsj_image-46"
+                }
+                // --- 新增逻辑结束 ---
+
                 const processFileName = (text) => {
                   text = text.replace(/[/\\?%*:|"<>]/g, '-')
                     .replace(/\s+/g, ' ')
@@ -1015,7 +1022,9 @@ function extractAndCopy() {
           });
 
         if (figures.length === 0) {
-          chrome.runtime.sendMessage({ action: 'noImages' });
+          chrome.runtime.sendMessage({
+            action: 'noImages'
+          });
         } else {
           figures.forEach(figure => {
             const img = figure.querySelector('img');
@@ -1057,6 +1066,15 @@ function extractAndCopy() {
               if (imageDescription) {
                 // 使用图片描述作为文件名,替换非法字符,并加上时间戳
                 filename = `${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+
+                // 【新增逻辑】检查文件名是否以特定前缀开头，如果是，则添加秒数时间戳
+                if (filename.startsWith('Photograph- ') || filename.startsWith('Chart- ')) {
+                  const seconds = now.getSeconds();
+                  const namePart = filename.substring(0, filename.lastIndexOf('.'));
+                  const extensionPart = filename.substring(filename.lastIndexOf('.'));
+                  filename = `${namePart}-${seconds}${extensionPart}`;
+                }
+
               } else {
                 // 如果没有描述,使用image加时间戳
                 filename = `economist-image-${timestamp}.${fileExtension}`;

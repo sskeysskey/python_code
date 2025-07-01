@@ -405,6 +405,15 @@ def process_news_source(source_name, old_file_path, today_html_path):
 if __name__ == "__main__":
     today_html_path = "/Users/yanzhang/Documents/News/today_eng.html"
     
+    # 新增：处理FT
+    print("\nStarting FT processing...")
+    open_webpage_and_monitor_ft()
+    process_news_source(
+        "FT", 
+        "/Users/yanzhang/Documents/News/backup/site/ft.html",
+        today_html_path
+    )
+
     # 处理WSJ
     print("\nStarting WSJ processing...")
     open_webpage_and_monitor_wsj()
@@ -429,15 +438,6 @@ if __name__ == "__main__":
     process_news_source(
         "Reuters", 
         "/Users/yanzhang/Documents/News/backup/site/reuters.html",
-        today_html_path
-    )
-    
-    # 新增：处理FT
-    print("\nStarting FT processing...")
-    open_webpage_and_monitor_ft()
-    process_news_source(
-        "FT", 
-        "/Users/yanzhang/Documents/News/backup/site/ft.html",
         today_html_path
     )
 

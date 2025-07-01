@@ -184,16 +184,27 @@ class FileBlockWidget(QWidget):
         path_layout = QHBoxLayout()
         self.path_button = QPushButton("选择文件")
         self.path_button.clicked.connect(self.select_file)
-        self.path_label = ElidedLabel("未选择文件")
-        self.path_label.setWordWrap(True)
-        self.path_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        self.path_label.setToolTip("文件路径")
+
+        # --- 修改开始: 将 ElidedLabel 替换为 QLineEdit ---
+        # 原来的 ElidedLabel 只能显示文本，无法编辑。
+        # 新的 QLineEdit 允许用户直接输入或粘贴文件路径。
+        self.path_input = QLineEdit()
+        self.path_input.setPlaceholderText("输入/粘贴路径后按Enter加载, 或直接编辑下方内容")
+        # 当用户在 QLineEdit 中完成编辑（按Enter或失去焦点）时，会触发 editingFinished 信号。
+        # 我们将这个信号连接到一个新的处理函数 _on_path_manually_entered。
+        self.path_input.editingFinished.connect(self._on_path_manually_entered)
+        # --- 修改结束 ---
+
         self.delete_button = QPushButton("X")
         self.delete_button.setFixedSize(32, 22)
         self.delete_button.setToolTip("删除此文件块")
         self.delete_button.clicked.connect(self._request_delete_self)
         path_layout.addWidget(self.path_button)
-        path_layout.addWidget(self.path_label, 1)
+        
+        # --- 修改开始: 将新的 path_input 添加到布局中 ---
+        path_layout.addWidget(self.path_input, 1) # 使用 self.path_input 替代 self.path_label
+        # --- 修改结束 ---
+
         path_layout.addWidget(self.delete_button)
         layout.addLayout(path_layout)
         self.content_edit = FileContentTextEdit()
@@ -206,12 +217,28 @@ class FileBlockWidget(QWidget):
     def _request_delete_self(self):
         self.delete_requested.emit(self)
 
-    # --- 修改点 2: 重写 select_file 方法 ---
-    # 现在它只负责打开多文件选择对话框，并发出带有路径列表的信号
+    # --- 修改开始: 新增方法，处理手动输入的路径 ---
+    def _on_path_manually_entered(self):
+        """
+        当用户在路径输入框中完成编辑时（例如按回车），此方法被调用。
+        """
+        path = self.path_input.text().strip()
+        # 移除可能存在于macOS路径粘贴中的 "file://" 前缀
+        if path.startswith("file://"):
+            path = path[7:]
+            
+        # 检查路径是否为一个有效的文件
+        if path and os.path.isfile(path):
+            # 如果是有效文件，则调用现有的 populate_with_file 方法加载其内容
+            self.populate_with_file(path)
+        elif not path:
+            # 如果用户清空了路径，我们也清空文件路径和内容
+            self.file_path = None
+            self.content_edit.clear()
+            self.original_content_on_load = ""
+    # --- 修改结束 ---
+
     def select_file(self):
-        """
-        打开一个文件对话框以允许多选，然后发出一个包含所有选定文件路径的信号。
-        """
         global LAST_FILE_SELECTION_PATH
         start_path = LAST_FILE_SELECTION_PATH
         if not os.path.exists(start_path):
@@ -246,9 +273,10 @@ class FileBlockWidget(QWidget):
         LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
         self.file_path = f_path
         
-        # 使用我们自定义的 ElidedLabel 来显示路径
-        self.path_label.setText(f_path)
-        self.path_label.setToolTip(f_path)
+        # --- 修改开始: 更新 QLineEdit 的文本而不是 ElidedLabel ---
+        self.path_input.setText(f_path)
+        self.path_input.setToolTip(f_path)
+        # --- 修改结束 ---
         
         _, file_extension = os.path.splitext(f_path)
         
@@ -271,21 +299,36 @@ class FileBlockWidget(QWidget):
 
     def get_file_info(self):
         filename = "未知文件"
-        current_path_text = self.path_label.text()
+        # --- 修改开始: 从 QLineEdit 获取路径文本 ---
+        current_path_text = self.path_input.text().strip()
+        # --- 修改结束 ---
+
         if self.file_path:
             filename = os.path.basename(self.file_path)
-        elif current_path_text not in ["未选择文件", "路径未记录"]:
+        # --- 修改开始: 调整逻辑以适应 QLineEdit ---
+        # 如果 self.file_path 未设置（例如，用户手动输入但未加载成功，或直接粘贴内容），
+        # 我们尝试从输入框的文本中推断文件名。
+        elif current_path_text:
             filename = os.path.basename(current_path_text)
+        # --- 修改结束 ---
+
         content = self.content_edit.toPlainText()
-        actual_path = self.file_path if self.file_path else (current_path_text if current_path_text not in ["未选择文件", "路径未记录"] else "")
+        # --- 修改开始: 确定实际路径 ---
+        # actual_path 优先使用 self.file_path (通过成功加载文件设置)
+        # 否则，使用用户在输入框中输入的文本
+        actual_path = self.file_path if self.file_path else current_path_text
+        # --- 修改结束 ---
         return actual_path, filename, content
 
     def load_data(self, path_text, content_text):
         self.file_path = path_text
-        self.path_label.setText(path_text if path_text else "路径未记录")
-        self.path_label.setToolTip(path_text if path_text else "")
+        # --- 修改开始: 加载历史记录时，填充 QLineEdit ---
+        self.path_input.setText(path_text if path_text else "")
+        self.path_input.setToolTip(path_text if path_text else "")
+        # --- 修改结束 ---
         self.content_edit.setPlainText(content_text)
         self.original_content_on_load = content_text
+
 
 # --- 输出对话框 ---
 class OutputDialog(QDialog):
@@ -409,9 +452,15 @@ class HistoryDialog(QDialog):
         if files_in_record:
             preview_lines.append("--- 文件列表 ---")
             for file_entry in files_in_record:
-                filename = file_entry.get("filename", "未知文件")
+                # --- 修改开始: 预览时优先显示文件名，其次是路径 ---
+                filename = file_entry.get("filename")
+                if not filename or filename == "未知文件":
+                     path = file_entry.get("path")
+                     filename = os.path.basename(path) if path else "未知文件"
+                
                 if filename != "未知文件" or file_entry.get("content","").strip():
                     preview_lines.append(f"  • {filename}")
+                # --- 修改结束 ---
             preview_lines.append("")
         prompt_content = selected_record_data.get("final_prompt", "").strip()
         preview_lines.append("--- 最终Prompt指令 ---")
@@ -816,14 +865,19 @@ class MainWindow(QWidget):
         
         for block_widget in current_ui_file_blocks:
             path, filename, content = block_widget.get_file_info()
-            if content.strip() or (path and path not in ["未选择文件", "路径未记录"]):
+            # --- 修改开始: 调整判断逻辑 ---
+            # 只要路径或内容不为空，就视为有效块
+            if path or content.strip():
                 current_record["files"].append({"path": path, "filename": filename, "content": content})
-                if path and path not in ["未选择文件", "路径未记录"]:
+                if path:
                     file_tree_lines.append(f"  ├── {filename}")
                     valid_file_infos_for_output.append({"path": path, "content": content})
-                elif content.strip() and filename != "未知文件":
-                    file_tree_lines.append(f"  ├── {filename} (无路径, 仅内容)")
-                    valid_file_infos_for_output.append({"path": f"{filename} (内容)", "content": content})
+                elif content.strip(): # 仅有内容，没有路径
+                    # 使用一个临时的名字，或允许用户在未来版本中指定
+                    temp_filename = "临时内容块" 
+                    file_tree_lines.append(f"  ├── {temp_filename} (仅内容)")
+                    valid_file_infos_for_output.append({"path": f"{temp_filename} (内容)", "content": content})
+            # --- 修改结束 ---
         self._save_record_to_file(current_record)
         final_builder = [project_desc]
         tree_string = "\n".join(file_tree_lines) if file_tree_lines else ""

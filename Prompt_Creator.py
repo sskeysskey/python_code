@@ -208,6 +208,7 @@ class FileBlockWidget(QWidget):
 
     # --- 修改点 2: 重写 select_file 方法 ---
     # 现在它只负责打开多文件选择对话框，并发出带有路径列表的信号
+    # b.py 中 FileBlockWidget 类下的新方法
     def select_file(self):
         """
         打开一个文件对话框以允许多选，然后发出一个包含所有选定文件路径的信号。
@@ -222,6 +223,11 @@ class FileBlockWidget(QWidget):
         f_paths, _ = QFileDialog.getOpenFileNames(self, "选择一个或多个文件", start_path, f"支持的文件 ({formats});;所有文件 (*)")
         
         if f_paths:
+            # --- 这是新增的核心逻辑 ---
+            # 获取第一个选中文件的目录，并更新全局变量
+            LAST_FILE_SELECTION_PATH = os.path.dirname(f_paths[0])
+            # -------------------------
+
             # 发射信号，将选中的文件路径列表传递出去
             self.files_selected.emit(f_paths)
 
@@ -233,6 +239,8 @@ class FileBlockWidget(QWidget):
         global LAST_FILE_SELECTION_PATH
         if not f_path: return
 
+        # 注意：这里的更新是可选的了，因为 select_file 已经更新了。
+        # 但保留它也无害，当从历史记录加载文件时，它能确保路径正确更新。
         LAST_FILE_SELECTION_PATH = os.path.dirname(f_path)
         self.file_path = f_path
         

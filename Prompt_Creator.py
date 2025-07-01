@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QCheckBox, QDialogButtonBox, QListWidget, QListWidgetItem,
     QSplitter, QAbstractItemView, QRadioButton, QButtonGroup, QGroupBox
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer, QSettings
 from PyQt5.QtGui import QTextDocument, QTextCursor, QKeySequence, QPainter
 
 class ElidedLabel(QLabel):
@@ -208,7 +208,6 @@ class FileBlockWidget(QWidget):
 
     # --- 修改点 2: 重写 select_file 方法 ---
     # 现在它只负责打开多文件选择对话框，并发出带有路径列表的信号
-    # b.py 中 FileBlockWidget 类下的新方法
     def select_file(self):
         """
         打开一个文件对话框以允许多选，然后发出一个包含所有选定文件路径的信号。
@@ -219,16 +218,19 @@ class FileBlockWidget(QWidget):
             start_path = os.path.expanduser("~")
         
         formats = "*.swift *.py *.html *.css *.js *.scpt *.txt *.json *.csv *.db"
-        # 使用 getOpenFileNames 允许多文件选择
         f_paths, _ = QFileDialog.getOpenFileNames(self, "选择一个或多个文件", start_path, f"支持的文件 ({formats});;所有文件 (*)")
         
         if f_paths:
-            # --- 这是新增的核心逻辑 ---
-            # 获取第一个选中文件的目录，并更新全局变量
+            # 更新全局变量
             LAST_FILE_SELECTION_PATH = os.path.dirname(f_paths[0])
-            # -------------------------
+            
+            # --- 新增代码：保存新路径到设置 ---
+            # 同样使用之前定义的名字来获取同一个 QSettings 对象
+            settings = QSettings("MyCustomTools", "PromptGeneratorApp")
+            settings.setValue("last_path", LAST_FILE_SELECTION_PATH)
+            # --- 新增代码结束 ---
 
-            # 发射信号，将选中的文件路径列表传递出去
+            # 发射信号
             self.files_selected.emit(f_paths)
 
     # --- 修改点 3: 新增方法，用于根据单个文件路径填充本控件的内容 ---
@@ -462,6 +464,23 @@ class HistoryDialog(QDialog):
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
+
+        # --- 新增代码：程序启动时加载设置 ---
+        global LAST_FILE_SELECTION_PATH
+        # 创建一个 QSettings 对象。建议提供公司/组织名和应用名，以创建唯一的存储位置。
+        settings = QSettings("MyCustomTools", "PromptGeneratorApp") 
+        
+        # 读取名为 "last_path" 的设置项。如果不存在，则使用 DEFAULT_FILE_SELECTION_PATH 作为默认值。
+        saved_path = settings.value("last_path", DEFAULT_FILE_SELECTION_PATH)
+
+        # 检查保存的路径是否仍然有效（例如，文件夹未被删除）
+        if os.path.isdir(saved_path):
+            LAST_FILE_SELECTION_PATH = saved_path
+        else:
+            # 如果路径无效，则退回到默认路径
+            LAST_FILE_SELECTION_PATH = DEFAULT_FILE_SELECTION_PATH
+        # --- 新增代码结束 ---
+
         self.file_blocks = []
         self.project_desc_button_group = QButtonGroup(self)
         # 预设的项目介绍选项

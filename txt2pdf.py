@@ -4,7 +4,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib import colors
 from PIL import Image
-from datetime import datetime
+from datetime import datetime, timedelta # <--- 新增导入
 import re
 import os
 import glob
@@ -12,7 +12,6 @@ import shutil
 import math
 import json
 from urllib.parse import urlsplit, urlunsplit
-import subprocess
 from collections import defaultdict
 
 MAJOR_SITES = {s.upper() for s in (
@@ -799,68 +798,59 @@ def generate_news_json(news_directory, today):
         json.dump(data, fp, ensure_ascii=False, indent=4)
     print(f"\n已生成 JSON 文件: {out_path}")
 
-def backup_news_assets():
-    # 获取当前日期作为时间戳(格式:YYMMDD)
+def backup_news_assets(local_dir): # <--- 修改函数签名
     timestamp = datetime.now().strftime("%y%m%d")
     
     # 源目录和备份目录
     src_dir = "/Users/yanzhang/Downloads/news_images"
     backup_dir = "/Users/yanzhang/Downloads/backup"
     
-    # 本地服务器目标目录
-    local_dir = "/Users/yanzhang/LocalServer/Resources/ONews"
+    os.makedirs(backup_dir, exist_ok=True)
+    os.makedirs(local_dir, exist_ok=True)
     
-    # 确保所有需要的目录存在
-    for d in (backup_dir, local_dir, os.path.dirname(src_dir), os.path.dirname(local_dir)):
-        if not os.path.exists(d):
-            os.makedirs(d)
-    
-    # --------- 备份 news_images 目录 ---------
     if os.path.exists(src_dir):
         # 1) 备份到 Downloads/backup
         backup_img_target = os.path.join(backup_dir, f"news_images_{timestamp}")
         if os.path.exists(backup_img_target):
             shutil.rmtree(backup_img_target)
         shutil.copytree(src_dir, backup_img_target)
-        print(f"Directory backed up to: {backup_img_target}")
+        print(f"图片目录已备份到: {backup_img_target}")
         
         # 2) 备份到 LocalServer
         local_img_target = os.path.join(local_dir, f"news_images_{timestamp}")
         if os.path.exists(local_img_target):
             shutil.rmtree(local_img_target)
         shutil.copytree(src_dir, local_img_target)
-        print(f"Directory also backed up to: {local_img_target}")
+        print(f"图片目录也已备份到: {local_img_target}")
         
         # 3) 删除原目录
         shutil.rmtree(src_dir)
-        print(f"Original directory removed: {src_dir}")
+        print(f"已删除原始图片目录: {src_dir}")
     else:
-        print(f"Source directory not found: {src_dir}")
+        print(f"未找到源图片目录: {src_dir}")
     
     # --------- 备份 onews.json 文件 ---------
     src_file = "/Users/yanzhang/Documents/News/onews.json"
     backup_file_dir = "/Users/yanzhang/Documents/News/done"
     
-    # 确保备份目录存在
-    if not os.path.exists(backup_file_dir):
-        os.makedirs(backup_file_dir)
+    os.makedirs(backup_file_dir, exist_ok=True)
     
     if os.path.exists(src_file):
         # 1) 备份到 Documents/News/done
         backup_file_target = os.path.join(backup_file_dir, f"onews_{timestamp}.json")
         shutil.copy2(src_file, backup_file_target)
-        print(f"File backed up to: {backup_file_target}")
+        print(f"JSON文件已备份到: {backup_file_target}")
         
         # 2) 备份到 LocalServer
         local_file_target = os.path.join(local_dir, f"onews_{timestamp}.json")
         shutil.copy2(src_file, local_file_target)
-        print(f"File also backed up to: {local_file_target}")
+        print(f"JSON文件也已备份到: {local_file_target}")
         
         # 3) 删除原文件
         os.remove(src_file)
-        print(f"Original file removed: {src_file}")
+        print(f"已删除原始JSON文件: {src_file}")
     else:
-        print(f"Source file not found: {src_file}")
+        print(f"未找到源JSON文件: {src_file}")
     
     # --------- 更新 version.json ---------
     update_version_json(local_dir, timestamp)
@@ -893,14 +883,14 @@ def update_version_json(local_dir, timestamp):
     for e in entries:
         if e["name"] not in existing:
             data["files"].append(e)
-            print(f"Added to version.json: {e}")
+            print(f"已添加到 version.json: {e['name']}")
         else:
-            print(f"Skipped (already in version.json): {e['name']}")
+            print(f"跳过 (已存在于 version.json): {e['name']}")
     
     # 写回 version.json（格式化，保留缩进）
     with open(version_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"version.json updated at: {version_path}")
+        print(f"version.json 已更新: {version_path}")
 
 def find_latest_sources(directory, prefix, suffix, count):
     """
@@ -1004,12 +994,103 @@ def merge_image_dirs(source_dirs, target_dir):
 
     print(f"图片目录合并完成！共处理了 {len(source_dirs)} 个源目录。")
 
+# --- 新增功能：清理旧的资产 ---
+def prune_old_assets(local_dir, days_to_keep):
+    """
+    清理 version.json 和本地目录中超过指定天数的旧文件和目录。
+
+    Args:
+        local_dir (str): 资产所在的目录 (例如 /Users/yanzhang/LocalServer/Resources/ONews)。
+        days_to_keep (int): 文件和目录保留的天数。
+    """
+    version_path = os.path.join(local_dir, "version.json")
+    if not os.path.exists(version_path):
+        print(f"未找到 version.json，跳过清理。")
+        return
+
+    print(f"\n开始清理超过 {days_to_keep} 天的旧资产...")
+
+    try:
+        with open(version_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"读取 version.json 时出错: {e}。无法进行清理。")
+        return
+
+    # 计算截止日期
+    cutoff_date = datetime.now() - timedelta(days=days_to_keep)
+    
+    files_to_keep = []
+    files_deleted_count = 0
+    
+    # 正则表达式用于从文件名中提取 YYMMDD 日期
+    date_pattern = re.compile(r'_(\d{6})')
+
+    for item in data.get("files", []):
+        item_name = item.get("name", "")
+        match = date_pattern.search(item_name)
+        
+        if not match:
+            # 如果文件名不符合 'name_YYMMDD' 格式，默认保留
+            print(f"警告: '{item_name}' 不含标准日期戳，将予以保留。")
+            files_to_keep.append(item)
+            continue
+            
+        date_str = match.group(1)
+        try:
+            file_date = datetime.strptime(date_str, "%y%m%d")
+        except ValueError:
+            # 日期格式错误，保留并警告
+            print(f"警告: '{item_name}' 中的日期 '{date_str}' 格式错误，将予以保留。")
+            files_to_keep.append(item)
+            continue
+
+        if file_date < cutoff_date:
+            # 此文件/目录已过期，需要删除
+            print(f"发现过期资产: {item_name} (日期: {file_date.strftime('%Y-%m-%d')})")
+            path_to_delete = os.path.join(local_dir, item_name)
+            
+            try:
+                if item.get("type") == "json" and os.path.isfile(path_to_delete):
+                    os.remove(path_to_delete)
+                    print(f"  - 已删除文件: {path_to_delete}")
+                    files_deleted_count += 1
+                elif item.get("type") == "images" and os.path.isdir(path_to_delete):
+                    shutil.rmtree(path_to_delete)
+                    print(f"  - 已删除目录: {path_to_delete}")
+                    files_deleted_count += 1
+                elif not os.path.exists(path_to_delete):
+                    print(f"  - 警告: 资产已不存在于磁盘，仅从 version.json 中移除。")
+                else:
+                    print(f"  - 警告: 类型未知或路径类型不匹配，跳过删除磁盘文件。")
+
+            except OSError as e:
+                print(f"  - 错误: 删除 '{path_to_delete}' 时失败: {e}")
+        else:
+            # 文件/目录未过期，保留
+            files_to_keep.append(item)
+
+    if files_deleted_count > 0 or len(files_to_keep) != len(data.get("files", [])):
+        # 如果有任何变动，则更新 version.json
+        data["files"] = files_to_keep
+        try:
+            with open(version_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            print(f"\nversion.json 已更新，移除了过期的条目。")
+        except IOError as e:
+            print(f"错误: 无法写回更新后的 version.json: {e}")
+    else:
+        print("\n没有找到需要清理的过期资产。")
+
+
 if __name__ == "__main__":
     today = datetime.now().strftime("%y%m%d")
     news_directory = "/Users/yanzhang/Documents/News/"
     article_copier_path = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
     image_dir = f"/Users/yanzhang/Downloads/news_images"
     downloads_path = '/Users/yanzhang/Downloads'
+    # 定义本地服务器资源目录，方便复用
+    local_server_dir = "/Users/yanzhang/LocalServer/Resources/ONews"
 
     # 1. 主要处理流程：TXT 转 PDF
     print("="*10 + " 1. 开始 TXT 转 PDF 处理 " + "="*10)
@@ -1046,10 +1127,17 @@ if __name__ == "__main__":
     move_article_copier_files(news_directory, news_directory)
     print("="*10 + " 完成移动 article_copier 文件 " + "="*10)
 
-    # 6. 新增：将所有处理过的 TXT 文件移动到 done 目录
-    print("\n" + "="*10 + " 7. 开始移动已处理的 TXT 文件 " + "="*10)
+    # 6. 将所有处理过的 TXT 文件移动到 done 目录
+    print("\n" + "="*10 + " 6. 开始移动已处理的 TXT 文件 " + "="*10)
     move_processed_txt_files(news_directory)
     print("="*10 + " 完成移动已处理的 TXT 文件 " + "="*10)
 
-    # 7. 新增：将news_images和onews.json备份到相应目录下
-    backup_news_assets()
+    # 7. 将news_images和onews.json备份到相应目录下并更新version.json
+    print("\n" + "="*10 + " 7. 开始备份核心资产 " + "="*10)
+    backup_news_assets(local_server_dir)
+    print("="*10 + " 完成备份核心资产 " + "="*10)
+
+    # 8. 新增：清理超过3天的旧文件和目录
+    print("\n" + "="*10 + " 8. 开始清理旧资产 " + "="*10)
+    prune_old_assets(local_server_dir, days_to_keep=3)
+    print("="*10 + " 完成清理旧资产 " + "="*10)

@@ -12,6 +12,7 @@ import shutil
 import math
 import json
 from urllib.parse import urlsplit, urlunsplit
+import subprocess
 from collections import defaultdict
 
 MAJOR_SITES = {s.upper() for s in (
@@ -542,9 +543,6 @@ def txt_to_pdf_with_formatting(txt_path, pdf_path, article_copier_path, image_di
         print(f"转换过程中出现错误: {str(e)}")
         return False
 
-# =====================================================================
-# ==================== 这是修改后的函数 ===============================
-# =====================================================================
 def process_all_files(directory, article_copier_path, image_dir):
     """
     仅将 News_*.txt 文件转换为 PDF，不移动源文件。
@@ -584,9 +582,6 @@ def process_all_files(directory, article_copier_path, image_dir):
     print(f"  跳过处理: {skipped} 个文件")
     print(f"  转换失败: {failed} 个文件")
 
-# =====================================================================
-# ==================== 这是新增的函数 ==================================
-# =====================================================================
 def move_processed_txt_files(directory):
     """
     将所有 News_*.txt 文件移动到 'done' 子目录中。
@@ -728,19 +723,22 @@ def generate_news_json(news_directory, today):
     扫描 News_*.txt、TodayCNH_*.html、article_copier_{today}.txt，
     生成分组的 JSON 并写入 news_<timestamp>.json。
     """
-    # 1. 解析 TodayCNH_*.html -> { norm_url: (site, topic) }
+    # 1. 解析 TodayCNH_*.html -> { norm_url: (site, topic, original_url) }
+    #    **改动**: cnh_map 中增加存储原始 URL
     cnh_map = {}
     for html_path in glob.glob(os.path.join(news_directory, f"TodayCNH_*.html")):
-        text = open(html_path, 'r', encoding='utf-8').read()
+        with open(html_path, 'r', encoding='utf-8') as f:
+            text = f.read()
         # 匹配 <tr>…<td>SITE</td>…<a href="URL">TITLE</a>
         for site, url, title in re.findall(
             r"<tr>.*?<td>\s*([^<]+)\s*</td>.*?<a\s+href=\"([^\"]+)\"[^>]*>([^<]+)</a>",
             text, re.S):
-            nu = normalize_url(url.strip())
+            original_url = url.strip()
+            nu = normalize_url(original_url)
             site = site.strip()
             # 这里把全/半角数字+逗号都去掉
             topic = re.sub(r'^[0-9０-９]+[、,，]\s*', '', title.strip())
-            cnh_map[nu] = (site, topic)
+            cnh_map[nu] = (site, topic, original_url) # 保存站点、主题和原始URL
 
     # 2. 解析 article_copier_{today}.txt -> { norm_url: [img1, img2, ...] }
     copier_path = os.path.join(news_directory, f"article_copier_{today}.txt")
@@ -756,7 +754,8 @@ def generate_news_json(news_directory, today):
     # 3. 组装 data
     data = {}
     for txt_path in glob.glob(os.path.join(news_directory, "News_*.txt")):
-        content = open(txt_path, 'r', encoding='utf-8').read()
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         entries = []
         current_url = None
         buf = []
@@ -781,11 +780,15 @@ def generate_news_json(news_directory, today):
             nu = normalize_url(url)
             if nu not in cnh_map:
                 continue
-            site, topic = cnh_map[nu]
+            
+            # **改动**: 从 cnh_map 中解包出原始 URL
+            site, topic, original_url_from_map = cnh_map[nu]
             imgs = url_images.get(nu, [])
 
+            # **改动**: 在最终的字典中添加 "url" 键值对
             data.setdefault(site, []).append({
                 "topic": topic,
+                "url": original_url_from_map, # 新增的URL字段
                 "article": article_text,
                 "images": imgs
             })
@@ -797,66 +800,107 @@ def generate_news_json(news_directory, today):
     print(f"\n已生成 JSON 文件: {out_path}")
 
 def backup_news_assets():
-    # 获取当前日期作为时间戳(格式:DDMMYY)
+    # 获取当前日期作为时间戳(格式:YYMMDD)
     timestamp = datetime.now().strftime("%y%m%d")
     
-    # 第一步:处理news_images目录
+    # 源目录和备份目录
     src_dir = "/Users/yanzhang/Downloads/news_images"
     backup_dir = "/Users/yanzhang/Downloads/backup"
     
-    # 确保backup目录存在
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
+    # 本地服务器目标目录
+    local_dir = "/Users/yanzhang/LocalServer/Resources/ONews"
     
+    # 确保所有需要的目录存在
+    for d in (backup_dir, local_dir, os.path.dirname(src_dir), os.path.dirname(local_dir)):
+        if not os.path.exists(d):
+            os.makedirs(d)
+    
+    # --------- 备份 news_images 目录 ---------
     if os.path.exists(src_dir):
-        # 复制第一份(保持原名)
-        first_copy = os.path.join(backup_dir, "news_images")
-        # 如果目标目录已存在，先删除
-        if os.path.exists(first_copy):
-            shutil.rmtree(first_copy)
-            print(f"Removed existing directory: {first_copy}")
-        shutil.copytree(src_dir, first_copy)
-        print(f"Directory backed up to: {first_copy}")
+        # 1) 备份到 Downloads/backup
+        backup_img_target = os.path.join(backup_dir, f"news_images_{timestamp}")
+        if os.path.exists(backup_img_target):
+            shutil.rmtree(backup_img_target)
+        shutil.copytree(src_dir, backup_img_target)
+        print(f"Directory backed up to: {backup_img_target}")
         
-        # 复制第二份(带时间戳)
-        second_copy = os.path.join(backup_dir, f"news_images_{timestamp}")
-        # 如果目标目录已存在，先删除
-        if os.path.exists(second_copy):
-            shutil.rmtree(second_copy)
-            print(f"Removed existing directory: {second_copy}")
-        shutil.copytree(src_dir, second_copy)
-        print(f"Directory backed up to: {second_copy}")
+        # 2) 备份到 LocalServer
+        local_img_target = os.path.join(local_dir, f"news_images_{timestamp}")
+        if os.path.exists(local_img_target):
+            shutil.rmtree(local_img_target)
+        shutil.copytree(src_dir, local_img_target)
+        print(f"Directory also backed up to: {local_img_target}")
         
-        # 删除原目录
+        # 3) 删除原目录
         shutil.rmtree(src_dir)
         print(f"Original directory removed: {src_dir}")
     else:
         print(f"Source directory not found: {src_dir}")
     
-    # 第二步:处理onews.json文件
+    # --------- 备份 onews.json 文件 ---------
     src_file = "/Users/yanzhang/Documents/News/onews.json"
     backup_file_dir = "/Users/yanzhang/Documents/News/done"
     
-    # 确保backup目录存在
+    # 确保备份目录存在
     if not os.path.exists(backup_file_dir):
         os.makedirs(backup_file_dir)
     
     if os.path.exists(src_file):
-        # 复制第一份(保持原名) - shutil.copy2会自动覆盖已存在的文件
-        first_copy = os.path.join(backup_file_dir, "onews.json")
-        shutil.copy2(src_file, first_copy)
-        print(f"File backed up to: {first_copy}")
+        # 1) 备份到 Documents/News/done
+        backup_file_target = os.path.join(backup_file_dir, f"onews_{timestamp}.json")
+        shutil.copy2(src_file, backup_file_target)
+        print(f"File backed up to: {backup_file_target}")
         
-        # 复制第二份(带时间戳) - shutil.copy2会自动覆盖已存在的文件
-        second_copy = os.path.join(backup_file_dir, f"onews_{timestamp}.json")
-        shutil.copy2(src_file, second_copy)
-        print(f"File backed up to: {second_copy}")
+        # 2) 备份到 LocalServer
+        local_file_target = os.path.join(local_dir, f"onews_{timestamp}.json")
+        shutil.copy2(src_file, local_file_target)
+        print(f"File also backed up to: {local_file_target}")
         
-        # 删除原文件
+        # 3) 删除原文件
         os.remove(src_file)
         print(f"Original file removed: {src_file}")
     else:
         print(f"Source file not found: {src_file}")
+    
+    # --------- 更新 version.json ---------
+    update_version_json(local_dir, timestamp)
+
+
+def update_version_json(local_dir, timestamp):
+    """
+    读取 local_dir/version.json，向 files 数组追加本次
+    onews_*.json 和 news_images_* 记录，写回 version.json。
+    """
+    version_path = os.path.join(local_dir, "version.json")
+    
+    # 如果 version.json 不存在，则初始化一个空结构
+    if not os.path.exists(version_path):
+        data = {"version": "1.0", "files": []}
+    else:
+        with open(version_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    
+    # 准备要追加的条目
+    entries = [
+        {"name": f"onews_{timestamp}.json", "type": "json"},
+        {"name": f"news_images_{timestamp}",    "type": "images"}
+    ]
+    
+    # 已有条目名称集合，用于去重
+    existing = { item["name"] for item in data.get("files", []) }
+    
+    # 追加不重复的条目
+    for e in entries:
+        if e["name"] not in existing:
+            data["files"].append(e)
+            print(f"Added to version.json: {e}")
+        else:
+            print(f"Skipped (already in version.json): {e['name']}")
+    
+    # 写回 version.json（格式化，保留缩进）
+    with open(version_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f"version.json updated at: {version_path}")
 
 def find_latest_sources(directory, prefix, suffix, count):
     """

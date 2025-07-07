@@ -378,9 +378,11 @@ function extractAndCopy() {
           if (!caption) caption = img.alt.trim();
           if (!caption) caption = `ft-image-${Date.now()}-${idx}`;
 
+          // ★★★ 修改点 ★★★
+          // 2. 修改正则表达式，增加对'+'的过滤
           // 清洗成合法文件名，防重名
           let base = caption
-            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/[/\\?%*:|"<>+]/g, '') // 过滤掉非法字符以及+和-号
             .replace(/\s+/g, ' ')
             .substring(0, 200)
             .trim();
@@ -434,7 +436,7 @@ function extractAndCopy() {
       'main.dvz-content p.dropcap[class*="svelte-"]',
       // 针对新 "css--" 命名结构
       'main#dvz__mount div[class*="css--paragraph-wrapper"] > p',
-      // —— 新增：捕获列表项 —— //
+      // ---- 新增：捕获列表项 ---- //
       'li[data-component="unordered-list-item"]',
       'li[class*="media-ui-UnorderedList_item"]'
     ];
@@ -678,7 +680,7 @@ function extractAndCopy() {
                   .replace(/&nbsp;/g, ' ')
                   .replace(/Photograph(?:er)?[\s\S]*$/i, '')
                   .replace(/\s*(?:Source[-:–—]?)\s*.*$/i, '')
-                  .replace(/[/\\?%*:|"<>]/g, '-') // Remove invalid chars
+                  .replace(/[/\\?%*:|"<>+]/g, '-') // Remove invalid chars
                   .trim();
               };
 
@@ -913,7 +915,7 @@ function extractAndCopy() {
                 // --- 新增逻辑结束 ---
 
                 const processFileName = (text) => {
-                  text = text.replace(/[/\\?%*:|"<>]/g, '-')
+                  text = text.replace(/[/\\?%*:|"<>+]/g, '-')
                     .replace(/\s+/g, ' ')
                     .trim();
                   if (text.length > 200) {
@@ -1065,7 +1067,7 @@ function extractAndCopy() {
 
               if (imageDescription) {
                 // 使用图片描述作为文件名,替换非法字符,并加上时间戳
-                filename = `${imageDescription.replace(/[/\\?%*:|"<>]/g, '-')}.${fileExtension}`;
+                filename = `${imageDescription.replace(/[/\\?%*:|"<>+]/g, '-')}.${fileExtension}`;
 
                 // 【新增逻辑】检查文件名是否以特定前缀开头，如果是，则添加秒数时间戳
                 if (filename.startsWith('Photograph- ') || filename.startsWith('Chart- ')) {
@@ -1187,7 +1189,7 @@ function extractAndCopy() {
               // 生成文件名
               let filename;
               if (img.alt && img.alt.trim()) {
-                filename = `${img.alt.replace(/[/\\?%*:|"<>]/g, '-')}`;
+                filename = `${img.alt.replace(/[/\\?%*:|"<>+]/g, '-')}`;
               } else {
                 const timestamp = new Date().getTime();
                 filename = `technologyreview-image-${timestamp}`;
@@ -1338,7 +1340,7 @@ function extractAndCopy() {
             const ext = extMatch ? extMatch[1] : 'jpg';
 
             let filename = caption
-              ? caption.replace(/[/\\?%*:|"<>]/g, '-').substring(0, 180) // 缩短一点以防路径过长
+              ? caption.replace(/[/\\?%*:|"<>+]/g, '-').substring(0, 180) // 缩短一点以防路径过长
               : `reuters-image-${Date.now()}-${idx}`;
             filename = filename + '.' + ext;
 
@@ -1405,7 +1407,7 @@ function extractAndCopy() {
         }
         processedUrls.add(url);
 
-        // —— 针对图集页面的 Caption 提取 —————————————————————
+        // ---- 针对图集页面的 Caption 提取 ------------------------------------------
         let caption = '';
         // 先找 figcaption 里的 span
         const fig = img.closest('figure');
@@ -1425,7 +1427,7 @@ function extractAndCopy() {
         const extMatch = url.match(/\.(png|jpe?g|gif|webp)(\?|$)/i);
         const ext = extMatch ? extMatch[1] : 'jpg';
         let filename = caption
-          ? caption.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 180)
+          ? caption.replace(/[/\\?%*:|"<>+]/g, '-').slice(0, 180)
           : `reuters-pic-${Date.now()}-${idx}`;
         filename += '.' + ext;
 
@@ -1444,7 +1446,7 @@ function extractAndCopy() {
 
   // 处理 nytimes.com
   else if (window.location.hostname.includes("nytimes.com")) {
-    // —— 去掉 paywall overlay ——  
+    // ---- 去掉 paywall overlay ----  
     const gate = document.querySelector('[data-testid="vi-gateway-container"]');
     if (gate) gate.style.display = 'none';
 
@@ -1455,7 +1457,7 @@ function extractAndCopy() {
       return;
     }
 
-    // —— 等待正文段落载入 ——  
+    // ---- 等待正文段落载入 ----  
     const waitFor = (selector, timeout = 2000) => {
       return new Promise(resolve => {
         const start = Date.now();
@@ -1469,7 +1471,7 @@ function extractAndCopy() {
     };
     waitFor('section[name="articleBody"] p.css-at9mcl');
 
-    // —— 提取正文 ——  
+    // ---- 提取正文 ----  
     const bodySection = article.querySelector('section[name="articleBody"]');
     if (!bodySection) {
       chrome.runtime.sendMessage({ action: 'noImages' });
@@ -1495,7 +1497,7 @@ function extractAndCopy() {
       )
       .join('\n\n');
 
-    // —— 只有正文抓到才处理图片 ——  
+    // ---- 只有正文抓到才处理图片 ----  
     if (textContent) {
       // 原始图片块 selector
       const rawBlocks = Array.from(
@@ -1527,7 +1529,7 @@ function extractAndCopy() {
           let cap = block.querySelector('figcaption span')?.textContent
             || img.alt
             || `nytimes-${Date.now()}-${i}`;
-          cap = cap.replace(/[/\\?%*:|"<>]/g, '-').slice(0, 180).trim();
+          cap = cap.replace(/[/\\?%*:|"<>+]/g, '-').slice(0, 180).trim();
           let filename = `${cap}.jpg`;
           // 防重名
           let k = 1;
@@ -1539,7 +1541,7 @@ function extractAndCopy() {
         });
       }
 
-      // —— 复制正文 并返回 true ——  
+      // ---- 复制正文 并返回 true ----  
       const ta = document.createElement('textarea');
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
@@ -1666,7 +1668,7 @@ function extractAndCopy() {
 
           // 清洗文件名
           let filename = name
-            .replace(/[/\\?%*:|"<>]/g, '-')
+            .replace(/[/\\?%*:|"<>+]/g, '-')
             .replace(/\s+/g, '_')
             .replace(/[^\w.-]/g, '')
             .trim();
@@ -1789,7 +1791,7 @@ function extractAndCopy() {
             let baseName = captionText || img.alt.trim() || `nikkei-shorthand-${Date.now()}-${idx}`;
             baseName = baseName
               .replace(/\(Photo by [^)]+\)/ig, '') // 移除 "(Photo by...)"
-              .replace(/[/\\?%*:|"<>]/g, '-')
+              .replace(/[/\\?%*:|"<>+]/g, '-')
               .replace(/\s+/g, ' ')
               .substring(0, 180)
               .trim();
@@ -1853,7 +1855,7 @@ function extractAndCopy() {
 
             let baseName = captionText || img.alt.trim() || `img-${Date.now()}-${idx}`;
             baseName = baseName
-              .replace(/[/\\?%*:|"<>]/g, '-')
+              .replace(/[/\\?%*:|"<>+]/g, '-')
               .replace(/\s+/g, ' ')
               .substring(0, 180)
               .trim();

@@ -15,7 +15,8 @@ class ScreenDetector:
                  scroll_on_not_found_run1: bool = False,
                  x_offset: Optional[int] = None,
                  y_offset: Optional[int] = None,
-                 nth_match: int = 1):
+                 nth_match: int = 1,
+                 timeout_seconds: int = 590): # 新增 timeout_seconds 参数
         self.templates = []
         # clickValue 现在可以是 'left', 'right', 或 None
         self.clickValue = clickValue
@@ -23,9 +24,9 @@ class ScreenDetector:
         self.scroll_on_not_found_run1 = scroll_on_not_found_run1
         self.x_offset = x_offset
         self.y_offset = y_offset
-        self.nth_match = max(1, nth_match) # 确保 nth_match 至少为 1
-        
-        # 存储模板名称列表，用于判断是否有多个模板
+        self.nth_match = max(1, nth_match)
+        self.timeout_seconds = timeout_seconds # 存储超时时间
+
         if isinstance(template_names, str):
             self.template_name_list = [name.strip() for name in template_names.split(',')]
         else:
@@ -131,8 +132,8 @@ class ScreenDetector:
 
 
     def run1(self) -> str:
-        """优化的运行方法1，返回找到的图片名"""
-        timeout = time.time() + 590 # 约 9.8 分钟
+        # 使用 self.timeout_seconds 而不是硬编码的 590
+        timeout = time.time() + self.timeout_seconds
         
         while time.time() < timeout:
             template_name, location, shape = self.find_images_on_screen()
@@ -141,21 +142,18 @@ class ScreenDetector:
                 if self.clickValue:
                     self._perform_click(location, shape)
                 print(f"找到图片 {template_name} 位置: {location}")
-
-                # 如果有多个模板名被传入构造函数，打印特定格式信息
-                if len(self.template_name_list) > 1 : # 或者 self.templates
+                if len(self.template_name_list) > 1:
                     print(f"FOUND_IMAGE:{template_name}")
                 return template_name # 返回找到的第一个符合 nth_match 条件的模板名         
             else:
                 if self.scroll_on_not_found_run1:
-                    print("在 run1 中未找到图片，执行滚动操作 pyautogui.scroll(-80)")
+                    print("在 run1 中未找到图片，执行滚动操作 pyautogui.scroll(-120)")
                     pyautogui.scroll(-120)
                     sleep(0.5)
-            
-            # print("未找到任何目标图片，继续监控...") # 频繁打印可能过多，可以考虑减少频率
-            sleep(1) # 等待1秒再试
+            sleep(1)
         
-        print(f"在 {590} 秒内未找到图片，退出程序。")
+        # 返回 "TIMEOUT" 字符串，以便 AppleScript 可以检查
+        print(f"在 {self.timeout_seconds} 秒内未找到图片，退出程序。")
         return "TIMEOUT"
 
     def run2(self) -> None:
@@ -174,12 +172,12 @@ class ScreenDetector:
             print(f"找到图片 {template_name} 位置: {location}，已滚动。")
             sleep(1) # 操作后稍作等待
 
-def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Optional[int], Optional[int], int]:
+def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Optional[int], Optional[int], int, int]:
     """参数解析函数"""
     # 参数顺序: image_names, click_type, Opposite, [scroll_in_run1], [x_offset], [y_offset], [nth_match]
-    # 至少需要3个固定参数
+    # 返回元组中新增了 int 用于 timeout
     if len(sys.argv) < 4: # image_names, click_type, Opposite 是必需的
-        print("用法: python a.py <image_name1[,image_name2,...]> <click_type:true|false|right> <Opposite:true|false> [scroll_in_run1:true|false] [x_offset] [y_offset] [nth_match]")
+        print("用法: python a.py <image_name1[,image_name2,...]> <click_type:true|false|right> <Opposite:true|false> [scroll_in_run1:true|false] [x_offset] [y_offset] [nth_match] [timeout]")
         print("  click_type:")
         print("    true: 左键点击")
         print("    false: 不点击")
@@ -227,7 +225,9 @@ def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Opti
     y_offset: Optional[int] = None
     nth_match: int = 1 # 默认值
 
+    timeout_seconds: int = 590 # 默认超时时间
     # final_optional_args 包含 scroll_in_run1 之后的所有参数
+    
     final_optional_args = sys.argv[current_arg_index:]
 
     try:
@@ -240,6 +240,11 @@ def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Opti
             if final_optional_args[0]: x_offset = int(final_optional_args[0])
             if final_optional_args[1]: y_offset = int(final_optional_args[1])
             if final_optional_args[2]: nth_match = int(final_optional_args[2])
+        elif len(final_optional_args) >= 4: # 如果有三个或更多，认为是 x_offset, y_offset, nth_match
+            if final_optional_args[0]: x_offset = int(final_optional_args[0])
+            if final_optional_args[1]: y_offset = int(final_optional_args[1])
+            if final_optional_args[2]: nth_match = int(final_optional_args[2])
+            if final_optional_args[3]: timeout_seconds = int(final_optional_args[3])
     except ValueError as e:
         print(f"偏移量或 nth_match 参数值无效: {e}. 请确保它们是整数。")
         sys.exit(1)
@@ -248,10 +253,10 @@ def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Opti
         # 但保留它以防万一
         pass 
 
-    return image_names_str, clickValue, Opposite, scroll_in_run1, x_offset, y_offset, nth_match
+    return image_names_str, clickValue, Opposite, scroll_in_run1, x_offset, y_offset, nth_match, timeout_seconds
 
 if __name__ == '__main__':
-    args_tuple = parse_args() # (image_names_str, clickValue, Opposite, x_offset, y_offset, nth_match)
+    args_tuple = parse_args() # (image_names_str, clickValue, Opposite, x_offset, y_offset, nth_match, timeout)
     
     # print(f"Parsed args: {args_tuple}") # 调试用
 
@@ -263,7 +268,8 @@ if __name__ == '__main__':
         scroll_on_not_found_run1=args_tuple[3],
         x_offset=args_tuple[4],
         y_offset=args_tuple[5],
-        nth_match=args_tuple[6]
+        nth_match=args_tuple[6],
+        timeout_seconds=args_tuple[7] # 将解析出的 timeout 传递给类
     )
     
     try:
@@ -271,8 +277,8 @@ if __name__ == '__main__':
             detector.run2()
         else: # Opposite is False, run run1
             result = detector.run1()
-            # 如果需要基于 run1 的结果做进一步操作，可以在这里添加
-            # print(f"run1 返回: {result}")
+            # 打印结果，这样 AppleScript 的 "do shell script" 才能捕获到
+            print(result) 
     finally:
         # 清理模板列表中的图像数据（如果需要手动管理，但cv2图像通常由GC处理）
         # self.templates.clear() 实际上不需要，因为 detector 实例会被销毁

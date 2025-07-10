@@ -182,7 +182,6 @@ def main():
         "success": "/Users/yanzhang/Documents/python_code/Resource/poe_copy_success.png",
         "thumb": "/Users/yanzhang/Documents/python_code/Resource/poe_thumb.png",
         "copy": "/Users/yanzhang/Documents/python_code/Resource/poe_copy.png",
-        "kimi": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
     }
 
     # 读取所有模板图片，并存储在字典中
@@ -198,59 +197,45 @@ def main():
 
     found_copy = False
     while not found_copy:
-        location, shape = find_image_on_screen(templates["kimi"])
+        location, shape = find_image_on_screen(templates["thumb"])
         if location:
             print("找到copy图了，准备点击copy...")
             # 计算中心坐标
             center_x = (location[0] + shape[1] // 2) // 2
             center_y = (location[1] + shape[0] // 2) // 2
             
-            modify_x = center_x
-            modify_y = center_y - 2
+            xCoord = center_x
+            yCoord = center_y - 50
 
-            # 鼠标点击中心坐标
-            pyautogui.click(modify_x, modify_y)
-            found_copy = True
-        else:
-            location, shape = find_image_on_screen(templates["thumb"])
+            # 使用pyautogui移动鼠标并进行右键点击
+            pyautogui.moveTo(xCoord, yCoord)
+            pyautogui.click(button='right')
+            
+            sleep(1)
+            location, shape = find_image_on_screen(templates["copy"])
             if location:
-                print("找到copy图了，准备点击copy...")
                 # 计算中心坐标
                 center_x = (location[0] + shape[1] // 2) // 2
                 center_y = (location[1] + shape[0] // 2) // 2
                 
-                xCoord = center_x
-                yCoord = center_y - 50
+                # 鼠标点击中心坐标
+                pyautogui.click(center_x, center_y)
+            found_copy = True
 
-                # 使用pyautogui移动鼠标并进行右键点击
-                pyautogui.moveTo(xCoord, yCoord)
-                pyautogui.click(button='right')
-                
-                sleep(1)
-                location, shape = find_image_on_screen(templates["copy"])
-                if location:
-                    # 计算中心坐标
-                    center_x = (location[0] + shape[1] // 2) // 2
-                    center_y = (location[1] + shape[0] // 2) // 2
-                    
-                    # 鼠标点击中心坐标
-                    pyautogui.click(center_x, center_y)
-                found_copy = True
+        # 设置寻找poe_copy_success.png图片的超时时间为15秒
+        sleep(1)
+        found_success_image = False
+        timeout_success = time.time() + 5
+        while not found_success_image and time.time() < timeout_success:
+            location, shape = find_image_on_screen(templates["success"])
+            if location:
+                print("找到poe_copy_success图片，继续执行程序...")
+                found_success_image = True
+            sleep(1)  # 每次检测间隔1秒
 
-            # 设置寻找poe_copy_success.png图片的超时时间为15秒
-            sleep(1)
-            found_success_image = False
-            timeout_success = time.time() + 5
-            while not found_success_image and time.time() < timeout_success:
-                location, shape = find_image_on_screen(templates["success"])
-                if location:
-                    print("找到poe_copy_success图片，继续执行程序...")
-                    found_success_image = True
-                sleep(1)  # 每次检测间隔1秒
-
-            if not found_success_image:
-                print("在15秒内未找到poe_copy_success图片，退出程序。")
-                webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
+        if not found_success_image:
+            print("在15秒内未找到poe_copy_success图片，退出程序。")
+            # webbrowser.open('file://' + os.path.realpath(txt_file_path), new=2)
 
     # 读取剪贴板内容
     clipboard_content = get_clipboard_content()

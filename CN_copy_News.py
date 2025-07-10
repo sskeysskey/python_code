@@ -30,6 +30,51 @@ SEGMENT_TO_HTML_FILE = {
     "wsj": "wsj.html"
 }
 
+# <--- 修改 1: 将 move_and_record_images 函数移出 main，使其成为一个独立的顶级函数。
+def move_and_record_images(url):
+    """
+    移动多种格式图片并记录到article_copier.txt
+    """
+    source_dir = "/Users/yanzhang/Downloads"
+    today = datetime.now().strftime("%y%m%d")
+    # <--- 修改 2: 目标目录名修正，确保和 AppleScript 中的检查逻辑一致
+    target_dir = f"/Users/yanzhang/Downloads/news_images"
+    record_file = f"/Users/yanzhang/Documents/News/article_copier_{today}.txt"
+    
+    # 支持的图片格式
+    image_formats = ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.avif", "*.gif"]
+
+    # 确保目标目录和记录文件所在的目录存在
+    os.makedirs(target_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(record_file), exist_ok=True)
+
+    # 获取所有图片文件
+    image_files = []
+    for format in image_formats:
+        image_files.extend(glob.glob(os.path.join(source_dir, format)))
+    moved_files = []
+
+    # 移动文件
+    for image_file in image_files:
+        filename = os.path.basename(image_file)
+        target_path = os.path.join(target_dir, filename)
+        try:
+            shutil.move(image_file, target_path)
+            moved_files.append(filename)
+        except Exception as e:
+            # 如果移动失败（例如文件被占用），打印错误但继续
+            print(f"Error moving file {image_file}: {e}")
+
+
+    # 写入记录文件，无论是否有移动文件都写入URL
+    content = f"{url}\n\n"
+    if moved_files:
+        content += "\n".join(moved_files) + "\n\n"
+    
+    # 使用 with open 确保文件被正确关闭，这是导致死锁的关键操作
+    with open(record_file, 'a', encoding='utf-8') as f:
+        f.write(content)
+
 def capture_screen():
     # 使用PIL的ImageGrab直接截取屏幕
     screenshot = ImageGrab.grab()
@@ -82,6 +127,10 @@ def get_clipboard_content():
     return "\n".join(lines)
 
 def read_file(file_path):
+    # <--- 修改 3: 增加文件存在性检查，避免脚本因文件不存在而崩溃
+    if not os.path.exists(file_path):
+        print(f"Warning: File not found at {file_path}. Returning empty string.")
+        return ""
     with open(file_path, 'r', encoding='utf-8-sig') as file:
         return file.read().strip()
 
@@ -112,18 +161,21 @@ def write_html_skeleton(file_path, title):
         """)
 
 def append_to_html(file_path, current_time, content):
-    with open(file_path, 'r+', encoding='utf-8-sig') as file:
-        content = html.escape(content).replace('\n', '<br>\n')
+    # 读取、处理、写入分离，更安全
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
         html_content = file.read()
-        insert_position = html_content.find("</tr>") + 5
-        new_row = f"""
+
+    escaped_content = html.escape(content).replace('\n', '<br>\n')
+    insert_position = html_content.find("</tr>") + 5
+    new_row = f"""
             <tr>
                 <td>{current_time}</td>
-                <td>{content}</td>
+                <td>{escaped_content}</td>
             </tr>
-        """
-        updated_content = html_content[:insert_position] + new_row + html_content[insert_position:]
-        file.seek(0)
+    """
+    updated_content = html_content[:insert_position] + new_row + html_content[insert_position:]
+    
+    with open(file_path, 'w', encoding='utf-8-sig') as file:
         file.write(updated_content)
 
 def close_html_skeleton(file_path):
@@ -174,72 +226,35 @@ def main():
         
         with open(record_file, 'a', encoding='utf-8') as f:
             f.write(content)
-            
-    # template_paths = {
-    #     "copy": "/Users/yanzhang/Documents/python_code/Resource/Kimi_copy.png",
-    #     "outofline": "/Users/yanzhang/Documents/python_code/Resource/Kimi_outofline.png"
-    # }
-
-    # # 读取所有模板图片，并存储在字典中
-    # templates = {}
-    # for key, path in template_paths.items():
-    #     template = cv2.imread(path, cv2.IMREAD_COLOR)
-    #     if template is None:
-    #         raise FileNotFoundError(f"模板图片未能正确读取于路径 {path}")
-    #     templates[key] = template
-
-    # timeout = time.time() + 60  # 60 秒后超时
-    # found = False
-    # while time.time() < timeout and not found:
-    #     # 1) 尝试找 outofline
-    #     loc_out, shape_out = find_image_on_screen(templates["outofline"])
-    #     if loc_out:
-    #         print(f"找到 outofline 图片位置: {loc_out}")
-    #         found = True
-    #         break
-
-    #     # 2) 再尝试找 copy
-    #     loc_cp, shape_cp = find_image_on_screen(templates["copy"])
-    #     if loc_cp:
-    #         print("找到 copy 图，准备点击 copy...")
-    #         time.sleep(1.5)
-    #         loc_cp, shape_cp = find_image_on_screen(templates["copy"])
-    #         if loc_cp:
-    #             # 计算图片中心
-    #             center_x = (loc_cp[0] + shape_cp[1] // 2) // 2
-    #             center_y = (loc_cp[1] + shape_cp[0] // 2) // 2
-
-    #             # 如果想在中心稍微偏移几像素：
-    #             center_y -= 2
-
-    #             pyautogui.click(center_x, center_y)
-    #             found = True
-    #             break
-
-    #     # 3) 两张都没找到，滚一点、等一点，然后再试
-    #     pyautogui.scroll(-80)
-    #     time.sleep(0.5)
-
-    # if not found:
-    #     print("60秒内未找到 outofline 或 copy 图片，退出或执行兜底逻辑。")
 
     # 跳转到clipboard_content处理部分
     clipboard_content = get_clipboard_content()
     segment_content = read_file(SEGMENT_FILE_PATH)
     site_content = read_file(SITE_FILE_PATH)
-    # site_content_with_tags = f'<document>{site_content}</document>请用中文详细总结这篇文章'
+    
+    # === 步骤 2: 读取后立刻清理临时文件 ===
+    # 这样做可以尽早释放对这些文件的锁定
+    if os.path.exists(SEGMENT_FILE_PATH):
+        os.remove(SEGMENT_FILE_PATH)
+    if os.path.exists(SITE_FILE_PATH):
+        os.remove(SITE_FILE_PATH)
+
+    # === 步骤 3: 准备所有要写入的内容 ===
     site_content_with_tags = f'{site_content}'
     
     # final_content = f"{segment_content}\n{site_content_with_tags}\n\n{clipboard_content}"
     final_content = f"{site_content_with_tags}\n\n{clipboard_content}"
     
     now = datetime.now()
+    
+    # === 步骤 4: 集中执行所有文件写入操作 ===
+    # 4.1 写入主新闻日志
     txt_file_name = f"News_{now.strftime('%y_%m_%d')}.txt"
     txt_file_path = os.path.join(TXT_DIRECTORY, txt_file_name)
-    
     with open(txt_file_path, 'a', encoding='utf-8-sig') as txt_file:
         txt_file.write(final_content + '\n\n')
     
+    # 4.2 写入HTML文件
     html_file_name = SEGMENT_TO_HTML_FILE.get(segment_content.lower(), "other.html")
     html_file_path = os.path.join(HTML_DIRECTORY, html_file_name)
     
@@ -251,16 +266,18 @@ def main():
     if os.path.isfile(html_file_path):
         close_html_skeleton(html_file_path)
     
-    try:
-        result = subprocess.run(['osascript', SCRIPT_PATH], check=True, text=True, stdout=subprocess.PIPE)
-        print(result.stdout.strip())
-    except subprocess.CalledProcessError as e:
-        print(f"Error running AppleScript: {e}")
-    
+    # 4.3 移动图片并写入 article_copier.txt (这是最关键的冲突点)
+    # 我们把它放在所有其他文件写入之后，执行外部脚本之前
     move_and_record_images(url)
-    time.sleep(0.3)
-    os.remove(SEGMENT_FILE_PATH)
-    os.remove(SITE_FILE_PATH)
+
+    # === 步骤 5: 最后执行外部动作 (调用AppleScript) ===
+    try:
+        result = subprocess.run(['osascript', SCRIPT_PATH], check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(result.stdout.strip())
+        if result.stderr:
+            print(f"Error from AppleScript: {result.stderr.strip()}", file=sys.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running AppleScript: {e}\nStdout: {e.stdout}\nStderr: {e.stderr}")
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
 import sys
 import argparse
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QClipboard, QFont, QTextCursor, QTextBlockFormat
+from PyQt5.QtGui import QFont, QTextCursor, QTextBlockFormat
 from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QVBoxLayout
 
 def copy_to_clipboard(text):

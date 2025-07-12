@@ -51,6 +51,8 @@ chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图
 # 打开 nikkei asia 网站
 driver.get("https://asia.nikkei.com/")
 
+pyautogui.moveTo(653, 614)
+
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/backup/site/nikkei_asia.html"
 old_file_list = glob.glob(file_pattern)

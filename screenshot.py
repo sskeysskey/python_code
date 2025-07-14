@@ -58,7 +58,7 @@ class ScreenDetector:
             # 直接转换为numpy数组并更改颜色空间
             return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-    def find_images_on_screen(self, threshold: float = 0.9) -> Tuple[Optional[str], Optional[Tuple[int, int]], Optional[Tuple[int, int, int]]]:
+    def find_images_on_screen(self, threshold: float = 0.95) -> Tuple[Optional[str], Optional[Tuple[int, int]], Optional[Tuple[int, int, int]]]:
         """
         在屏幕上查找图像。
         按Y轴优先（从上到下），然后X轴优先（从左到右）的顺序，

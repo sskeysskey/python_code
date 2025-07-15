@@ -48,10 +48,10 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--blink-settings=imagesEnabled=false")  # 禁用图片加载
 
+pyautogui.moveTo(653, 614)
+
 # 打开 nikkei asia 网站
 driver.get("https://asia.nikkei.com/")
-
-pyautogui.moveTo(653, 614)
 
 # 查找旧的 html 文件
 file_pattern = "/Users/yanzhang/Documents/News/backup/site/nikkei_asia.html"

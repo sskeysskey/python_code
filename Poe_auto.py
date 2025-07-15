@@ -20,9 +20,9 @@ def capture_screen():
     screenshot = ImageGrab.grab()
     return cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-def find_image_on_screen(template, threshold=0.9):
+def find_image_on_screen(template, threshold=0.95):
     """
-    在当前屏幕中查找给定模板图像的匹配位置（精度默认0.9）。
+    在当前屏幕中查找给定模板图像的匹配位置（精度默认0.95）。
     如果找到，则返回 (top_left坐标, 模板形状)，否则返回 (None, None)。
     """
     screen = capture_screen()

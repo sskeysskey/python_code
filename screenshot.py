@@ -24,6 +24,8 @@ class ScreenDetector:
         self.scroll_on_not_found_run1 = scroll_on_not_found_run1
         self.x_offset = x_offset
         self.y_offset = y_offset
+        # 注意：下面的 "寻找最佳匹配" 逻辑优先于 nth_match。
+        # 它将找到全局最佳的那个匹配项，这通常是第1个最理想的匹配。
         self.nth_match = max(1, nth_match)
         self.timeout_seconds = timeout_seconds # 存储超时时间
 
@@ -60,47 +62,42 @@ class ScreenDetector:
 
     def find_images_on_screen(self, threshold: float = 0.95) -> Tuple[Optional[str], Optional[Tuple[int, int]], Optional[Tuple[int, int, int]]]:
         """
-        在屏幕上查找图像。
-        按Y轴优先（从上到下），然后X轴优先（从左到右）的顺序，
-        返回第 nth_match 个匹配项。
+        在屏幕上查找所有模板，并返回匹配得分最高的那个。
+        此方法能有效区分形状相似的图像。
         """
         screen = self.capture_screen() # 捕获一次屏幕用于所有模板的比较
         
-        # 遍历每个模板
+        best_match_info = {
+            "score": -1.0,  # 初始分数设为最低
+            "name": None,
+            "location": None,
+            "shape": None
+        }
+
+        # 遍历每个模板，寻找各自在屏幕上的最佳匹配点
         for template_name, template in self.templates:
             if template is None: # 以防万一有模板加载失败但仍然在列表中
                 continue
 
-            # TM_CCOEFF_NORMED 范围是 -1 到 1，但通常我们寻找接近 1 的值
-            # 对于一些灰度图或颜色不敏感的匹配，阈值可能需要调整
             result = cv2.matchTemplate(screen, template, cv2.TM_CCOEFF_NORMED)
-            
-            # 获取所有得分高于阈值的位置
-            # locations[0] 是 y 坐标数组, locations[1] 是 x 坐标数组
-            locations_y, locations_x = np.where(result >= threshold)
-            
-            if locations_y.size > 0:
-                # 将坐标 (y,x) 和对应的得分组合起来
-                current_matches_for_this_template = []
-                for i in range(locations_x.size):
-                    x, y = locations_x[i], locations_y[i]
-                    current_matches_for_this_template.append(
-                        ((x, y), template_name, template.shape) 
-                    )
-                
-                # 排序：主键是 Y 坐标 (loc[1])，次键是 X 坐标 (loc[0])
-                current_matches_for_this_template.sort(key=lambda item: (item[0][1], item[0][0]))
-                
-                # 如果找到了足够的匹配项
-                if len(current_matches_for_this_template) >= self.nth_match:
-                    # 获取排序后的第 nth_match 个匹配项
-                    selected_match = current_matches_for_this_template[self.nth_match - 1]
-                    match_location = selected_match[0]    # (x,y)
-                    match_template_name = selected_match[1] # 'template_name'
-                    match_shape = selected_match[2]       # (h,w,c)
-                    return match_template_name, match_location, match_shape
+            # minMaxLoc 会返回模板在屏幕上匹配得分最高和最低的位置及其得分
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+            # 如果当前模板的最佳匹配分数比我们记录的全局最高分还要高
+            if max_val > best_match_info["score"]:
+                best_match_info.update({
+                    "score": max_val,
+                    "name": template_name,
+                    "location": max_loc,  # max_loc 是得分最高点的左上角坐标 (x, y)
+                    "shape": template.shape
+                })
+
+        # 在检查完所有模板后，如果找到的最佳匹配分数满足阈值，则返回它
+        if best_match_info["score"] >= threshold:
+            print(f"找到最佳匹配: {best_match_info['name']}，分数为: {best_match_info['score']:.4f}")
+            return best_match_info["name"], best_match_info["location"], best_match_info["shape"]
         
-        # 如果循环完所有模板都没有找到满足条件的第 nth_match 个匹配
+        # 如果所有模板的最高分都达不到阈值，则说明没找到
         return None, None, None
 
     def _perform_click(self, location: Tuple[int, int], shape: Tuple[int, int, int]) -> None:
@@ -136,7 +133,8 @@ class ScreenDetector:
         timeout = time.time() + self.timeout_seconds
         
         while time.time() < timeout:
-            template_name, location, shape = self.find_images_on_screen()
+            # 建议为 "最佳匹配" 逻辑使用一个较高的阈值
+            template_name, location, shape = self.find_images_on_screen(threshold=0.9)
             
             if location and template_name and shape: #确保所有值都有效
                 if self.clickValue:
@@ -159,7 +157,7 @@ class ScreenDetector:
     def run2(self) -> None:
         """优化的运行方法2 - 持续查找并滚动，直到找不到"""
         while True:
-            template_name, location, shape = self.find_images_on_screen() # 这里nth_match仍然生效
+            template_name, location, shape = self.find_images_on_screen(threshold=0.95)
             
             if not location: # 如果没找到 (或者 template_name/shape 为 None)
                 print("未找到图片，停止滚动并退出run2。")
@@ -186,7 +184,7 @@ def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Opti
         print("    true: 执行 run2 (持续查找并滚动)")
         print("    false: 执行 run1 (查找，可选超时前滚动)")
         print("  scroll_in_run1 (可选, 默认为 false):")
-        print("    true: 在 run1 中若找不到图片则向下滚动80像素后重试")
+        print("    true: 在 run1 中若找不到图片则向下滚动后重试")
         print("    false: 在 run1 中若找不到图片则不滚动，仅在当前屏幕重试")
         sys.exit(1)
 
@@ -231,27 +229,22 @@ def parse_args() -> Tuple[Union[str, List[str]], Optional[str], bool, bool, Opti
     final_optional_args = sys.argv[current_arg_index:]
 
     try:
-        if len(final_optional_args) == 1: # 如果只有一个剩余参数，认为是 nth_match
-            if final_optional_args[0]: nth_match = int(final_optional_args[0])
-        elif len(final_optional_args) == 2: # 如果有两个剩余参数，认为是 x_offset, y_offset
-            if final_optional_args[0]: x_offset = int(final_optional_args[0])
-            if final_optional_args[1]: y_offset = int(final_optional_args[1])
-        elif len(final_optional_args) >= 3: # 如果有三个或更多，认为是 x_offset, y_offset, nth_match
-            if final_optional_args[0]: x_offset = int(final_optional_args[0])
-            if final_optional_args[1]: y_offset = int(final_optional_args[1])
-            if final_optional_args[2]: nth_match = int(final_optional_args[2])
-        elif len(final_optional_args) >= 4: # 如果有三个或更多，认为是 x_offset, y_offset, nth_match
+        if len(final_optional_args) >= 4:
             if final_optional_args[0]: x_offset = int(final_optional_args[0])
             if final_optional_args[1]: y_offset = int(final_optional_args[1])
             if final_optional_args[2]: nth_match = int(final_optional_args[2])
             if final_optional_args[3]: timeout_seconds = int(final_optional_args[3])
-    except ValueError as e:
-        print(f"偏移量或 nth_match 参数值无效: {e}. 请确保它们是整数。")
-        sys.exit(1)
-    except IndexError:
-        # 这个异常理论上不应该在这里触发，因为我们已经检查了 len(final_optional_args)
-        # 但保留它以防万一
-        pass 
+        elif len(final_optional_args) == 3:
+            if final_optional_args[0]: x_offset = int(final_optional_args[0])
+            if final_optional_args[1]: y_offset = int(final_optional_args[1])
+            if final_optional_args[2]: nth_match = int(final_optional_args[2])
+        elif len(final_optional_args) == 2:
+            if final_optional_args[0]: x_offset = int(final_optional_args[0])
+            if final_optional_args[1]: y_offset = int(final_optional_args[1])
+        elif len(final_optional_args) == 1:
+            if final_optional_args[0]: nth_match = int(final_optional_args[0])
+    except (ValueError, IndexError):
+        pass
 
     return image_names_str, clickValue, Opposite, scroll_in_run1, x_offset, y_offset, nth_match, timeout_seconds
 

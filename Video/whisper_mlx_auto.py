@@ -11,7 +11,7 @@ import mlx.core as mx
 import mlx_whisper
 
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 
 import time
 import random
@@ -335,14 +335,6 @@ def select_video_directory() -> Optional[str]:
     return path if path else None
 
 
-def show_completion_popup():
-    """使用 tkinter 弹窗提示任务完成"""
-    root = tk.Tk()
-    root.withdraw()
-    messagebox.showinfo("任务完成", "选定目录下的所有视频文件均已处理完毕！")
-    root.destroy()
-
-
 # --- 主要修改点 3: 修改主程序逻辑以使用目录选择器 ---
 if __name__ == "__main__":
     # 开启防挂机鼠标线程
@@ -389,8 +381,5 @@ if __name__ == "__main__":
             run_pipeline(str(video_path), "large-v3", None)
 
     logging.info("所有任务处理完毕。")
-    
-    # 任务结束后，调用弹窗提示
-    show_completion_popup()
 
     print("程序执行完毕，退出。")

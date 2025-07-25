@@ -11,7 +11,7 @@ import mlx.core as mx
 import mlx_whisper
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
 import time
 import random
@@ -42,11 +42,8 @@ LANGUAGES = {
     "es": "Spanish",
 }
 
-# --- 主要修改点 1: 指定视频源目录 ---
-# 将原来的 BASE_DIR 和 OUTPUT_DIR 替换为这个
-# VIDEO_SOURCE_DIR = pathlib.Path("/Users/yanzhang/Downloads/Videos/MLX_Whisper")
-VIDEO_SOURCE_DIR = pathlib.Path("/Users/yanzhang/Downloads/Videos/Mixed")
-
+# --- 主要修改点 1: 定义默认目录，而不是硬编码处理目录 ---
+DEFAULT_VIDEO_DIR = pathlib.Path("/Users/yanzhang/Downloads/Videos/MLX_Whisper")
 TEMP_DIR    = pathlib.Path("/tmp")
 
 AUDIO_PARAMS = {
@@ -312,34 +309,68 @@ def run_pipeline(video_path: str,
             try: f.unlink()
             except: pass
 
+# --- 主要修改点 2: 新增选择目录的函数 ---
+def select_video_directory() -> Optional[str]:
+    """
+    打开一个对话框让用户选择视频文件夹。
+    默认打开 DEFAULT_VIDEO_DIR。
+    """
+    root = tk.Tk()
+    root.withdraw()
+    # 保持 macOS 窗口置顶的逻辑
+    if platform.system() == "Darwin":
+        try:
+            script = 'tell app "System Events" to set frontmost of process "Python" to true'
+            subprocess.run(['osascript', '-e', script], check=True, capture_output=True)
+        except:
+            pass
+    
+    # 使用 askdirectory 来选择文件夹
+    path = filedialog.askdirectory(
+        title="请选择包含视频文件的文件夹",
+        # initialdir 确保对话框打开时定位到默认目录
+        initialdir=str(DEFAULT_VIDEO_DIR) if DEFAULT_VIDEO_DIR.exists() else None
+    )
+    root.destroy()
+    return path if path else None
 
-# --- 主要修改点 3: 移除 select_video_file, 添加完成提示函数 ---
+
 def show_completion_popup():
     """使用 tkinter 弹窗提示任务完成"""
     root = tk.Tk()
-    root.withdraw()  # 隐藏主窗口
-    messagebox.showinfo("任务完成", "指定目录下的所有视频文件均已处理完毕！")
+    root.withdraw()
+    messagebox.showinfo("任务完成", "选定目录下的所有视频文件均已处理完毕！")
     root.destroy()
 
 
-# --- 主要修改点 4: 修改主程序逻辑 ---
+# --- 主要修改点 3: 修改主程序逻辑以使用目录选择器 ---
 if __name__ == "__main__":
-    # 开启防挂机鼠标线程 (保持不变)
+    # 开启防挂机鼠标线程
     threading.Thread(target=move_mouse_periodically, daemon=True).start()
 
-    logging.info(f"自动化处理开始，扫描目录: {VIDEO_SOURCE_DIR}")
+    # 1. 调用目录选择函数
+    logging.info("请在弹出的窗口中选择要处理的视频文件夹...")
+    target_dir_str = select_video_directory()
 
-    # 检查目录是否存在
-    if not VIDEO_SOURCE_DIR.is_dir():
-        logging.error(f"错误：目录不存在 -> {VIDEO_SOURCE_DIR}")
-        # 也可以在这里弹窗提示错误
+    # 2. 检查用户是否选择了目录
+    if not target_dir_str:
+        logging.info("未选择任何目录，程序退出。")
+        exit()
+
+    # 3. 如果选择了目录，则继续执行
+    video_source_dir = pathlib.Path(target_dir_str)
+    logging.info(f"自动化处理开始，扫描目录: {video_source_dir}")
+
+    # 检查目录是否有效
+    if not video_source_dir.is_dir():
+        logging.error(f"错误：所选路径不是一个有效的目录 -> {video_source_dir}")
         exit()
 
     # 找到所有 .mp4 文件
-    video_files = list(VIDEO_SOURCE_DIR.glob("*.mp4"))
+    video_files = list(video_source_dir.glob("*.mp4"))
     
     if not video_files:
-        logging.warning("在指定目录中没有找到任何 .mp4 文件。")
+        logging.warning("在选定目录中没有找到任何 .mp4 文件。")
     else:
         logging.info(f"发现 {len(video_files)} 个 .mp4 文件，开始处理...")
 
